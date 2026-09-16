@@ -139,15 +139,24 @@ export default function Home({ onNavigate }: HomeProps) {
     showToast('🚨 SafeMesh Emergency SOS Broadcast Active');
   }, [showToast]);
 
-  // 1.5 Check for Voice Auto-SOS
+  // 1.5 Auto-Start Countdown
+  const [autoStartCountdown, setAutoStartCountdown] = useState<number | null>(5);
+
   useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.get('auto_sos') === 'true') {
-      // Remove param to avoid re-triggering on refresh
-      window.history.replaceState({}, document.title, window.location.pathname);
+    if (autoStartCountdown === null) return;
+    
+    if (autoStartCountdown === 0) {
+      setAutoStartCountdown(null);
       activateEmergencyWorkflow();
+      return;
     }
-  }, [activateEmergencyWorkflow]);
+
+    const timer = setTimeout(() => {
+      setAutoStartCountdown(prev => prev !== null ? prev - 1 : null);
+    }, 1000);
+
+    return () => clearTimeout(timer);
+  }, [autoStartCountdown, activateEmergencyWorkflow]);
 
   const handleDeactivateSos = useCallback(() => {
     setSosActive(false);
@@ -280,6 +289,20 @@ export default function Home({ onNavigate }: HomeProps) {
           contacts={contacts}
           onDeactivate={handleDeactivateSos}
         />
+      )}
+
+      {/* Auto-Start 5-Second Countdown Overlay */}
+      {autoStartCountdown !== null && !sosActive && (
+        <div className="safemesh-emergency-backdrop" style={{ zIndex: 9999, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(15, 23, 42, 0.95)' }}>
+          <h1 style={{ color: '#EF4444', fontSize: '1.8rem', marginBottom: '24px', textAlign: 'center', fontWeight: 'bold' }}>AUTO-STARTING SOS</h1>
+          <div style={{ fontSize: '6rem', color: 'white', fontWeight: '800', marginBottom: '48px' }}>{autoStartCountdown}</div>
+          <button 
+            onClick={() => setAutoStartCountdown(null)}
+            style={{ padding: '20px 48px', backgroundColor: '#334155', color: 'white', borderRadius: '32px', fontSize: '1.2rem', fontWeight: 'bold', border: 'none', cursor: 'pointer', boxShadow: '0 4px 12px rgba(0,0,0,0.3)' }}
+          >
+            CANCEL (I AM SAFE)
+          </button>
+        </div>
       )}
 
       {/* Toast Feedback */}
