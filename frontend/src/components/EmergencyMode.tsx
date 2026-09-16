@@ -3,7 +3,7 @@ import { PhoneCallIcon, LocationPinIcon, UsersIcon, ShieldCheckIcon } from './Ic
 import type { EmergencyContact } from '../services/emergency';
 import { triggerHaptic } from '../services/emergency';
 import type { LocationData } from '../services/location';
-import { sendEmergencySms } from '../services/native';
+import { sendEmergencySms, startEmergencyBeacon } from '../services/native';
 import { getEscapeRoute } from '../services/safetyRoute';
 import type { EscapeRouteResponse } from '../services/safetyRoute';
 
@@ -30,8 +30,26 @@ export const EmergencyMode: React.FC<EmergencyModeProps> = ({
     error: null
   });
   
+  const [level30Alert, setLevel30Alert] = useState(false);
+  const [level60Uber, setLevel60Uber] = useState(false);
+  
   const smsTriggeredRef = React.useRef(false);
   const routeTriggeredRef = React.useRef(false);
+  const beaconTriggeredRef = React.useRef(false);
+  const callTriggeredRef = React.useRef(false);
+
+  useEffect(() => {
+    if (secondsActive === 30 && !level30Alert) {
+      setLevel30Alert(true);
+      triggerHaptic([50, 50, 50, 50, 50]);
+    }
+    if (secondsActive === 60 && !callTriggeredRef.current) {
+      callTriggeredRef.current = true;
+      setLevel60Uber(true);
+      triggerHaptic([100, 100, 100, 100, 100]);
+      window.location.href = "tel:9422039955";
+    }
+  }, [secondsActive, level30Alert]);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -41,6 +59,11 @@ export const EmergencyMode: React.FC<EmergencyModeProps> = ({
     if (!smsTriggeredRef.current) {
       smsTriggeredRef.current = true;
       triggerAutomaticSms();
+    }
+
+    if (!beaconTriggeredRef.current) {
+      beaconTriggeredRef.current = true;
+      startEmergencyBeacon().catch(console.error);
     }
 
     if (!routeTriggeredRef.current && location) {
@@ -146,17 +169,44 @@ export const EmergencyMode: React.FC<EmergencyModeProps> = ({
 
         {/* Immediate Emergency Action Shortcuts */}
         <div className="emergency-action-stack">
-          {/* Direct 112 Call Button */}
-          <a href="tel:112" className="emergency-hero-btn call-112-btn">
+          {/* Level 3: Auto 112 Call (T=60s) */}
+          <div className="emergency-hero-btn bg-white-soft" style={{ cursor: 'default' }}>
             <div className="btn-icon-box bg-white-soft">
               <PhoneCallIcon size={22} color="#FFFFFF" />
             </div>
             <div className="btn-copy">
-              <span className="btn-headline">Call 112 Immediately</span>
-              <span className="btn-tagline">National Emergency Response Dispatch</span>
+              <span className="btn-headline">Auto-Dial 112 (9422039955)</span>
+              <span className="btn-tagline">
+                {level60Uber ? 'Call Initiated. Connecting...' : 'Will auto-dial in 60s...'}
+              </span>
             </div>
-            <span className="btn-arrow-mark">➔</span>
-          </a>
+          </div>
+
+          {/* Level 3: Uber Simulation (T=60s) */}
+          {level60Uber && (
+            <div className="emergency-hero-btn bg-white-soft" style={{ cursor: 'default' }}>
+              <div className="btn-icon-box bg-white-soft" style={{ backgroundColor: '#000000' }}>
+                <ShieldCheckIcon size={22} color="#FFFFFF" />
+              </div>
+              <div className="btn-copy">
+                <span className="btn-headline">Emergency Uber Requested</span>
+                <span className="btn-tagline">Driver arriving in ~3 mins. Stay safe.</span>
+              </div>
+            </div>
+          )}
+
+          {/* Level 2: Neighborhood Alert (T=30s) */}
+          {level30Alert && (
+            <div className="emergency-hero-btn bg-white-soft" style={{ cursor: 'default' }}>
+              <div className="btn-icon-box bg-white-soft" style={{ backgroundColor: '#EF4444' }}>
+                <ShieldCheckIcon size={22} color="#FFFFFF" />
+              </div>
+              <div className="btn-copy">
+                <span className="btn-headline">Neighborhood Alert</span>
+                <span className="btn-tagline">Nearby guardians have been alerted.</span>
+              </div>
+            </div>
+          )}
 
           {/* SMS Status Indicator */}
           <div className="emergency-hero-btn bg-white-soft" style={{ cursor: 'default' }}>
