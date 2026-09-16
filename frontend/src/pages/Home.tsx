@@ -202,6 +202,17 @@ export default function Home({ onNavigate }: HomeProps) {
         onSettingsClick={() => setActiveModal('settings')}
       />
 
+      {/* UBER SANDBOX TEST BUTTON */}
+      <div style={{ padding: '0 20px', marginTop: '16px' }}>
+        <button 
+          className="sos-btn" 
+          style={{ backgroundColor: '#000000', width: '100%', padding: '12px', borderRadius: '12px' }}
+          onClick={() => onNavigate('uber_test')}
+        >
+          🚕 BOOK UBER (TEST)
+        </button>
+      </div>
+
       {/* 6. Bottom Safety Status Area (NO FAKE DATA!) */}
       <BottomSafetyStatus
         location={location}

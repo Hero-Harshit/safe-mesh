@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import Home from './pages/Home';
 import NearbyGuardianSetup from './pages/NearbyGuardianSetup';
+import UberBookingTest from './pages/UberBookingTest';
 import StartupPermissionFlow from './components/StartupPermissionFlow';
 import {
   subscribePermissions,
@@ -61,6 +62,9 @@ export default function App() {
               onRefreshPermissions={refreshAllPermissions}
               onBack={() => setCurrentView('home')}
             />
+          )}
+          {currentView === 'uber_test' && (
+            <UberBookingTest onBack={() => setCurrentView('home')} />
           )}
         </>
       )}

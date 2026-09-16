@@ -31,6 +31,10 @@ const groq = new Groq({ apiKey: GROQ_API_KEY });
 const incidentRoutes = require('./routes/incidents');
 app.use('/api/incidents', incidentRoutes);
 
+// Mount uber routes
+const uberRoutes = require('./routes/uber');
+app.use('/api/uber', uberRoutes);
+
 // Category priority mapping
 const CATEGORY_PRIORITY = {
   7392: 100, // Police Station
