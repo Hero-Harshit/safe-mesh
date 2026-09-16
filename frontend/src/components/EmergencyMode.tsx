@@ -170,7 +170,7 @@ export const EmergencyMode: React.FC<EmergencyModeProps> = ({
         {/* Immediate Emergency Action Shortcuts */}
         <div className="emergency-action-stack">
           {/* Level 3: Auto 112 Call (T=20s) */}
-          <div className="emergency-hero-btn bg-white-soft" style={{ cursor: 'default' }}>
+          <div className="emergency-hero-btn" style={{ cursor: 'default', backgroundColor: '#1E293B' }}>
             <div className="btn-icon-box bg-white-soft">
               <PhoneCallIcon size={22} color="#FFFFFF" />
             </div>
@@ -184,8 +184,8 @@ export const EmergencyMode: React.FC<EmergencyModeProps> = ({
 
           {/* Level 3: Uber Simulation (T=20s) */}
           {level60Uber && (
-            <div className="emergency-hero-btn bg-white-soft" style={{ cursor: 'default' }}>
-              <div className="btn-icon-box bg-white-soft" style={{ backgroundColor: '#000000' }}>
+            <div className="emergency-hero-btn" style={{ cursor: 'default', backgroundColor: '#000000' }}>
+              <div className="btn-icon-box" style={{ backgroundColor: 'rgba(255,255,255,0.2)' }}>
                 <ShieldCheckIcon size={22} color="#FFFFFF" />
               </div>
               <div className="btn-copy">
@@ -195,10 +195,10 @@ export const EmergencyMode: React.FC<EmergencyModeProps> = ({
             </div>
           )}
 
-          {/* Level 2: Neighborhood Alert (T=30s) */}
+          {/* Level 2: Neighborhood Alert (T=10s) */}
           {level30Alert && (
-            <div className="emergency-hero-btn bg-white-soft" style={{ cursor: 'default' }}>
-              <div className="btn-icon-box bg-white-soft" style={{ backgroundColor: '#EF4444' }}>
+            <div className="emergency-hero-btn" style={{ cursor: 'default', backgroundColor: '#EF4444' }}>
+              <div className="btn-icon-box" style={{ backgroundColor: 'rgba(255,255,255,0.2)' }}>
                 <ShieldCheckIcon size={22} color="#FFFFFF" />
               </div>
               <div className="btn-copy">
@@ -209,7 +209,7 @@ export const EmergencyMode: React.FC<EmergencyModeProps> = ({
           )}
 
           {/* SMS Status Indicator */}
-          <div className="emergency-hero-btn bg-white-soft" style={{ cursor: 'default' }}>
+          <div className="emergency-hero-btn" style={{ cursor: 'default', backgroundColor: '#2563EB' }}>
             <div className="btn-icon-box bg-white-soft">
               <UsersIcon size={22} color="#FFFFFF" />
             </div>
@@ -227,7 +227,7 @@ export const EmergencyMode: React.FC<EmergencyModeProps> = ({
           </div>
 
           {/* Safe Route Panel */}
-          <div className="emergency-hero-btn bg-white-soft" style={{ cursor: 'default', display: 'flex', flexDirection: 'column', alignItems: 'flex-start', padding: '16px' }}>
+          <div className="emergency-hero-btn" style={{ cursor: 'default', display: 'flex', flexDirection: 'column', alignItems: 'flex-start', padding: '16px', backgroundColor: '#0F172A' }}>
             <div style={{ display: 'flex', alignItems: 'center', marginBottom: '8px' }}>
               <div className="btn-icon-box bg-white-soft" style={{ marginRight: '12px' }}>
                 <LocationPinIcon size={22} color="#FFFFFF" />
