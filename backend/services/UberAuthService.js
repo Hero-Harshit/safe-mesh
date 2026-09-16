@@ -27,6 +27,13 @@ function decrypt(text) {
 
 class UberAuthService {
   /**
+   * Decrypts an encrypted token.
+   */
+  decrypt(text) {
+    return decrypt(text);
+  }
+
+  /**
    * Generates a secure OAuth URL and saves the state to DB.
    */
   async generateAuthUrl() {

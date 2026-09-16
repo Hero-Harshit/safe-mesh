@@ -116,4 +116,74 @@ router.post('/disconnect', async (req, res) => {
   }
 });
 
+const UberService = require('../services/UberService');
+
+// POST /api/uber/book - Prepare an Uber Sandbox booking request (Product & Fare Pipeline)
+router.post('/book', async (req, res) => {
+  try {
+    const { pickup, destination } = req.body;
+    const providerUserId = 'sandbox-user-1'; // Development mock
+
+    // 1. Verify Sandbox Environment
+    if (uberConfig.env !== 'sandbox') {
+      return res.status(400).json({
+        success: false,
+        error: 'UBER_SANDBOX_REQUIRED',
+        message: 'This action is only allowed in the Uber Sandbox environment.'
+      });
+    }
+
+    // 2. Validate Pickup Location
+    if (!pickup || typeof pickup.latitude !== 'number' || typeof pickup.longitude !== 'number') {
+      return res.status(400).json({
+        success: false,
+        error: 'INVALID_LOCATION',
+        message: 'Pickup location is missing or invalid.'
+      });
+    }
+    if (pickup.latitude < -90 || pickup.latitude > 90 || pickup.longitude < -180 || pickup.longitude > 180) {
+      return res.status(400).json({
+        success: false,
+        error: 'INVALID_LOCATION',
+        message: 'Pickup coordinates are out of bounds.'
+      });
+    }
+
+    // 3. Validate Destination
+    if (!destination || typeof destination.latitude !== 'number' || typeof destination.longitude !== 'number') {
+      return res.status(400).json({
+        success: false,
+        error: 'INVALID_DESTINATION',
+        message: 'Destination location is missing or invalid.'
+      });
+    }
+
+    // 4. Verify Connection & Scope (Handled by UberApiClient inside prepareBooking when it decrypts)
+    // 5. Retrieve Products, Select Product, Request Fare Estimate
+    const bookingResponse = await UberService.prepareBooking(providerUserId, pickup, destination);
+
+    return res.json(bookingResponse);
+
+  } catch (error) {
+    console.error('Error preparing Uber booking:', error.response?.data || error.message);
+    
+    // Catch known error codes thrown by our client/service
+    const knownErrors = ['UBER_NOT_CONNECTED', 'UBER_UNAUTHORIZED', 'NO_PRODUCTS_AVAILABLE', 'PRODUCT_LOOKUP_FAILED', 'FARE_ESTIMATE_FAILED'];
+    
+    if (knownErrors.includes(error.code) || knownErrors.includes(error.message)) {
+       return res.status(400).json({
+         success: false,
+         error: error.code || error.message,
+         message: 'Failed to prepare booking pipeline.'
+       });
+    }
+
+    res.status(500).json({
+      success: false,
+      error: 'SERVER_ERROR',
+      message: 'Failed to prepare booking pipeline due to a server error.'
+    });
+  }
+});
+
 module.exports = router;
