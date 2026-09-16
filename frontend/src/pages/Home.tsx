@@ -1,60 +1,44 @@
-import { useState, useEffect } from 'react';
-import { Header } from '../components/Header';
-import { FeatureCard } from '../components/FeatureCard';
-import { StatusMessage } from '../components/StatusMessage';
+import { useState, useCallback, useEffect } from 'react';
+import Header from '../components/Header';
+import FeatureCard from '../components/FeatureCard';
+import StatusMessage from '../components/StatusMessage';
+
+const CARDS = [
+  { title: 'Emergency',          icon: '🚨', message: 'Emergency module coming soon.'          },
+  { title: 'Safe Route',         icon: '🗺️', message: 'Safe Route module coming soon.'         },
+  { title: 'Emergency Contacts', icon: '👥', message: 'Emergency Contacts module coming soon.' },
+  { title: '112',                icon: '📞', message: '112 integration coming soon.'            },
+  { title: 'Nearby Guardian',    icon: '🛡️', message: 'Nearby Guardian module coming soon.'    },
+  { title: 'Settings',           icon: '⚙️', message: 'Settings coming soon.'                  },
+] as const;
 
 export default function Home() {
-  const [activeMessage, setActiveMessage] = useState<string | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
 
-  const showMessage = (msg: string) => {
-    setActiveMessage(msg);
-  };
+  const showToast = useCallback((message: string) => {
+    setToast(message);
+  }, []);
 
   useEffect(() => {
-    if (activeMessage) {
-      const timer = setTimeout(() => {
-        setActiveMessage(null);
-      }, 3000);
-      return () => clearTimeout(timer);
-    }
-  }, [activeMessage]);
+    if (!toast) return;
+    const timer = setTimeout(() => setToast(null), 3000);
+    return () => clearTimeout(timer);
+  }, [toast]);
 
   return (
     <>
       <Header />
-      <main className="features-grid">
-        <FeatureCard 
-          title="Emergency" 
-          icon="🚨" 
-          onClick={() => showMessage("Emergency module coming soon.")} 
-        />
-        <FeatureCard 
-          title="Safe Route" 
-          icon="🗺️" 
-          onClick={() => showMessage("Safe Route module coming soon.")} 
-        />
-        <FeatureCard 
-          title="Contacts" 
-          icon="👥" 
-          onClick={() => showMessage("Emergency Contacts module coming soon.")} 
-        />
-        <FeatureCard 
-          title="112" 
-          icon="📞" 
-          onClick={() => showMessage("112 integration coming soon.")} 
-        />
-        <FeatureCard 
-          title="Nearby Guardian" 
-          icon="🛡️" 
-          onClick={() => showMessage("Nearby Guardian module coming soon.")} 
-        />
-        <FeatureCard 
-          title="Settings" 
-          icon="⚙️" 
-          onClick={() => showMessage("Settings coming soon.")} 
-        />
+      <main className="features-grid" aria-label="SafeHelp features">
+        {CARDS.map(({ title, icon, message }) => (
+          <FeatureCard
+            key={title}
+            title={title}
+            icon={icon}
+            onClick={() => showToast(message)}
+          />
+        ))}
       </main>
-      <StatusMessage message={activeMessage} />
+      <StatusMessage message={toast} />
     </>
   );
 }

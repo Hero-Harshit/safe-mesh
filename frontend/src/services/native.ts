@@ -1,7 +1,16 @@
 /**
- * Placeholder for native Android bridge functionalities.
- * Will handle Bluetooth, ERSS-112 triggers, App Actions, etc.
+ * native.ts
+ *
+ * Future: Android native bridge.
+ * Will expose Android capabilities to the React layer:
+ *   - Contacts access
+ *   - Bluetooth / BLE
+ *   - SMS / calls
+ *   - Wake lock
+ *
+ * Architecture:
+ *   React UI → native.ts → Android WebView bridge → Android SDK
  */
-export const triggerNativeFeature = async (featureName: string): Promise<void> => {
-  console.log(`Native feature ${featureName} integration coming soon.`);
-};
+
+// Placeholder — no real implementation yet.
+export {};

@@ -1,7 +1,12 @@
 /**
- * Placeholder for future location handling.
- * Will interface with native GPS APIs.
+ * location.ts
+ *
+ * Future: device location handling.
+ * Will interface with the Android location API via native bridge.
+ *
+ * Architecture:
+ *   React UI → location.ts → Android native / Geolocation API
  */
-export const getCurrentLocation = async (): Promise<void> => {
-  console.log('Location module coming soon.');
-};
+
+// Placeholder — no real implementation yet.
+export {};

@@ -1,7 +1,12 @@
 /**
- * Placeholder for future emergency orchestration logic.
- * Will handle coordinating emergency state, contacts, and response systems.
+ * emergency.ts
+ *
+ * Future: emergency orchestration logic.
+ * Will coordinate emergency state, contacts, and response systems.
+ *
+ * Architecture:
+ *   React UI → emergency.ts → backend / Android native / external APIs
  */
-export const initEmergencyProtocol = async (): Promise<void> => {
-  console.log('Emergency module coming soon.');
-};
+
+// Placeholder — no real implementation yet.
+export {};

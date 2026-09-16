@@ -1,7 +1,12 @@
 /**
- * Placeholder for future Maps & Routing integration.
- * Will handle generating Safe Routes.
+ * maps.ts
+ *
+ * Future: mapping and routing integration.
+ * Will use Google Maps / Places / Routes APIs.
+ *
+ * Architecture:
+ *   React UI → maps.ts → Google Maps API
  */
-export const getSafeRoute = async (): Promise<void> => {
-  console.log('Maps module coming soon.');
-};
+
+// Placeholder — no real implementation yet.
+export {};
