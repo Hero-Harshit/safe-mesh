@@ -8,7 +8,6 @@ import android.bluetooth.le.AdvertiseData;
 import android.bluetooth.le.AdvertiseSettings;
 import android.bluetooth.le.BluetoothLeAdvertiser;
 import android.content.Context;
-import android.os.Build;
 import android.os.ParcelUuid;
 import android.util.Log;
 
@@ -22,96 +21,101 @@ import java.util.UUID;
 public class SafeHelpBleAdvertiser {
 
     private static final String TAG = "SAFEHELP_BLE";
-    
-    // Constant Service UUID for SafeHelp Phase 2
-    private static final UUID SAFEHELP_SERVICE_UUID = UUID.fromString("00008F3A-0000-1000-8000-00805F9B34FB");
-    
+
+    private static final UUID SAFEHELP_SERVICE_UUID =
+            UUID.fromString("00008F3A-0000-1000-8000-00805F9B34FB");
+
     private static SafeHelpBleAdvertiser instance;
-    private BluetoothLeAdvertiser advertiser;
+    private BluetoothLeAdvertiser bleAdvertiser;
     private AdvertiseCallback advertiseCallback;
-    
+
     private boolean isRunning = false;
     private String currentEmergencyId = null;
 
     private SafeHelpBleAdvertiser() {}
 
     public static synchronized SafeHelpBleAdvertiser getInstance() {
-        if (instance == null) {
-            instance = new SafeHelpBleAdvertiser();
-        }
+        if (instance == null) instance = new SafeHelpBleAdvertiser();
         return instance;
     }
 
-    public boolean isEmergencyBeaconRunning() {
-        return isRunning;
-    }
-    
-    public String getCurrentEmergencyId() {
-        return currentEmergencyId;
-    }
+    public boolean isEmergencyBeaconRunning() { return isRunning; }
+    public String getCurrentEmergencyId() { return currentEmergencyId; }
 
     private String generateEmergencyId() {
         String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
         StringBuilder sb = new StringBuilder(6);
         Random random = new Random();
-        for (int i = 0; i < 6; i++) {
-            sb.append(chars.charAt(random.nextInt(chars.length())));
-        }
+        for (int i = 0; i < 6; i++) sb.append(chars.charAt(random.nextInt(chars.length())));
         return sb.toString();
     }
 
+    private JSONObject errorResult(String error) throws JSONException {
+        JSONObject r = new JSONObject();
+        r.put("type", "BLE_ADVERTISING_RESULT");
+        r.put("success", false);
+        r.put("running", false);
+        r.put("error", error);
+        return r;
+    }
+
+    // All Bluetooth API calls that need BLUETOOTH_CONNECT are gated with
+    // @SuppressLint("MissingPermission") because the caller (BleActionActivity)
+    // guarantees permissions are granted before this method is invoked.
+
+    @SuppressLint("MissingPermission")
     public JSONObject startEmergencyBeacon(Context context) {
-        Log.i(TAG, "Checking Bluetooth adapter");
-        JSONObject result = new JSONObject();
+        Log.i(TAG, "Checking permissions");
         try {
-            result.put("type", "BLE_ADVERTISING_RESULT");
-
             if (isRunning) {
-                Log.w(TAG, "Advertising already running");
-                result.put("success", true);
-                result.put("running", true);
-                result.put("emergencyId", currentEmergencyId);
-                return result;
+                Log.w(TAG, "Already advertising");
+                JSONObject r = new JSONObject();
+                r.put("type", "BLE_ADVERTISING_RESULT");
+                r.put("success", true);
+                r.put("running", true);
+                r.put("emergencyId", currentEmergencyId);
+                return r;
             }
 
+            // Double-check — BleActionActivity should have already enforced this.
             if (!BluetoothPermissionManager.areBluetoothPermissionsGranted(context)) {
-                Log.e(TAG, "Advertising failed: BLUETOOTH_PERMISSION_DENIED");
-                result.put("success", false);
-                result.put("running", false);
-                result.put("error", "BLUETOOTH_PERMISSION_DENIED");
-                return result;
+                Log.e(TAG, "Permission check failed inside advertiser");
+                return errorResult("BLUETOOTH_PERMISSION_DENIED");
             }
 
-            BluetoothManager bluetoothManager = (BluetoothManager) context.getSystemService(Context.BLUETOOTH_SERVICE);
+            Log.i(TAG, "Permissions granted");
+            Log.i(TAG, "Checking Bluetooth state");
+
+            BluetoothManager bluetoothManager =
+                    (BluetoothManager) context.getSystemService(Context.BLUETOOTH_SERVICE);
             if (bluetoothManager == null) {
-                Log.e(TAG, "Advertising failed: BLUETOOTH_NOT_AVAILABLE");
-                result.put("success", false);
-                result.put("running", false);
-                result.put("error", "BLUETOOTH_NOT_AVAILABLE");
-                return result;
+                Log.e(TAG, "BluetoothManager unavailable");
+                return errorResult("BLUETOOTH_UNAVAILABLE");
             }
 
-            BluetoothAdapter bluetoothAdapter = bluetoothManager.getAdapter();
-            if (bluetoothAdapter == null || !bluetoothAdapter.isEnabled()) {
-                Log.e(TAG, "Advertising failed: BLUETOOTH_DISABLED");
-                result.put("success", false);
-                result.put("running", false);
-                result.put("error", "BLUETOOTH_DISABLED");
-                return result;
+            BluetoothAdapter adapter = bluetoothManager.getAdapter();
+            if (adapter == null) {
+                Log.e(TAG, "BluetoothAdapter null");
+                return errorResult("BLUETOOTH_UNAVAILABLE");
             }
 
-            advertiser = bluetoothAdapter.getBluetoothLeAdvertiser();
-            if (advertiser == null) {
-                Log.e(TAG, "Advertising failed: BLE_ADVERTISING_UNSUPPORTED");
-                result.put("success", false);
-                result.put("running", false);
-                result.put("error", "BLE_ADVERTISING_UNSUPPORTED");
-                return result;
+            // isEnabled() requires BLUETOOTH_CONNECT on Android 12+ — caller has already
+            // checked/requested it above via BleActionActivity.
+            if (!adapter.isEnabled()) {
+                Log.e(TAG, "Bluetooth is disabled");
+                return errorResult("BLUETOOTH_DISABLED");
+            }
+
+            Log.i(TAG, "Creating advertiser");
+            bleAdvertiser = adapter.getBluetoothLeAdvertiser();
+            if (bleAdvertiser == null) {
+                Log.e(TAG, "BLE advertising not supported on this hardware");
+                return errorResult("BLE_ADVERTISING_UNSUPPORTED");
             }
 
             currentEmergencyId = generateEmergencyId();
-            Log.i(TAG, "Starting emergency beacon");
             Log.i(TAG, "Emergency ID = " + currentEmergencyId);
+            Log.i(TAG, "Starting advertising");
 
             AdvertiseSettings settings = new AdvertiseSettings.Builder()
                     .setAdvertiseMode(AdvertiseSettings.ADVERTISE_MODE_LOW_POWER)
@@ -124,75 +128,68 @@ public class SafeHelpBleAdvertiser {
                     .setIncludeDeviceName(false)
                     .setIncludeTxPowerLevel(false)
                     .addServiceUuid(new ParcelUuid(SAFEHELP_SERVICE_UUID))
-                    .addServiceData(new ParcelUuid(SAFEHELP_SERVICE_UUID), currentEmergencyId.getBytes(StandardCharsets.UTF_8))
+                    .addServiceData(
+                            new ParcelUuid(SAFEHELP_SERVICE_UUID),
+                            currentEmergencyId.getBytes(StandardCharsets.UTF_8))
                     .build();
 
             advertiseCallback = new AdvertiseCallback() {
                 @Override
                 public void onStartSuccess(AdvertiseSettings settingsInEffect) {
-                    super.onStartSuccess(settingsInEffect);
                     Log.i(TAG, "Advertising started");
                 }
 
                 @Override
                 public void onStartFailure(int errorCode) {
-                    super.onStartFailure(errorCode);
-                    Log.e(TAG, "Advertising failed: " + errorCode);
+                    Log.e(TAG, "Advertising failed with error code: " + errorCode);
                     isRunning = false;
                     currentEmergencyId = null;
                 }
             };
 
-            // Android Studio will warn about missing permission check, but we validated it above.
-            startAdvertisingInternal(settings, data, advertiseCallback);
-
+            bleAdvertiser.startAdvertising(settings, data, advertiseCallback);
             isRunning = true;
-            result.put("success", true);
-            result.put("running", true);
-            result.put("emergencyId", currentEmergencyId);
 
-        } catch (JSONException e) {
-            Log.e(TAG, "Error building JSON", e);
+            JSONObject r = new JSONObject();
+            r.put("type", "BLE_ADVERTISING_RESULT");
+            r.put("success", true);
+            r.put("running", true);
+            r.put("emergencyId", currentEmergencyId);
+            return r;
+
+        } catch (Exception e) {
+            Log.e(TAG, "Unexpected error in startEmergencyBeacon", e);
+            try { return errorResult("ADVERTISE_FAILED"); } catch (JSONException je) { return new JSONObject(); }
         }
-        return result;
     }
 
     @SuppressLint("MissingPermission")
-    private void startAdvertisingInternal(AdvertiseSettings settings, AdvertiseData data, AdvertiseCallback callback) {
-        advertiser.startAdvertising(settings, data, callback);
-    }
-
     public JSONObject stopEmergencyBeacon(Context context) {
-        JSONObject result = new JSONObject();
         try {
-            result.put("type", "BLE_ADVERTISING_RESULT");
-            if (!isRunning || advertiser == null || advertiseCallback == null) {
-                Log.w(TAG, "Advertising is not running");
-                result.put("success", true);
-                result.put("running", false);
-                return result;
+            JSONObject r = new JSONObject();
+            r.put("type", "BLE_ADVERTISING_RESULT");
+
+            if (!isRunning || bleAdvertiser == null || advertiseCallback == null) {
+                Log.w(TAG, "stopEmergencyBeacon called but not running");
+                r.put("success", true);
+                r.put("running", false);
+                return r;
             }
 
-            // Permissions already checked if it was running, but suppress warning
-            stopAdvertisingInternal();
-
+            bleAdvertiser.stopAdvertising(advertiseCallback);
             Log.i(TAG, "Advertising stopped");
+
             isRunning = false;
             currentEmergencyId = null;
             advertiseCallback = null;
 
-            result.put("success", true);
-            result.put("running", false);
-        } catch (JSONException e) {
-            Log.e(TAG, "Error building JSON", e);
-        }
-        return result;
-    }
+            r.put("success", true);
+            r.put("running", false);
+            return r;
 
-    @SuppressLint("MissingPermission")
-    private void stopAdvertisingInternal() {
-        if (advertiser != null && advertiseCallback != null) {
-            advertiser.stopAdvertising(advertiseCallback);
+        } catch (Exception e) {
+            Log.e(TAG, "Unexpected error in stopEmergencyBeacon", e);
+            try { return errorResult("ADVERTISE_FAILED"); } catch (JSONException je) { return new JSONObject(); }
         }
     }
 }
