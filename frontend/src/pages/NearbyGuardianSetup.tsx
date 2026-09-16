@@ -1,71 +1,138 @@
 import React, { useState, useEffect } from 'react';
-import { requestBluetoothPermissions, areBluetoothPermissionsGranted, startEmergencyBeacon, stopEmergencyBeacon } from '../services/native';
+import { 
+  requestBluetoothPermissions, 
+  areBluetoothPermissionsGranted, 
+  startEmergencyBeacon, 
+  stopEmergencyBeacon,
+  startGuardianScanner,
+  stopGuardianScanner,
+  onEmergencyBeaconDetected
+} from '../services/native';
+import type { BleScanEvent } from '../services/native';
 import Header from '../components/Header';
 import StatusMessage from '../components/StatusMessage';
 
 const NearbyGuardianSetup: React.FC<{ onBack: () => void }> = ({ onBack }) => {
-  const [status, setStatus] = useState<boolean | null>(areBluetoothPermissionsGranted());
-  const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' | 'info' } | null>(null);
+  const [permissionsGranted, setPermissionsGranted] = useState<boolean | null>(areBluetoothPermissionsGranted());
+  
+  // Advertiser state
   const [isBeaconActive, setIsBeaconActive] = useState(false);
+  const [isBeaconStarting, setIsBeaconStarting] = useState(false);
   const [emergencyId, setEmergencyId] = useState<string | null>(null);
-  const [isProcessing, setIsProcessing] = useState(false);
+  
+  // Scanner state
+  const [isScannerActive, setIsScannerActive] = useState(false);
+  const [isScannerStarting, setIsScannerStarting] = useState(false);
+  const [detectedCount, setDetectedCount] = useState(0);
+  const [latestDetection, setLatestDetection] = useState<BleScanEvent | null>(null);
+
+  const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' | 'info' } | null>(null);
 
   useEffect(() => {
-    const granted = areBluetoothPermissionsGranted();
-    if (granted !== null) {
-      setStatus(granted);
-    }
+    // Register event listener for BLE detections
+    onEmergencyBeaconDetected((event) => {
+      setDetectedCount(prev => prev + 1);
+      setLatestDetection(event);
+    });
   }, []);
 
-  const handleRequestAccess = async () => {
-    setMessage({ text: 'Requesting permissions...', type: 'info' });
-    try {
-      const granted = await requestBluetoothPermissions();
-      setStatus(granted);
-      if (granted) {
-        setMessage({ text: 'Bluetooth access granted. Guardian is ready.', type: 'success' });
-      } else {
-        setMessage({ text: 'Permission denied. Nearby Guardian requires Bluetooth access.', type: 'error' });
-      }
-    } catch (err) {
-      setMessage({ text: 'Failed to request permissions. Are you on Android?', type: 'error' });
-    }
-  };
-
   const handleStartBeacon = async () => {
-    setIsProcessing(true);
-    setMessage({ text: 'Starting beacon...', type: 'info' });
-    try {
-      const result = await startEmergencyBeacon();
-      if (result.success && result.running) {
-        setIsBeaconActive(true);
-        setEmergencyId(result.emergencyId || null);
-        setMessage({ text: 'Beacon successfully started.', type: 'success' });
-      } else {
-        setMessage({ text: `Failed to start beacon: ${result.error || 'Unknown error'}`, type: 'error' });
+    setMessage(null);
+    setIsBeaconStarting(true);
+
+    if (permissionsGranted === false) {
+      const granted = await requestBluetoothPermissions();
+      setPermissionsGranted(granted);
+      if (!granted) {
+        setMessage({ text: 'Bluetooth permission is required to start the beacon.', type: 'error' });
+        setIsBeaconStarting(false);
+        return;
       }
-    } catch (err) {
-      setMessage({ text: 'Error communicating with native layer.', type: 'error' });
     }
-    setIsProcessing(false);
+
+    const result = await startEmergencyBeacon();
+    if (result.success) {
+      setIsBeaconActive(true);
+      setEmergencyId(result.emergencyId || null);
+    } else {
+      if (result.error === 'BLUETOOTH_PERMISSION_DENIED') {
+        const granted = await requestBluetoothPermissions();
+        setPermissionsGranted(granted);
+        if (granted) {
+          const retryResult = await startEmergencyBeacon();
+          if (retryResult.success) {
+            setIsBeaconActive(true);
+            setEmergencyId(retryResult.emergencyId || null);
+          } else {
+            setMessage({ text: 'Failed to start beacon: ' + retryResult.error, type: 'error' });
+          }
+        } else {
+          setMessage({ text: 'Bluetooth permission is required to start the beacon.', type: 'error' });
+        }
+      } else {
+        setMessage({ text: 'Failed to start beacon: ' + result.error, type: 'error' });
+      }
+    }
+    setIsBeaconStarting(false);
   };
 
   const handleStopBeacon = async () => {
-    setIsProcessing(true);
-    setMessage({ text: 'Stopping beacon...', type: 'info' });
-    try {
-      const result = await stopEmergencyBeacon();
-      setIsBeaconActive(result.running);
-      if (!result.running) {
-        setEmergencyId(null);
-        setMessage({ text: 'Beacon stopped.', type: 'info' });
-      } else {
-        setMessage({ text: 'Failed to stop beacon.', type: 'error' });
-      }
-    } catch (err) {
-      setMessage({ text: 'Error communicating with native layer.', type: 'error' });
+    const result = await stopEmergencyBeacon();
+    if (result.success) {
+      setIsBeaconActive(false);
+      setEmergencyId(null);
+    } else {
+      setMessage({ text: 'Failed to stop beacon.', type: 'error' });
     }
-    setIsProcessing(false);
+  };
+
+  const handleStartScanner = async () => {
+    setMessage(null);
+    setIsScannerStarting(true);
+
+    if (permissionsGranted === false) {
+      const granted = await requestBluetoothPermissions();
+      setPermissionsGranted(granted);
+      if (!granted) {
+        setMessage({ text: 'Bluetooth permission is required for Nearby Guardian.', type: 'error' });
+        setIsScannerStarting(false);
+        return;
+      }
+    }
+
+    const result = await startGuardianScanner();
+    if (result.success) {
+      setIsScannerActive(true);
+    } else {
+      if (result.error === 'BLUETOOTH_PERMISSION_DENIED') {
+        const granted = await requestBluetoothPermissions();
+        setPermissionsGranted(granted);
+        if (granted) {
+          const retryResult = await startGuardianScanner();
+          if (retryResult.success) {
+            setIsScannerActive(true);
+          } else {
+            setMessage({ text: 'Failed to start scanner: ' + retryResult.error, type: 'error' });
+          }
+        } else {
+          setMessage({ text: 'Bluetooth permission is required for Nearby Guardian.', type: 'error' });
+        }
+      } else {
+        setMessage({ text: 'Failed to start scanner: ' + result.error, type: 'error' });
+      }
+    }
+    setIsScannerStarting(false);
+  };
+
+  const handleStopScanner = async () => {
+    const result = await stopGuardianScanner();
+    if (result.success) {
+      setIsScannerActive(false);
+      setDetectedCount(0);
+      setLatestDetection(null);
+    } else {
+      setMessage({ text: 'Failed to stop scanner.', type: 'error' });
+    }
   };
 
   return (
@@ -77,49 +144,100 @@ const NearbyGuardianSetup: React.FC<{ onBack: () => void }> = ({ onBack }) => {
         </button>
         <h2>NEARBY GUARDIAN</h2>
         
+        {message && <StatusMessage message={message.text} type={message.type} />}
+
+        {/* Advertiser Section */}
         <div style={{ margin: '20px 0', padding: '15px', background: 'var(--surface-color)', borderRadius: 'var(--border-radius)', border: '1px solid var(--border-color)' }}>
-          <h3>Status:</h3>
-          {status !== true ? (
-             <p style={{ color: 'var(--danger-color)', fontWeight: 'bold' }}>⚠ Nearby Devices Not Granted</p>
-          ) : isBeaconActive ? (
-             <div>
-               <p style={{ color: 'var(--danger-color)', fontWeight: 'bold', fontSize: '1.2rem', animation: 'pulse 2s infinite' }}>🔴 EMERGENCY BEACON ACTIVE</p>
-               {emergencyId && <p style={{ marginTop: '10px', fontSize: '1.1rem' }}>Emergency ID: <strong style={{ letterSpacing: '2px' }}>{emergencyId}</strong></p>}
-             </div>
+          <h3>Emergency Beacon</h3>
+          
+          <div style={{ marginTop: '10px' }}>
+            <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Status</span>
+            <div style={{ fontWeight: 'bold', color: isBeaconActive ? 'var(--danger-color)' : 'var(--text-secondary)' }}>
+              {isBeaconStarting ? 'STARTING...' : (isBeaconActive ? '🔴 EMERGENCY BEACON ACTIVE' : 'INACTIVE')}
+            </div>
+          </div>
+
+          {isBeaconActive && emergencyId && (
+            <div style={{ marginTop: '15px', padding: '10px', background: 'rgba(231, 76, 60, 0.1)', borderRadius: '8px', border: '1px solid rgba(231, 76, 60, 0.3)' }}>
+              <span style={{ fontSize: '0.8rem', color: 'var(--danger-color)', textTransform: 'uppercase', fontWeight: 'bold' }}>Emergency ID</span>
+              <div style={{ fontSize: '1.5rem', fontFamily: 'monospace', letterSpacing: '2px', color: 'var(--danger-color)', fontWeight: 'bold' }}>
+                {emergencyId}
+              </div>
+            </div>
+          )}
+
+          {!isBeaconActive ? (
+            <button
+              onClick={handleStartBeacon}
+              disabled={isBeaconStarting}
+              style={{ marginTop: '15px', width: '100%', padding: '12px', background: 'var(--danger-color)', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: isBeaconStarting ? 'not-allowed' : 'pointer', opacity: isBeaconStarting ? 0.7 : 1 }}
+            >
+              START EMERGENCY BROADCAST
+            </button>
           ) : (
-             <p style={{ color: 'var(--success-color)', fontWeight: 'bold' }}>Inactive</p>
+            <button
+              onClick={handleStopBeacon}
+              style={{ marginTop: '15px', width: '100%', padding: '12px', background: 'var(--text-secondary)', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}
+            >
+              STOP BROADCAST
+            </button>
           )}
         </div>
 
-        {message && <StatusMessage message={message.text} type={message.type} />}
+        {/* Scanner Section */}
+        <div style={{ margin: '20px 0', padding: '15px', background: 'var(--surface-color)', borderRadius: 'var(--border-radius)', border: '1px solid var(--border-color)' }}>
+          <h3>Guardian Scanner</h3>
+          
+          <div style={{ marginTop: '10px' }}>
+            <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Status</span>
+            <div style={{ fontWeight: 'bold', color: isScannerActive ? 'var(--success-color)' : 'var(--text-secondary)' }}>
+              {isScannerStarting ? 'STARTING...' : (isScannerActive ? '🟢 SCANNING' : 'INACTIVE')}
+            </div>
+          </div>
 
-        {status !== true ? (
-          <button 
-            className="action-button" 
-            onClick={handleRequestAccess}
-            style={{ marginTop: '20px', width: '100%', padding: '15px', background: 'var(--primary-color)', color: 'white', border: 'none', borderRadius: 'var(--border-radius)', fontSize: '1.1rem', cursor: 'pointer' }}
-          >
-            Allow Bluetooth Access
-          </button>
-        ) : !isBeaconActive ? (
-          <button 
-            className="action-button" 
-            onClick={handleStartBeacon}
-            disabled={isProcessing}
-            style={{ marginTop: '20px', width: '100%', padding: '15px', background: 'var(--danger-color)', color: 'white', border: 'none', borderRadius: 'var(--border-radius)', fontSize: '1.1rem', cursor: 'pointer', opacity: isProcessing ? 0.7 : 1 }}
-          >
-            {isProcessing ? 'Starting...' : 'START EMERGENCY BROADCAST'}
-          </button>
-        ) : (
-          <button 
-            className="action-button" 
-            onClick={handleStopBeacon}
-            disabled={isProcessing}
-            style={{ marginTop: '20px', width: '100%', padding: '15px', background: 'var(--text-secondary)', color: 'white', border: 'none', borderRadius: 'var(--border-radius)', fontSize: '1.1rem', cursor: 'pointer', opacity: isProcessing ? 0.7 : 1 }}
-          >
-            {isProcessing ? 'Stopping...' : 'STOP EMERGENCY BROADCAST'}
-          </button>
-        )}
+          {isScannerActive && (
+            <div style={{ marginTop: '15px', padding: '15px', background: 'rgba(0,0,0,0.03)', borderRadius: '8px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                <span style={{ fontSize: '0.9rem', fontWeight: 'bold' }}>Detected emergencies:</span>
+                <span style={{ fontSize: '1.1rem', fontWeight: 'bold', background: 'white', padding: '2px 8px', borderRadius: '4px', border: '1px solid #ddd' }}>{detectedCount}</span>
+              </div>
+              
+              {latestDetection && (
+                <div style={{ marginTop: '15px', paddingTop: '15px', borderTop: '1px solid #ddd' }}>
+                  <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 'bold', display: 'block', marginBottom: '5px' }}>Latest Emergency</span>
+                  
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                    <div>
+                      <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block' }}>Emergency ID</span>
+                      <span style={{ fontFamily: 'monospace', fontWeight: 'bold' }}>{latestDetection.emergencyId}</span>
+                    </div>
+                    <div>
+                      <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block' }}>Proximity</span>
+                      <span style={{ fontWeight: 'bold', color: 'var(--primary-color)' }}>{latestDetection.proximity}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {!isScannerActive ? (
+            <button
+              onClick={handleStartScanner}
+              disabled={isScannerStarting}
+              style={{ marginTop: '15px', width: '100%', padding: '12px', background: 'var(--primary-color)', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: isScannerStarting ? 'not-allowed' : 'pointer', opacity: isScannerStarting ? 0.7 : 1 }}
+            >
+              START GUARDIAN SCANNER
+            </button>
+          ) : (
+            <button
+              onClick={handleStopScanner}
+              style={{ marginTop: '15px', width: '100%', padding: '12px', background: 'var(--text-secondary)', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}
+            >
+              STOP SCANNER
+            </button>
+          )}
+        </div>
       </main>
     </div>
   );

@@ -19,9 +19,18 @@ export interface BleResult {
   error?: string;
 }
 
+export interface BleScanEvent {
+  type: string;
+  emergencyId: string;
+  rssi: number;
+  proximity: string;
+  detectedAt: number;
+}
+
 let cachedBluetoothStatus: boolean | null = null;
 let bluetoothResultResolvers: ((granted: boolean) => void)[] = [];
 let bleActionResolvers: ((result: BleResult) => void)[] = [];
+let bleScanEventCallbacks: ((event: BleScanEvent) => void)[] = [];
 
 // Initialize listener for hash-based bridge
 export function initNativeBridge() {
@@ -46,6 +55,20 @@ export function initNativeBridge() {
         bleActionResolvers = [];
       } catch (e) {
         console.error("Failed to parse ble_result", e);
+      }
+      history.replaceState(null, '', window.location.pathname + window.location.search);
+    }
+    else if (hash.includes('ble_event=')) {
+      try {
+        const payloadStr = hash.replace('#ble_event=', '');
+        const decodedPayload = decodeURIComponent(payloadStr);
+        const event = JSON.parse(decodedPayload) as BleScanEvent;
+        
+        if (event.type === 'SAFEHELP_EMERGENCY_DETECTED') {
+          bleScanEventCallbacks.forEach(cb => cb(event));
+        }
+      } catch (e) {
+        console.error("Failed to parse ble_event", e);
       }
       history.replaceState(null, '', window.location.pathname + window.location.search);
     }
@@ -75,5 +98,23 @@ export async function stopEmergencyBeacon(): Promise<BleResult> {
     bleActionResolvers.push(resolve);
     window.location.href = "intent://ble_stop#Intent;scheme=safehelp;package=com.safehelp.app;end";
   });
+}
+
+export async function startGuardianScanner(): Promise<BleResult> {
+  return new Promise((resolve) => {
+    bleActionResolvers.push(resolve);
+    window.location.href = "intent://ble_scan_start#Intent;scheme=safehelp;package=com.safehelp.app;end";
+  });
+}
+
+export async function stopGuardianScanner(): Promise<BleResult> {
+  return new Promise((resolve) => {
+    bleActionResolvers.push(resolve);
+    window.location.href = "intent://ble_scan_stop#Intent;scheme=safehelp;package=com.safehelp.app;end";
+  });
+}
+
+export function onEmergencyBeaconDetected(callback: (event: BleScanEvent) => void) {
+  bleScanEventCallbacks.push(callback);
 }
 
