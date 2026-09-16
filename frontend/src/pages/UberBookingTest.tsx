@@ -1,10 +1,10 @@
-import { useState } from 'react';
-import { bookUber } from '../services/uber';
+import { useState, useEffect } from 'react';
+import { bookUber, getUberRideStatus, cancelUberRide } from '../services/uber';
 import type { UberBookingResponse } from '../services/uber';
 import { getCurrentLocation } from '../services/location';
 import '../styles.css';
 
-type BookingState = 'IDLE' | 'GETTING_LOCATION' | 'PREPARING' | 'READY' | 'ERROR';
+type BookingState = 'IDLE' | 'GETTING_LOCATION' | 'PREPARING' | 'BOOKING' | 'TRACKING' | 'COMPLETED' | 'CANCELLED' | 'ERROR';
 
 interface Props {
   onBack: () => void;
@@ -23,6 +23,33 @@ export default function UberBookingTest({ onBack }: Props) {
     name: "Uber Sandbox Test Destination"
   };
 
+  // Status Polling Effect
+  useEffect(() => {
+    let intervalId: ReturnType<typeof setInterval>;
+
+    if (bookingState === 'TRACKING' && bookingResult?.ride?.requestId) {
+      intervalId = setInterval(async () => {
+        try {
+          const res = await getUberRideStatus(bookingResult.ride.requestId);
+          setBookingResult(res);
+
+          if (res.ride.status === 'completed') {
+            setBookingState('COMPLETED');
+          } else if (res.ride.status === 'cancelled' || res.ride.status === 'failed') {
+            setBookingState('CANCELLED');
+          }
+        } catch (error) {
+          console.error("Polling error:", error);
+          // Don't fail the whole UI on a single poll failure
+        }
+      }, 5000);
+    }
+
+    return () => {
+      if (intervalId) clearInterval(intervalId);
+    };
+  }, [bookingState, bookingResult?.ride?.requestId]);
+
   const handleBookUber = async () => {
     setBookingState('GETTING_LOCATION');
     setErrorMsg(null);
@@ -31,7 +58,6 @@ export default function UberBookingTest({ onBack }: Props) {
     
     try {
       const location = await getCurrentLocation();
-      
       if (!location) {
         throw { code: 'LOCATION_UNAVAILABLE', message: 'Unable to determine your current location.' };
       }
@@ -44,26 +70,42 @@ export default function UberBookingTest({ onBack }: Props) {
       );
       
       setBookingResult(response);
-      setBookingState('READY');
+      
+      if (['completed', 'cancelled', 'failed'].includes(response.ride.status)) {
+        setBookingState(response.ride.status === 'completed' ? 'COMPLETED' : 'CANCELLED');
+      } else {
+        setBookingState('TRACKING');
+      }
       
     } catch (error: any) {
       console.error("Uber booking test error:", error);
       setErrorCode(error.code || 'UNKNOWN_ERROR');
       
-      // Map known error codes to user friendly messages
       let displayMsg = error.message || "An unexpected error occurred.";
-      if (error.code === 'UBER_NOT_CONNECTED') {
-        displayMsg = "Uber account not connected.";
-      } else if (error.code === 'UBER_SCOPE_MISSING') {
-        displayMsg = "Uber ride-request permission is missing.";
-      } else if (error.code === 'NO_PRODUCTS_AVAILABLE') {
-        displayMsg = "No Uber rides available at this location.";
-      } else if (error.code === 'FARE_ESTIMATE_FAILED') {
-        displayMsg = "Failed to get fare estimate from Uber Sandbox.";
-      }
+      if (error.code === 'UBER_NOT_CONNECTED') displayMsg = "Uber account not connected.";
+      else if (error.code === 'UBER_SCOPE_MISSING') displayMsg = "Uber ride-request permission is missing.";
+      else if (error.code === 'NO_PRODUCTS_AVAILABLE') displayMsg = "No Uber rides available at this location.";
+      else if (error.code === 'FARE_ESTIMATE_FAILED') displayMsg = "Failed to get fare estimate from Uber Sandbox.";
+      else if (error.code === 'RIDE_REQUEST_FAILED') displayMsg = "Failed to submit Sandbox ride request.";
       
       setErrorMsg(displayMsg);
       setBookingState('ERROR');
+    }
+  };
+
+  const handleCancelRide = async () => {
+    if (!bookingResult?.ride?.requestId) return;
+    try {
+      setBookingState('PREPARING'); // show loading
+      await cancelUberRide(bookingResult.ride.requestId);
+      setBookingState('CANCELLED');
+      if (bookingResult) {
+        setBookingResult({ ...bookingResult, ride: { ...bookingResult.ride, status: 'cancelled' } });
+      }
+    } catch (error) {
+      console.error("Cancel error:", error);
+      alert("Failed to cancel ride.");
+      setBookingState('TRACKING');
     }
   };
 
@@ -95,22 +137,38 @@ export default function UberBookingTest({ onBack }: Props) {
           </div>
         );
       case 'PREPARING':
+      case 'BOOKING':
         return (
           <div className="loading-state" style={{ textAlign: 'left', margin: '0 auto', maxWidth: '300px' }}>
             <p style={{ color: '#10B981', margin: '10px 0' }}>✓ Location secured</p>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', margin: '10px 0' }}>
               <div className="loading-spinner" style={{ width: '16px', height: '16px', borderWidth: '2px', margin: 0 }}></div>
-              <p style={{ margin: 0 }}>🚕 Finding available Uber...</p>
+              <p style={{ margin: 0 }}>🚕 Processing Sandbox ride...</p>
             </div>
           </div>
         );
-      case 'READY':
+      case 'TRACKING':
+      case 'COMPLETED':
+      case 'CANCELLED':
         if (!bookingResult) return null;
         return (
           <div style={{ backgroundColor: '#1F2937', padding: '20px', borderRadius: '12px', textAlign: 'left' }}>
+            
+            <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+              {bookingState === 'COMPLETED' ? (
+                 <h2 style={{ color: '#10B981', margin: '0' }}>✓ RIDE COMPLETED</h2>
+              ) : bookingState === 'CANCELLED' ? (
+                 <h2 style={{ color: '#EF4444', margin: '0' }}>✗ RIDE CANCELLED</h2>
+              ) : (
+                 <h2 style={{ color: '#60A5FA', margin: '0' }}>✓ UBER BOOKED</h2>
+              )}
+            </div>
+
             <div style={{ borderBottom: '1px solid #374151', paddingBottom: '16px', marginBottom: '16px' }}>
-              <span style={{ color: '#9CA3AF', fontSize: '14px', display: 'block', marginBottom: '4px' }}>Ride option:</span>
-              <strong style={{ color: 'white', fontSize: '18px' }}>{bookingResult.product.displayName}</strong>
+              <span style={{ color: '#9CA3AF', fontSize: '14px', display: 'block', marginBottom: '4px' }}>Status:</span>
+              <strong style={{ color: '#FCD34D', fontSize: '18px', textTransform: 'uppercase' }}>
+                {bookingResult.ride.status.replace('_', ' ')}
+              </strong>
             </div>
 
             <div style={{ borderBottom: '1px solid #374151', paddingBottom: '16px', marginBottom: '16px' }}>
@@ -120,39 +178,34 @@ export default function UberBookingTest({ onBack }: Props) {
 
             <div style={{ borderBottom: '1px solid #374151', paddingBottom: '16px', marginBottom: '16px' }}>
               <span style={{ color: '#9CA3AF', fontSize: '14px', display: 'block', marginBottom: '4px' }}>Destination:</span>
-              <strong style={{ color: 'white' }}>{bookingResult.destination.name}</strong>
+              <strong style={{ color: 'white' }}>{bookingResult.ride.destination.name}</strong>
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
-              <span style={{ color: '#9CA3AF', fontSize: '14px' }}>Estimated fare:</span>
-              <strong style={{ color: '#10B981', fontSize: '18px' }}>
-                {bookingResult.estimate.fare}
-              </strong>
-            </div>
-
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
-              <span style={{ color: '#9CA3AF', fontSize: '14px' }}>Estimated trip:</span>
-              <strong style={{ color: 'white' }}>
-                {Math.ceil(bookingResult.estimate.durationSeconds / 60)} min
-              </strong>
-            </div>
-
-            {bookingResult.estimate.distanceMeters && (
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '24px' }}>
-                <span style={{ color: '#9CA3AF', fontSize: '14px' }}>Distance:</span>
+            {bookingResult.estimate && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px' }}>
+                <span style={{ color: '#9CA3AF', fontSize: '14px' }}>ETA:</span>
                 <strong style={{ color: 'white' }}>
-                  {(bookingResult.estimate.distanceMeters / 1000).toFixed(1)} km
+                  {Math.ceil(bookingResult.estimate.durationSeconds / 60)} min
                 </strong>
               </div>
             )}
 
-            <div style={{ textAlign: 'center', backgroundColor: '#374151', padding: '12px', borderRadius: '8px', color: '#60A5FA', fontWeight: 'bold', letterSpacing: '1px' }}>
-              STATUS: READY TO BOOK
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '24px' }}>
+              <span style={{ color: '#9CA3AF', fontSize: '14px' }}>Ride ID:</span>
+              <strong style={{ color: '#9CA3AF', fontFamily: 'monospace' }}>
+                {bookingResult.ride.requestId.substring(0, 8)}...
+              </strong>
             </div>
-            
-            <button className="secondary-btn" style={{ marginTop: '20px', width: '100%' }} onClick={() => setBookingState('IDLE')}>
-              START OVER
-            </button>
+
+            {bookingState === 'TRACKING' ? (
+              <button className="secondary-btn" style={{ width: '100%', borderColor: '#EF4444', color: '#EF4444' }} onClick={handleCancelRide}>
+                CANCEL RIDE
+              </button>
+            ) : (
+              <button className="secondary-btn" style={{ width: '100%' }} onClick={() => setBookingState('IDLE')}>
+                START OVER
+              </button>
+            )}
           </div>
         );
       case 'ERROR':

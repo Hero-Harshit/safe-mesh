@@ -11,29 +11,25 @@ export interface UberStatus {
 export interface UberBookingResponse {
   success: boolean;
   environment: string;
-  readyToBook: boolean;
-  pickup: {
-    latitude: number;
-    longitude: number;
+  ride: {
+    requestId: string;
+    status: string;
+    productName: string;
+    pickup: {
+      latitude: number;
+      longitude: number;
+    };
+    destination: {
+      latitude: number;
+      longitude: number;
+      name: string;
+    };
+    estimatedFare?: string;
+    currency?: string;
   };
-  destination: {
-    latitude: number;
-    longitude: number;
-    name: string;
-  };
-  product: {
-    id: string;
-    name: string;
-    displayName: string;
-  };
-  estimate: {
-    fare: string;
-    currency: string;
+  estimate?: {
     durationSeconds: number;
     distanceMeters: number;
-  };
-  booking: {
-    fareIdAvailable: boolean;
   };
 }
 
@@ -77,10 +73,31 @@ export async function bookUber(pickup: { latitude: number, longitude: number }, 
   const data = await res.json();
   
   if (!res.ok || !data.success) {
-    const error = new Error(data.message || 'Failed to prepare booking pipeline.');
+    const error = new Error(data.message || 'Failed to book sandbox ride.');
     (error as any).code = data.error;
     throw error;
   }
 
   return data;
+}
+
+export async function getUberRideStatus(requestId: string): Promise<UberBookingResponse> {
+  const res = await fetch(`${API_BASE}/api/uber/requests/${requestId}`);
+  const data = await res.json();
+
+  if (!res.ok || !data.success) {
+    const error = new Error(data.error || 'Failed to get ride status.');
+    (error as any).code = data.error;
+    throw error;
+  }
+
+  return data;
+}
+
+export async function cancelUberRide(requestId: string): Promise<boolean> {
+  const res = await fetch(`${API_BASE}/api/uber/requests/${requestId}`, {
+    method: 'DELETE'
+  });
+  const data = await res.json();
+  return data.success;
 }

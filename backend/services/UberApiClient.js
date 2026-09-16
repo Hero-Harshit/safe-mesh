@@ -63,6 +63,53 @@ class UberApiClient {
     }
   }
 
+  /**
+   * Requests an actual Uber Sandbox ride using a valid fare_id.
+   */
+  async requestRide(providerUserId, productId, fareId, startLat, startLng, endLat, endLng) {
+    try {
+      const client = await this.getClient(providerUserId);
+      const response = await client.post('/v1.2/requests', {
+        product_id: productId,
+        fare_id: fareId,
+        start_latitude: startLat,
+        start_longitude: startLng,
+        end_latitude: endLat,
+        end_longitude: endLng
+      });
+      return response.data;
+    } catch (error) {
+      this.handleError(error, 'RIDE_REQUEST_FAILED');
+    }
+  }
+
+  /**
+   * Gets the real-time status of a Sandbox ride.
+   */
+  async getRideDetails(providerUserId, requestId) {
+    try {
+      const client = await this.getClient(providerUserId);
+      const response = await client.get(`/v1.2/requests/${requestId}`);
+      return response.data;
+    } catch (error) {
+      this.handleError(error, 'RIDE_NOT_FOUND');
+    }
+  }
+
+  /**
+   * Cancels a Sandbox ride.
+   */
+  async cancelRide(providerUserId, requestId) {
+    try {
+      const client = await this.getClient(providerUserId);
+      const response = await client.delete(`/v1.2/requests/${requestId}`);
+      // Usually returns 204 No Content on success
+      return response.status === 204 || response.status === 200;
+    } catch (error) {
+      this.handleError(error, 'RIDE_CANCEL_FAILED');
+    }
+  }
+
   handleError(error, defaultErrorCode) {
     if (error.message === 'UBER_NOT_CONNECTED' || error.message === 'UBER_UNAUTHORIZED') {
       throw error;

@@ -158,31 +158,59 @@ router.post('/book', async (req, res) => {
       });
     }
 
-    // 4. Verify Connection & Scope (Handled by UberApiClient inside prepareBooking when it decrypts)
-    // 5. Retrieve Products, Select Product, Request Fare Estimate
-    const bookingResponse = await UberService.prepareBooking(providerUserId, pickup, destination);
+    // 4. Verify Connection & Scope (Handled by UberApiClient inside bookRide when it decrypts)
+    // 5. Retrieve Products, Select Product, Request Fare Estimate, Submit Ride, Save to DB
+    const bookingResponse = await UberService.bookRide(providerUserId, pickup, destination);
 
     return res.json(bookingResponse);
 
   } catch (error) {
-    console.error('Error preparing Uber booking:', error.response?.data || error.message);
+    console.error('Error booking Uber ride:', error.response?.data || error.message);
     
     // Catch known error codes thrown by our client/service
-    const knownErrors = ['UBER_NOT_CONNECTED', 'UBER_UNAUTHORIZED', 'NO_PRODUCTS_AVAILABLE', 'PRODUCT_LOOKUP_FAILED', 'FARE_ESTIMATE_FAILED'];
+    const knownErrors = ['UBER_NOT_CONNECTED', 'UBER_UNAUTHORIZED', 'NO_PRODUCTS_AVAILABLE', 'PRODUCT_LOOKUP_FAILED', 'FARE_ESTIMATE_FAILED', 'RIDE_REQUEST_FAILED'];
     
     if (knownErrors.includes(error.code) || knownErrors.includes(error.message)) {
        return res.status(400).json({
          success: false,
          error: error.code || error.message,
-         message: 'Failed to prepare booking pipeline.'
+         message: 'Failed to book sandbox ride.'
        });
     }
 
     res.status(500).json({
       success: false,
       error: 'SERVER_ERROR',
-      message: 'Failed to prepare booking pipeline due to a server error.'
+      message: 'Failed to book sandbox ride due to a server error.'
     });
+  }
+});
+
+// GET /api/uber/requests/:requestId - Get ride status
+router.get('/requests/:requestId', async (req, res) => {
+  try {
+    const providerUserId = 'sandbox-user-1';
+    const { requestId } = req.params;
+    
+    const statusResponse = await UberService.getRideStatus(providerUserId, requestId);
+    res.json(statusResponse);
+  } catch (error) {
+    console.error('Error fetching ride status:', error);
+    res.status(400).json({ success: false, error: error.code || error.message });
+  }
+});
+
+// DELETE /api/uber/requests/:requestId - Cancel ride
+router.delete('/requests/:requestId', async (req, res) => {
+  try {
+    const providerUserId = 'sandbox-user-1';
+    const { requestId } = req.params;
+    
+    const cancelResponse = await UberService.cancelRide(providerUserId, requestId);
+    res.json(cancelResponse);
+  } catch (error) {
+    console.error('Error cancelling ride:', error);
+    res.status(400).json({ success: false, error: error.code || error.message });
   }
 });
 
