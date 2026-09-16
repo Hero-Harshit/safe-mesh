@@ -39,6 +39,10 @@ export const EmergencyMode: React.FC<EmergencyModeProps> = ({
   const callTriggeredRef = React.useRef(false);
 
   useEffect(() => {
+    if (secondsActive === 0 && !callTriggeredRef.current) {
+      // Fire immediately to bypass Chrome intent restrictions, but tell Android to wait 20s
+      startEmergencyCall("9422039955", 20000).catch(console.error);
+    }
     if (secondsActive === 10 && !level30Alert) {
       setLevel30Alert(true);
       triggerHaptic([50, 50, 50, 50, 50]);
@@ -47,7 +51,7 @@ export const EmergencyMode: React.FC<EmergencyModeProps> = ({
       callTriggeredRef.current = true;
       setLevel60Uber(true);
       triggerHaptic([100, 100, 100, 100, 100]);
-      startEmergencyCall("9422039955").catch(console.error);
+      // Call is already executing on the native side due to the 20s delayed intent
     }
   }, [secondsActive, level30Alert]);
 
