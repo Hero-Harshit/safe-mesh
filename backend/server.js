@@ -3,6 +3,7 @@ const cors = require('cors');
 const dotenv = require('dotenv');
 const axios = require('axios');
 const { Groq } = require('groq-sdk');
+const mongoose = require('mongoose');
 
 dotenv.config();
 
@@ -13,8 +14,22 @@ app.use(express.json());
 const PORT = process.env.PORT || 5000;
 const TOMTOM_API_KEY = process.env.TOMTOM_API_KEY;
 const GROQ_API_KEY = process.env.GROQ_API_KEY;
+const MONGO_URI = process.env.MONGO_URI;
+
+// Connect to MongoDB
+if (MONGO_URI) {
+  mongoose.connect(MONGO_URI)
+    .then(() => console.log('MongoDB connected successfully'))
+    .catch(err => console.error('MongoDB connection error:', err));
+} else {
+  console.warn('WARNING: MONGO_URI is not defined in .env');
+}
 
 const groq = new Groq({ apiKey: GROQ_API_KEY });
+
+// Mount incident routes
+const incidentRoutes = require('./routes/incidents');
+app.use('/api/incidents', incidentRoutes);
 
 // Category priority mapping
 const CATEGORY_PRIORITY = {
