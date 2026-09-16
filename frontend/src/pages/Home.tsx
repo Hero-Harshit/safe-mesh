@@ -202,14 +202,21 @@ export default function Home({ onNavigate }: HomeProps) {
         onSettingsClick={() => setActiveModal('settings')}
       />
 
-      {/* UBER SANDBOX TEST BUTTON */}
-      <div style={{ padding: '0 20px', marginTop: '16px' }}>
+      {/* UBER SANDBOX TEST BUTTONS */}
+      <div style={{ padding: '0 20px', marginTop: '16px', display: 'flex', gap: '10px' }}>
         <button 
           className="sos-btn" 
-          style={{ backgroundColor: '#000000', width: '100%', padding: '12px', borderRadius: '12px' }}
+          style={{ backgroundColor: '#000000', flex: 1, padding: '12px', borderRadius: '12px', fontSize: '14px' }}
+          onClick={() => onNavigate('uber_sandbox')}
+        >
+          🚕 TEST UBER SANDBOX
+        </button>
+        <button 
+          className="sos-btn" 
+          style={{ backgroundColor: '#1F2937', flex: 1, padding: '12px', borderRadius: '12px', fontSize: '14px' }}
           onClick={() => onNavigate('uber_test')}
         >
-          🚕 BOOK UBER (TEST)
+          🚕 BOOK UBER
         </button>
       </div>
 

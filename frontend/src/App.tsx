@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import Home from './pages/Home';
 import NearbyGuardianSetup from './pages/NearbyGuardianSetup';
 import UberBookingTest from './pages/UberBookingTest';
+import UberSandbox from './pages/UberSandbox';
 import StartupPermissionFlow from './components/StartupPermissionFlow';
 import {
   subscribePermissions,
@@ -65,6 +66,9 @@ export default function App() {
           )}
           {currentView === 'uber_test' && (
             <UberBookingTest onBack={() => setCurrentView('home')} />
+          )}
+          {currentView === 'uber_sandbox' && (
+            <UberSandbox onBack={() => setCurrentView('home')} />
           )}
         </>
       )}
