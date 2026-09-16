@@ -4,6 +4,8 @@ import type { EmergencyContact } from '../services/emergency';
 import { triggerHaptic } from '../services/emergency';
 import type { LocationData } from '../services/location';
 import { sendEmergencySms } from '../services/native';
+import { getEscapeRoute } from '../services/safetyRoute';
+import type { EscapeRouteResponse } from '../services/safetyRoute';
 
 interface EmergencyModeProps {
   location: LocationData | null;
@@ -18,7 +20,18 @@ export const EmergencyMode: React.FC<EmergencyModeProps> = ({
 }) => {
   const [secondsActive, setSecondsActive] = useState(0);
   const [smsStatus, setSmsStatus] = useState<string>('Sending...');
+  const [safeRouteState, setSafeRouteState] = useState<{
+    loading: boolean;
+    data: EscapeRouteResponse | null;
+    error: string | null;
+  }>({
+    loading: false,
+    data: null,
+    error: null
+  });
+  
   const smsTriggeredRef = React.useRef(false);
+  const routeTriggeredRef = React.useRef(false);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -30,8 +43,27 @@ export const EmergencyMode: React.FC<EmergencyModeProps> = ({
       triggerAutomaticSms();
     }
 
+    if (!routeTriggeredRef.current && location) {
+      routeTriggeredRef.current = true;
+      triggerSafeRoute(location.latitude, location.longitude);
+    }
+
     return () => clearInterval(timer);
-  }, []);
+  }, [location]);
+
+  const triggerSafeRoute = async (lat: number, lon: number) => {
+    setSafeRouteState({ loading: true, data: null, error: null });
+    try {
+      const result = await getEscapeRoute(lat, lon);
+      if (result.success) {
+        setSafeRouteState({ loading: false, data: result, error: null });
+      } else {
+        setSafeRouteState({ loading: false, data: null, error: result.reason || 'Failed to find route' });
+      }
+    } catch (e) {
+      setSafeRouteState({ loading: false, data: null, error: 'Network Error' });
+    }
+  };
 
   const triggerAutomaticSms = async () => {
     if (contacts.length === 0) {
@@ -142,6 +174,51 @@ export const EmergencyMode: React.FC<EmergencyModeProps> = ({
                  'Notifying emergency contacts...'}
               </span>
             </div>
+          </div>
+
+          {/* Safe Route Panel */}
+          <div className="emergency-hero-btn bg-white-soft" style={{ cursor: 'default', display: 'flex', flexDirection: 'column', alignItems: 'flex-start', padding: '16px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', marginBottom: '8px' }}>
+              <div className="btn-icon-box bg-white-soft" style={{ marginRight: '12px' }}>
+                <LocationPinIcon size={22} color="#FFFFFF" />
+              </div>
+              <div className="btn-copy">
+                <span className="btn-headline">SAFE ROUTE</span>
+                <span className="btn-tagline">
+                  {safeRouteState.loading ? 'Finding the safest nearby place...' :
+                   safeRouteState.error ? 'Unable to find nearby safety destinations.' :
+                   safeRouteState.data?.destination ? 'Escape Route Ready' : 'Awaiting location...'}
+                </span>
+              </div>
+            </div>
+
+            {safeRouteState.data?.destination && (
+              <div style={{ width: '100%', marginTop: '8px', padding: '12px', backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: '8px' }}>
+                <div style={{ fontWeight: 'bold', color: 'white' }}>Recommended Destination:</div>
+                <div style={{ color: '#E2E8F0', fontSize: '0.9rem', marginBottom: '4px' }}>{safeRouteState.data.destination.name}</div>
+                
+                {safeRouteState.data.route && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', color: '#CBD5E1', fontSize: '0.85rem', marginBottom: '8px' }}>
+                    <span>Distance: {safeRouteState.data.route.distanceMeters} m</span>
+                    <span>~{Math.round(safeRouteState.data.route.durationSeconds / 60)} min walk</span>
+                  </div>
+                )}
+                
+                <div style={{ color: '#94A3B8', fontSize: '0.8rem', fontStyle: 'italic', marginBottom: '12px' }}>
+                  {safeRouteState.data.reason}
+                </div>
+
+                <a 
+                  href={`https://www.google.com/maps/dir/?api=1&origin=${location?.latitude},${location?.longitude}&destination=${safeRouteState.data.destination.latitude},${safeRouteState.data.destination.longitude}&travelmode=walking`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn-add-contact-pill"
+                  style={{ display: 'block', textAlign: 'center', backgroundColor: '#10B981', color: 'white', textDecoration: 'none' }}
+                >
+                  START ROUTE
+                </a>
+              </div>
+            )}
           </div>
         </div>
 
