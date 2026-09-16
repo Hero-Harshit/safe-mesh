@@ -34,11 +34,19 @@ export interface UberBookingResponse {
 }
 
 export async function getUberStatus(): Promise<UberStatus> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+
   try {
-    const res = await fetch(`${API_BASE}/api/uber/status`);
-    if (!res.ok) throw new Error('Failed to fetch Uber status');
+    const res = await fetch(`${API_BASE}/api/uber/status`, {
+      signal: controller.signal
+    });
+    clearTimeout(timeoutId);
+    
+    if (!res.ok) throw new Error(`Failed to fetch Uber status (HTTP ${res.status})`);
     return await res.json();
   } catch (error) {
+    clearTimeout(timeoutId);
     console.error('Error fetching Uber status:', error);
     return {
       success: false,
@@ -62,13 +70,26 @@ export async function disconnectUber(): Promise<boolean> {
 }
 
 export async function bookUber(pickup: { latitude: number, longitude: number }, destination: { latitude: number, longitude: number, name: string }): Promise<UberBookingResponse> {
-  const res = await fetch(`${API_BASE}/api/uber/book`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({ pickup, destination })
-  });
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 15000);
+
+  let res;
+  try {
+    res = await fetch(`${API_BASE}/api/uber/book`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ pickup, destination }),
+      signal: controller.signal
+    });
+  } catch (error: any) {
+    clearTimeout(timeoutId);
+    if (error.name === 'AbortError') throw new Error('Booking request timed out.');
+    throw error;
+  }
+  
+  clearTimeout(timeoutId);
 
   const data = await res.json();
   

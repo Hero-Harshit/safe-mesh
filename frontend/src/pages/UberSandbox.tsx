@@ -28,9 +28,14 @@ export default function UberSandbox({ onBack }: Props) {
 
   const fetchStatus = async () => {
     setLoading(true);
-    const res = await getUberStatus();
-    setStatus(res);
-    setLoading(false);
+    try {
+      const res = await getUberStatus();
+      setStatus(res);
+    } catch (error) {
+      console.error("Error fetching Uber status in component:", error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleConnect = () => {
