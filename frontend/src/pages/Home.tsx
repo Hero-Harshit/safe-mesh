@@ -45,6 +45,7 @@ export default function Home({ onNavigate }: HomeProps) {
     location: 'UNKNOWN',
     bluetooth: 'UNKNOWN',
     notifications: 'UNKNOWN',
+    sms: 'UNKNOWN',
     isInitialFlowCompleted: true,
   });
 

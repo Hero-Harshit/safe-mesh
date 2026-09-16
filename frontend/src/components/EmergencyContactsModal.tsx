@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { UsersIcon, PhoneCallIcon } from './Icons';
 import type { EmergencyContact } from '../services/emergency';
 import { generateSmsLink, triggerHaptic } from '../services/emergency';
+import { pickNativeContact } from '../services/native';
 
 interface EmergencyContactsModalProps {
   contacts: EmergencyContact[];
@@ -20,37 +21,34 @@ export const EmergencyContactsModal: React.FC<EmergencyContactsModalProps> = ({
   onClose,
   onShowToast,
 }) => {
-  const [showAddForm, setShowAddForm] = useState(false);
-  const [name, setName] = useState('');
-  const [phone, setPhone] = useState('');
-  const [relation, setRelation] = useState<EmergencyContact['relation']>('Family');
-  const [isPrimary, setIsPrimary] = useState(false);
-  const [error, setError] = useState('');
+  const handleAddNativeContact = async () => {
+    try {
+      const contact = await pickNativeContact();
+      if (contact && contact.phone) {
+        // Basic normalization to detect exact matches
+        const normalize = (num: string) => num.replace(/\s+/g, '');
+        const newPhone = normalize(contact.phone);
+        
+        const exists = contacts.some(c => normalize(c.phone) === newPhone);
+        
+        if (exists) {
+          onShowToast("This contact is already an emergency contact.");
+          return;
+        }
 
-  const handleSave = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!name.trim()) {
-      setError('Please enter the contact name.');
-      return;
+        onAddContact({
+          name: contact.name || 'Unknown Contact',
+          phone: contact.phone,
+          relation: 'Other', // We drop the manual relation field
+          isPrimary: false,
+        });
+        
+        triggerHaptic(50);
+        onShowToast(`Added ${contact.name} to Emergency Contacts`);
+      }
+    } catch (e) {
+      console.error("Failed to pick contact", e);
     }
-    if (!phone.trim() || phone.trim().length < 5) {
-      setError('Please enter a valid telephone number.');
-      return;
-    }
-
-    onAddContact({
-      name: name.trim(),
-      phone: phone.trim(),
-      relation,
-      isPrimary,
-    });
-
-    triggerHaptic(50);
-    setName('');
-    setPhone('');
-    setError('');
-    setShowAddForm(false);
-    onShowToast(`Added ${name} to Emergency Contacts`);
   };
 
   const handleSendSms = (contact: EmergencyContact) => {
@@ -85,81 +83,17 @@ export const EmergencyContactsModal: React.FC<EmergencyContactsModalProps> = ({
             </span>
             <button
               className="btn-add-contact-pill"
-              onClick={() => setShowAddForm(!showAddForm)}
+              onClick={handleAddNativeContact}
             >
-              {showAddForm ? '✕ Close Form' : '+ Add Number'}
+              + Add Number
             </button>
           </div>
 
-          {/* Add Contact Inline Card */}
-          {showAddForm && (
-            <form onSubmit={handleSave} className="add-contact-card-form">
-              <h3 className="form-heading">Add Emergency Contact</h3>
-              {error && <div className="form-error-msg">{error}</div>}
-
-              <div className="form-field">
-                <label className="field-label">Full Name</label>
-                <input
-                  type="text"
-                  className="field-input"
-                  placeholder="e.g. Mom, Dad, Warden, Friend"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  autoFocus
-                />
-              </div>
-
-              <div className="form-field">
-                <label className="field-label">Phone Number</label>
-                <input
-                  type="tel"
-                  className="field-input"
-                  placeholder="e.g. +91 98765 43210"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                />
-              </div>
-
-              <div className="form-field">
-                <label className="field-label">Relationship</label>
-                <div className="chips-row">
-                  {(['Family', 'Friend', 'Guardian', 'Police', 'Other'] as const).map((r) => (
-                    <button
-                      key={r}
-                      type="button"
-                      className={`chip-btn ${relation === r ? 'active' : ''}`}
-                      onClick={() => setRelation(r)}
-                    >
-                      {r}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="form-checkbox-row">
-                <label className="checkbox-wrap">
-                  <input
-                    type="checkbox"
-                    checked={isPrimary}
-                    onChange={(e) => setIsPrimary(e.target.checked)}
-                  />
-                  <span>Mark as Primary SOS Contact</span>
-                </label>
-              </div>
-
-              <div className="form-btn-group">
-                <button
-                  type="button"
-                  className="btn-subtle"
-                  onClick={() => setShowAddForm(false)}
-                >
-                  Cancel
-                </button>
-                <button type="submit" className="btn-primary-action">
-                  Save Contact
-                </button>
-              </div>
-            </form>
+          {contacts.length === 0 && (
+            <div style={{ textAlign: 'center', padding: '2rem 1rem', color: '#64748B' }}>
+              <h3 style={{ marginBottom: '0.5rem', color: '#1E293B' }}>NO EMERGENCY CONTACTS</h3>
+              <p>Add a trusted contact so SafeHelp can notify them during an emergency.</p>
+            </div>
           )}
 
           {/* Contact Cards List */}

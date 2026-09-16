@@ -1,5 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { SettingsGearIcon, ShieldCheckIcon } from './Icons';
+import { subscribePermissions, requestSmsPermission } from '../services/permissions';
+import type { SafeMeshPermissionsState } from '../services/permissions';
 
 interface SettingsModalProps {
   onClose: () => void;
@@ -11,6 +13,31 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose, onShowToa
   const [autoSms, setAutoSms] = useState(true);
   const [stealthMode, setStealthMode] = useState(false);
   const [meshRelay, setMeshRelay] = useState(true);
+  
+  const [permissions, setPermissions] = useState<SafeMeshPermissionsState>({
+    location: 'UNKNOWN',
+    bluetooth: 'UNKNOWN',
+    notifications: 'UNKNOWN',
+    sms: 'UNKNOWN',
+    isInitialFlowCompleted: true,
+  });
+
+  useEffect(() => {
+    const unsub = subscribePermissions((newPerms) => {
+      setPermissions(newPerms);
+    });
+    return () => unsub();
+  }, []);
+
+  const handleRetrySms = async () => {
+    onShowToast('Requesting SMS access...');
+    const result = await requestSmsPermission();
+    if (result === 'GRANTED') {
+      onShowToast('SMS permission granted.');
+    } else {
+      onShowToast('SMS permission denied.');
+    }
+  };
 
   const toggleSetting = (setter: React.Dispatch<React.SetStateAction<boolean>>, current: boolean, label: string) => {
     setter(!current);
@@ -115,6 +142,30 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose, onShowToa
                 />
                 <span className="slider round"></span>
               </label>
+            </div>
+          </div>
+
+          {/* System Permissions list */}
+          <div className="settings-section">
+            <span className="settings-section-title">SYSTEM PERMISSIONS</span>
+
+            <div className="setting-toggle-row">
+              <div className="setting-text">
+                <span className="setting-label">SMS Access</span>
+                <span className="setting-desc">Required to notify emergency contacts during SOS</span>
+              </div>
+              <div>
+                {permissions.sms === 'GRANTED' ? (
+                  <span style={{ color: '#10B981', fontWeight: 'bold', fontSize: '0.9rem' }}>✓ Granted</span>
+                ) : (
+                  <button 
+                    onClick={handleRetrySms}
+                    style={{ backgroundColor: 'transparent', color: '#F59E0B', border: '1px solid #F59E0B', borderRadius: '4px', padding: '4px 8px', fontSize: '0.8rem', fontWeight: 'bold', cursor: 'pointer' }}
+                  >
+                    ⚠ Not granted (Retry)
+                  </button>
+                )}
+              </div>
             </div>
           </div>
 

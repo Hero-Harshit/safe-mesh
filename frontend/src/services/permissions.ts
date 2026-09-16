@@ -10,6 +10,7 @@ export interface SafeMeshPermissionsState {
   location: PermissionStatus;
   bluetooth: PermissionStatus;
   notifications: PermissionStatus;
+  sms: PermissionStatus;
   isInitialFlowCompleted: boolean;
 }
 
@@ -19,6 +20,7 @@ let cachedState: SafeMeshPermissionsState = {
   location: 'UNKNOWN',
   bluetooth: 'UNKNOWN',
   notifications: 'UNKNOWN',
+  sms: 'UNKNOWN',
   isInitialFlowCompleted: localStorage.getItem(STORAGE_KEY_ONBOARDING) === 'true',
 };
 
@@ -237,6 +239,38 @@ export async function requestBluetoothPermission(): Promise<PermissionStatus> {
 }
 
 /**
+ * Check SMS Permission
+ */
+export async function checkSmsPermission(): Promise<PermissionStatus> {
+  const isAndroidGranted = localStorage.getItem('safemesh_sms_granted');
+  if (isAndroidGranted === 'true') {
+    cachedState.sms = 'GRANTED';
+  } else {
+    cachedState.sms = 'PROMPT';
+  }
+  notifyListeners();
+  return cachedState.sms;
+}
+
+/**
+ * Request SMS Permission via Native Android Bridge
+ */
+export async function requestSmsPermission(): Promise<PermissionStatus> {
+  if (window.location.protocol.startsWith('http')) {
+    try {
+      window.location.href = 'intent://sms#Intent;scheme=safehelp;package=com.safehelp.app;end';
+    } catch {
+      // fallback
+    }
+  }
+  
+  // Assume PROMPT if we can't trigger it (e.g. not in TWA)
+  cachedState.sms = 'PROMPT';
+  notifyListeners();
+  return 'PROMPT';
+}
+
+/**
  * Re-check all permissions (called on startup and whenever app returns to foreground)
  */
 export async function refreshAllPermissions(): Promise<SafeMeshPermissionsState> {
@@ -244,6 +278,7 @@ export async function refreshAllPermissions(): Promise<SafeMeshPermissionsState>
     checkLocationPermission(),
     checkBluetoothPermission(),
     checkNotificationPermission(),
+    checkSmsPermission(),
   ]);
   return { ...cachedState };
 }
@@ -269,6 +304,14 @@ if (typeof window !== 'undefined') {
     } else if (window.location.hash.includes('bt_result=denied')) {
       cachedState.bluetooth = 'DENIED';
       localStorage.setItem('safemesh_bt_granted', 'false');
+      notifyListeners();
+    } else if (window.location.hash.includes('sms_result=granted')) {
+      cachedState.sms = 'GRANTED';
+      localStorage.setItem('safemesh_sms_granted', 'true');
+      notifyListeners();
+    } else if (window.location.hash.includes('sms_result=denied')) {
+      cachedState.sms = 'DENIED';
+      localStorage.setItem('safemesh_sms_granted', 'false');
       notifyListeners();
     }
   });

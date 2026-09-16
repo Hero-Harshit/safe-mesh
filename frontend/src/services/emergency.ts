@@ -8,33 +8,15 @@ export interface EmergencyContact {
 
 const STORAGE_KEY = 'safemesh_contacts';
 
-const DEFAULT_CONTACTS: EmergencyContact[] = [
-  {
-    id: 'c1',
-    name: 'Mom / Family',
-    phone: '+91 98765 43210',
-    relation: 'Family',
-    isPrimary: true,
-  },
-  {
-    id: 'c2',
-    name: 'Campus Security',
-    phone: '+91 141 3999100',
-    relation: 'Guardian',
-    isPrimary: false,
-  },
-];
-
 export function getEmergencyContacts(): EmergencyContact[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(DEFAULT_CONTACTS));
-      return DEFAULT_CONTACTS;
+      return [];
     }
     return JSON.parse(raw);
   } catch {
-    return DEFAULT_CONTACTS;
+    return [];
   }
 }
 

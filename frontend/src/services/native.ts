@@ -28,9 +28,20 @@ export interface BleScanEvent {
 }
 
 let cachedBluetoothStatus: boolean | null = null;
+let cachedSmsStatus: boolean | null = null;
 let bluetoothResultResolvers: ((granted: boolean) => void)[] = [];
+let smsResultResolvers: ((granted: boolean) => void)[] = [];
+let contactResultResolvers: ((contact: {name: string, phone: string} | null) => void)[] = [];
 let bleActionResolvers: ((result: BleResult) => void)[] = [];
 let bleScanEventCallbacks: ((event: BleScanEvent) => void)[] = [];
+
+export interface SmsSendResult {
+  status: 'SUCCESS' | 'PARTIAL_SUCCESS' | 'FAILED' | 'ERROR';
+  error?: string;
+  results?: Array<{name: string, phone: string, success: boolean, error?: string}>;
+}
+
+let smsActionResolvers: ((result: SmsSendResult) => void)[] = [];
 
 // Initialize listener for hash-based bridge
 export function initNativeBridge() {
@@ -45,6 +56,42 @@ export function initNativeBridge() {
       bluetoothResultResolvers = [];
       history.replaceState(null, '', window.location.pathname + window.location.search);
     } 
+    else if (hash.includes('sms_result=')) {
+      const granted = hash.includes('sms_result=granted');
+      cachedSmsStatus = granted;
+      
+      smsResultResolvers.forEach(resolve => resolve(granted));
+      smsResultResolvers = [];
+      history.replaceState(null, '', window.location.pathname + window.location.search);
+    }
+    else if (hash.includes('contact_result=')) {
+      try {
+        const payloadStr = hash.replace('#contact_result=', '');
+        if (payloadStr === 'cancelled' || payloadStr === 'error') {
+          contactResultResolvers.forEach(resolve => resolve(null));
+        } else {
+          const decoded = decodeURIComponent(payloadStr);
+          const contactData = JSON.parse(decoded);
+          contactResultResolvers.forEach(resolve => resolve(contactData));
+        }
+      } catch (e) {
+        contactResultResolvers.forEach(resolve => resolve(null));
+      }
+      contactResultResolvers = [];
+      history.replaceState(null, '', window.location.pathname + window.location.search);
+    }
+    else if (hash.includes('sms_send_result=')) {
+      try {
+        const payloadStr = hash.replace('#sms_send_result=', '');
+        const decoded = decodeURIComponent(payloadStr);
+        const resultData = JSON.parse(decoded) as SmsSendResult;
+        smsActionResolvers.forEach(resolve => resolve(resultData));
+      } catch (e) {
+        smsActionResolvers.forEach(resolve => resolve({ status: 'ERROR', error: 'NATIVE_COMMUNICATION_ERROR' }));
+      }
+      smsActionResolvers = [];
+      history.replaceState(null, '', window.location.pathname + window.location.search);
+    }
     else if (hash.includes('ble_result=')) {
       try {
         const payloadStr = hash.replace('#ble_result=', '');
@@ -84,6 +131,33 @@ export async function requestBluetoothPermissions(): Promise<boolean> {
 
 export function areBluetoothPermissionsGranted(): boolean | null {
   return cachedBluetoothStatus;
+}
+
+export async function requestSmsPermissions(): Promise<boolean> {
+  return new Promise((resolve) => {
+    smsResultResolvers.push(resolve);
+    window.location.href = "intent://sms#Intent;scheme=safehelp;package=com.safehelp.app;end";
+  });
+}
+
+export function areSmsPermissionsGranted(): boolean | null {
+  return cachedSmsStatus;
+}
+
+export async function pickNativeContact(): Promise<{name: string, phone: string} | null> {
+  return new Promise((resolve) => {
+    contactResultResolvers.push(resolve);
+    window.location.href = "intent://contact_picker#Intent;scheme=safehelp;package=com.safehelp.app;end";
+  });
+}
+
+export async function sendEmergencySms(contacts: {name: string, phone: string}[], locationUrl: string | null): Promise<SmsSendResult> {
+  return new Promise((resolve) => {
+    smsActionResolvers.push(resolve);
+    const contactsJson = encodeURIComponent(JSON.stringify(contacts));
+    const locString = encodeURIComponent(locationUrl || "Unavailable");
+    window.location.href = `intent://send_sms?contacts=${contactsJson}&location=${locString}#Intent;scheme=safehelp;package=com.safehelp.app;end`;
+  });
 }
 
 export async function startEmergencyBeacon(): Promise<BleResult> {

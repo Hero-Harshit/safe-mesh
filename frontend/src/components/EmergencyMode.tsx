@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { PhoneCallIcon, LocationPinIcon, UsersIcon, ShieldCheckIcon } from './Icons';
 import type { EmergencyContact } from '../services/emergency';
-import { generateSmsLink, triggerHaptic } from '../services/emergency';
+import { triggerHaptic } from '../services/emergency';
 import type { LocationData } from '../services/location';
+import { sendEmergencySms } from '../services/native';
 
 interface EmergencyModeProps {
   location: LocationData | null;
@@ -16,14 +17,49 @@ export const EmergencyMode: React.FC<EmergencyModeProps> = ({
   onDeactivate,
 }) => {
   const [secondsActive, setSecondsActive] = useState(0);
-  const [smsSent, setSmsSent] = useState(false);
+  const [smsStatus, setSmsStatus] = useState<string>('Sending...');
+  const smsTriggeredRef = React.useRef(false);
 
   useEffect(() => {
     const timer = setInterval(() => {
       setSecondsActive((prev) => prev + 1);
     }, 1000);
+
+    if (!smsTriggeredRef.current) {
+      smsTriggeredRef.current = true;
+      triggerAutomaticSms();
+    }
+
     return () => clearInterval(timer);
   }, []);
+
+  const triggerAutomaticSms = async () => {
+    if (contacts.length === 0) {
+      setSmsStatus('NO EMERGENCY CONTACTS');
+      return;
+    }
+
+    setSmsStatus('Sending...');
+    try {
+      const result = await sendEmergencySms(
+        contacts.map(c => ({ name: c.name, phone: c.phone })),
+        location?.mapsUrl || null
+      );
+      
+      if (result.status === 'SUCCESS') {
+        setSmsStatus('SMS SENT');
+        triggerHaptic([100, 50, 100]);
+      } else if (result.status === 'PARTIAL_SUCCESS') {
+        setSmsStatus('SMS PARTIALLY SENT');
+      } else if (result.error === 'SMS_PERMISSION_DENIED') {
+        setSmsStatus('SMS PERMISSION DENIED');
+      } else {
+        setSmsStatus('SMS FAILED');
+      }
+    } catch (e) {
+      setSmsStatus('SMS FAILED');
+    }
+  };
 
   const formatTimer = (totalSeconds: number) => {
     const mins = Math.floor(totalSeconds / 60);
@@ -31,17 +67,7 @@ export const EmergencyMode: React.FC<EmergencyModeProps> = ({
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const handleBroadcastSms = () => {
-    if (contacts.length === 0) {
-      window.location.href = 'tel:112';
-      return;
-    }
-    const primary = contacts.find((c) => c.isPrimary) || contacts[0];
-    const link = generateSmsLink(primary.phone, location?.mapsUrl);
-    window.location.href = link;
-    setSmsSent(true);
-    triggerHaptic([100, 50, 100]);
-  };
+  // Manual SMS button removed as per requirements
 
   const displayAddress = location?.addressName || 'Live GPS Coordinates Broadcasted';
   const displayCoords = location
@@ -100,19 +126,23 @@ export const EmergencyMode: React.FC<EmergencyModeProps> = ({
             <span className="btn-arrow-mark">➔</span>
           </a>
 
-          {/* SMS Broadcast to Primary/All Contacts */}
-          <button onClick={handleBroadcastSms} className="emergency-hero-btn sms-broadcast-btn">
+          {/* SMS Status Indicator */}
+          <div className="emergency-hero-btn bg-white-soft" style={{ cursor: 'default' }}>
             <div className="btn-icon-box bg-white-soft">
               <UsersIcon size={22} color="#FFFFFF" />
             </div>
             <div className="btn-copy">
-              <span className="btn-headline">
-                {smsSent ? '✓ SOS SMS Sent / Send Again' : 'Dispatch SOS SMS to Contacts'}
+              <span className="btn-headline">{smsStatus}</span>
+              <span className="btn-tagline">
+                {smsStatus === 'SMS SENT' ? 'Emergency contacts notified.' : 
+                 smsStatus === 'SMS PARTIALLY SENT' ? 'Some contacts notified.' :
+                 smsStatus === 'SMS FAILED' ? 'Unable to notify emergency contacts.' :
+                 smsStatus === 'NO EMERGENCY CONTACTS' ? 'No emergency contacts are configured.' :
+                 smsStatus === 'SMS PERMISSION DENIED' ? 'SMS permission is not available.' :
+                 'Notifying emergency contacts...'}
               </span>
-              <span className="btn-tagline">Sends immediate distress text with live GPS link</span>
             </div>
-            <span className="btn-arrow-mark">➔</span>
-          </button>
+          </div>
         </div>
 
         {/* Quick Contact Direct Calling */}

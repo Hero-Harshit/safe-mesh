@@ -9,6 +9,7 @@ import {
   requestLocationPermission,
   requestBluetoothPermission,
   requestNotificationPermission,
+  requestSmsPermission,
   setInitialFlowCompleted,
 } from '../services/permissions';
 import type { SafeMeshPermissionsState } from '../services/permissions';
@@ -18,7 +19,7 @@ interface StartupPermissionFlowProps {
   onComplete: () => void;
 }
 
-type StepKey = 'location' | 'bluetooth' | 'notifications' | 'loading';
+type StepKey = 'location' | 'bluetooth' | 'notifications' | 'sms' | 'loading';
 
 export const StartupPermissionFlow: React.FC<StartupPermissionFlowProps> = ({
   initialState,
@@ -28,7 +29,9 @@ export const StartupPermissionFlow: React.FC<StartupPermissionFlowProps> = ({
     initialState.location === 'GRANTED'
       ? initialState.bluetooth === 'GRANTED'
         ? initialState.notifications === 'GRANTED'
-          ? 'loading'
+          ? initialState.sms === 'GRANTED'
+            ? 'loading'
+            : 'sms'
           : 'notifications'
         : 'bluetooth'
       : 'location'
@@ -57,6 +60,14 @@ export const StartupPermissionFlow: React.FC<StartupPermissionFlowProps> = ({
     setIsRequesting(true);
     const status = await requestNotificationPermission();
     setPermissions((prev) => ({ ...prev, notifications: status }));
+    setIsRequesting(false);
+    setCurrentStep('sms');
+  };
+
+  const handleEnableSms = async () => {
+    setIsRequesting(true);
+    const status = await requestSmsPermission();
+    setPermissions((prev) => ({ ...prev, sms: status }));
     setIsRequesting(false);
     setCurrentStep('loading');
 
@@ -137,6 +148,17 @@ export const StartupPermissionFlow: React.FC<StartupPermissionFlowProps> = ({
               {permissions.notifications === 'GRANTED' ? '✓' : '3'}
             </span>
             <span>Alerts</span>
+          </div>
+
+          <div
+            className={`step-pill ${
+              permissions.sms === 'GRANTED' ? 'completed' : currentStep === 'sms' ? 'active' : ''
+            }`}
+          >
+            <span className="step-pill-indicator">
+              {permissions.sms === 'GRANTED' ? '✓' : '4'}
+            </span>
+            <span>SMS</span>
           </div>
         </div>
 
@@ -222,7 +244,7 @@ export const StartupPermissionFlow: React.FC<StartupPermissionFlowProps> = ({
               </button>
               <button
                 className="btn-skip-permission"
-                onClick={() => handleSkipStep('loading')}
+                onClick={() => handleSkipStep('sms')}
               >
                 Not Now (No Background Alerts)
               </button>
@@ -230,7 +252,36 @@ export const StartupPermissionFlow: React.FC<StartupPermissionFlowProps> = ({
           </div>
         )}
 
-        {/* Step 4: Loading Real Device Data */}
+        {/* Step 4: SMS */}
+        {currentStep === 'sms' && (
+          <div className="step-detail-card">
+            <div className="step-icon-bubble bg-purple-tint">
+              <SosBroadcastIcon size={26} color="#8B5CF6" />
+            </div>
+            <h3 className="step-title">SMS ACCESS</h3>
+            <p className="step-explanation">
+              SafeHelp uses SMS to notify your emergency contacts when an SOS is activated.
+            </p>
+
+            <div className="step-actions">
+              <button
+                className="btn-enable-permission"
+                onClick={handleEnableSms}
+                disabled={isRequesting}
+              >
+                {isRequesting ? 'Requesting Permission...' : 'Allow SMS Access'}
+              </button>
+              <button
+                className="btn-skip-permission"
+                onClick={() => handleSkipStep('loading')}
+              >
+                Not Now (No Emergency SMS)
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Step 5: Loading Real Device Data */}
         {currentStep === 'loading' && (
           <div className="step-detail-card loading-card">
             <div className="loading-spinner-ring"></div>

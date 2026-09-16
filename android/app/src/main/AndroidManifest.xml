@@ -23,6 +23,8 @@
     package="com.safehelp.app">
 
         <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+        <uses-permission android:name="android.permission.SEND_SMS"/>
+        <uses-permission android:name="android.permission.READ_CONTACTS"/>
         
         <!-- Legacy Bluetooth permissions - required by Android 13 IBluetooth Binder path -->
         <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
@@ -217,6 +219,33 @@
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="safehelp" android:host="bluetooth" />
+            </intent-filter>
+        </activity>
+
+        <activity android:name=".SmsPermissionActivity" android:exported="true" android:theme="@android:style/Theme.Translucent.NoTitleBar">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="safehelp" android:host="sms" />
+            </intent-filter>
+        </activity>
+
+        <activity android:name=".ContactPickerActivity" android:exported="true" android:theme="@android:style/Theme.Translucent.NoTitleBar">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="safehelp" android:host="contact_picker" />
+            </intent-filter>
+        </activity>
+
+        <activity android:name=".SmsActionActivity" android:exported="true" android:theme="@android:style/Theme.Translucent.NoTitleBar">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="safehelp" android:host="send_sms" />
             </intent-filter>
         </activity>
         
