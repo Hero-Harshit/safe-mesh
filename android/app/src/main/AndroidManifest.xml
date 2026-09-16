@@ -227,6 +227,8 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="safehelp" android:host="ble_start" />
                 <data android:scheme="safehelp" android:host="ble_stop" />
+                <data android:scheme="safehelp" android:host="ble_scan_start" />
+                <data android:scheme="safehelp" android:host="ble_scan_stop" />
             </intent-filter>
         </activity>
     </application>
