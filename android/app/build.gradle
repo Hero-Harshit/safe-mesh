@@ -14,8 +14,6 @@
  * limitations under the License.
  */
 
-import groovy.xml.MarkupBuilder
-
 plugins {
     id 'com.android.application'
 }
