@@ -1,4 +1,3 @@
-import { syncEmergencyContactsToNative } from './native';
 
 export interface EmergencyContact {
   id: string;
@@ -37,7 +36,6 @@ export function saveEmergencyContact(contact: Omit<EmergencyContact, 'id'> & { i
   }
 
   localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-  syncEmergencyContactsToNative(updated).catch(console.error);
   return updated;
 }
 
@@ -45,7 +43,6 @@ export function deleteEmergencyContact(id: string): EmergencyContact[] {
   const current = getEmergencyContacts();
   const updated = current.filter((c) => c.id !== id);
   localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-  syncEmergencyContactsToNative(updated).catch(console.error);
   return updated;
 }
 

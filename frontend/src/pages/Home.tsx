@@ -98,12 +98,7 @@ export default function Home({ onNavigate }: HomeProps) {
 
   // 3. Load contacts
   useEffect(() => {
-    const loadedContacts = getEmergencyContacts();
-    setContacts(loadedContacts);
-    // Ensure native side is synchronized with current localStorage state
-    if (loadedContacts.length > 0) {
-      import('../services/native').then(m => m.syncEmergencyContactsToNative(loadedContacts).catch(() => {}));
-    }
+    setContacts(getEmergencyContacts());
   }, []);
 
   const showToast = useCallback((msg: string) => {
