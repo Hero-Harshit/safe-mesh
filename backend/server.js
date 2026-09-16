@@ -27,6 +27,11 @@ if (MONGO_URI) {
 
 const groq = new Groq({ apiKey: GROQ_API_KEY });
 
+// Health check endpoint
+app.get('/health', (req, res) => {
+  res.status(200).json({ status: 'ok', timestamp: new Date() });
+});
+
 // Mount incident routes
 const incidentRoutes = require('./routes/incidents');
 app.use('/api/incidents', incidentRoutes);
