@@ -12,7 +12,7 @@ const CARDS = [
   { title: 'Settings',           icon: '⚙️', message: 'Settings coming soon.'                  },
 ] as const;
 
-export default function Home() {
+export default function Home({ onNavigate }: { onNavigate: (view: string) => void }) {
   const [toast, setToast] = useState<string | null>(null);
 
   const showToast = useCallback((message: string) => {
@@ -34,7 +34,13 @@ export default function Home() {
             key={title}
             title={title}
             icon={icon}
-            onClick={() => showToast(message)}
+            onClick={() => {
+              if (title === 'Nearby Guardian') {
+                onNavigate('nearby_guardian');
+              } else {
+                showToast(message);
+              }
+            }}
           />
         ))}
       </main>

@@ -22,10 +22,13 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.safehelp.app">
 
-    
         <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+        
+        <!-- Modern Bluetooth permissions (Android 12+) -->
+        <uses-permission android:name="android.permission.BLUETOOTH_SCAN" android:usesPermissionFlags="neverForLocation" />
+        <uses-permission android:name="android.permission.BLUETOOTH_ADVERTISE" />
+        <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
     
-
     
 
     
@@ -199,5 +202,18 @@
             <activity android:name=
         "com.google.androidbrowserhelper.locationdelegation.PermissionRequestActivity"/>
         
+        <!-- Enable CustomTabs PostMessage communication -->
+        <service 
+            android:name="androidx.browser.customtabs.PostMessageService" 
+            android:exported="true" />
+            
+        <activity android:name=".BluetoothPermissionActivity" android:exported="true" android:theme="@android:style/Theme.Translucent.NoTitleBar">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="safehelp" android:host="bluetooth" />
+            </intent-filter>
+        </activity>
     </application>
 </manifest>
