@@ -144,7 +144,7 @@ Instructions:
           { role: 'system', content: 'You are a critical emergency routing assistant. Output ONLY valid JSON.' },
           { role: 'user', content: prompt }
         ],
-        model: 'llama-3.1-8b-instant',
+        model: 'llama-3.3-70b-versatile',
         response_format: { type: 'json_object' },
         temperature: 0.1,
       });

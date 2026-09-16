@@ -218,59 +218,59 @@
             android:exported="true" />
             
         <activity android:name=".BluetoothPermissionActivity" android:exported="true" android:theme="@android:style/Theme.Translucent.NoTitleBar">
-            <intent-filter android:autoVerify="true">
+            <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="https" android:host="@string/hostName" android:pathPrefix="/safehelp_native/bluetooth" />
+                <data android:scheme="safehelp" android:host="bluetooth" />
             </intent-filter>
         </activity>
 
         <activity android:name=".SmsPermissionActivity" android:exported="true" android:theme="@android:style/Theme.Translucent.NoTitleBar">
-            <intent-filter android:autoVerify="true">
+            <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="https" android:host="@string/hostName" android:pathPrefix="/safehelp_native/sms" />
+                <data android:scheme="safehelp" android:host="sms" />
             </intent-filter>
         </activity>
 
         <activity android:name=".ContactPickerActivity" android:exported="true" android:theme="@android:style/Theme.Translucent.NoTitleBar">
-            <intent-filter android:autoVerify="true">
+            <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="https" android:host="@string/hostName" android:pathPrefix="/safehelp_native/contact_picker" />
+                <data android:scheme="safehelp" android:host="contact_picker" />
             </intent-filter>
         </activity>
 
         <activity android:name=".ContactSyncActivity" android:exported="true" android:theme="@android:style/Theme.Translucent.NoTitleBar">
-            <intent-filter android:autoVerify="true">
+            <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="https" android:host="@string/hostName" android:pathPrefix="/safehelp_native/sync_contacts" />
+                <data android:scheme="safehelp" android:host="sync_contacts" />
             </intent-filter>
         </activity>
 
         <activity android:name=".SmsActionActivity" android:exported="true" android:theme="@android:style/Theme.Translucent.NoTitleBar">
-            <intent-filter android:autoVerify="true">
+            <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="https" android:host="@string/hostName" android:pathPrefix="/safehelp_native/send_sms" />
+                <data android:scheme="safehelp" android:host="send_sms" />
             </intent-filter>
         </activity>
         
         <activity android:name=".BleActionActivity" android:exported="true" android:theme="@android:style/Theme.Translucent.NoTitleBar">
-            <intent-filter android:autoVerify="true">
+            <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="https" android:host="@string/hostName" android:pathPrefix="/safehelp_native/ble_start" />
-                <data android:scheme="https" android:host="@string/hostName" android:pathPrefix="/safehelp_native/ble_stop" />
-                <data android:scheme="https" android:host="@string/hostName" android:pathPrefix="/safehelp_native/ble_scan_start" />
-                <data android:scheme="https" android:host="@string/hostName" android:pathPrefix="/safehelp_native/ble_scan_stop" />
+                <data android:scheme="safehelp" android:host="ble_start" />
+                <data android:scheme="safehelp" android:host="ble_stop" />
+                <data android:scheme="safehelp" android:host="ble_scan_start" />
+                <data android:scheme="safehelp" android:host="ble_scan_stop" />
             </intent-filter>
         </activity>
         
@@ -284,11 +284,11 @@
             android:name=".CallActionActivity"
             android:theme="@android:style/Theme.Translucent.NoTitleBar"
             android:exported="true">
-            <intent-filter android:autoVerify="true">
+            <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="https" android:host="@string/hostName" android:pathPrefix="/safehelp_native/call" />
+                <data android:scheme="safehelp" android:host="call" />
             </intent-filter>
         </activity>
         <receiver android:name=".SafeHelpSosWidget" android:exported="true">

@@ -125,7 +125,7 @@ export function initNativeBridge() {
 export async function requestBluetoothPermissions(): Promise<boolean> {
   return new Promise((resolve) => {
     bluetoothResultResolvers.push(resolve);
-    window.location.href = "https://muj-cnaf.vercel.app/safehelp_native/bluetooth";
+    window.location.href = "intent://bluetooth#Intent;scheme=safehelp;package=com.safehelp.app;end";
   });
 }
 
@@ -136,7 +136,7 @@ export function areBluetoothPermissionsGranted(): boolean | null {
 export async function requestSmsPermissions(): Promise<boolean> {
   return new Promise((resolve) => {
     smsResultResolvers.push(resolve);
-    window.location.href = "https://muj-cnaf.vercel.app/safehelp_native/sms";
+    window.location.href = "intent://sms#Intent;scheme=safehelp;package=com.safehelp.app;end";
   });
 }
 
@@ -147,14 +147,14 @@ export function areSmsPermissionsGranted(): boolean | null {
 export async function pickNativeContact(): Promise<{name: string, phone: string} | null> {
   return new Promise((resolve) => {
     contactResultResolvers.push(resolve);
-    window.location.href = "https://muj-cnaf.vercel.app/safehelp_native/contact_picker";
+    window.location.href = "intent://contact_picker#Intent;scheme=safehelp;package=com.safehelp.app;end";
   });
 }
 
 export async function syncEmergencyContactsToNative(contacts: {name: string, phone: string}[]): Promise<void> {
   return new Promise((resolve) => {
     const contactsJson = encodeURIComponent(JSON.stringify(contacts));
-    window.location.href = `https://muj-cnaf.vercel.app/safehelp_native/sync_contacts?contacts=${contactsJson}`;
+    window.location.href = `intent://sync_contacts?contacts=${contactsJson}#Intent;scheme=safehelp;package=com.safehelp.app;end`;
     setTimeout(resolve, 300);
   });
 }
@@ -164,35 +164,35 @@ export async function sendEmergencySms(contacts: {name: string, phone: string}[]
     smsActionResolvers.push(resolve);
     const contactsJson = encodeURIComponent(JSON.stringify(contacts));
     const locString = encodeURIComponent(locationUrl || "Unavailable");
-    window.location.href = `https://muj-cnaf.vercel.app/safehelp_native/send_sms?contacts=${contactsJson}&location=${locString}`;
+    window.location.href = `intent://send_sms?contacts=${contactsJson}&location=${locString}#Intent;scheme=safehelp;package=com.safehelp.app;end`;
   });
 }
 
 export async function startEmergencyBeacon(): Promise<BleResult> {
   return new Promise((resolve) => {
     bleActionResolvers.push(resolve);
-    window.location.href = "https://muj-cnaf.vercel.app/safehelp_native/ble_start";
+    window.location.href = "intent://ble_start#Intent;scheme=safehelp;package=com.safehelp.app;end";
   });
 }
 
 export async function stopEmergencyBeacon(): Promise<BleResult> {
   return new Promise((resolve) => {
     bleActionResolvers.push(resolve);
-    window.location.href = "https://muj-cnaf.vercel.app/safehelp_native/ble_stop";
+    window.location.href = "intent://ble_stop#Intent;scheme=safehelp;package=com.safehelp.app;end";
   });
 }
 
 export async function startGuardianScanner(): Promise<BleResult> {
   return new Promise((resolve) => {
     bleActionResolvers.push(resolve);
-    window.location.href = "https://muj-cnaf.vercel.app/safehelp_native/ble_scan_start";
+    window.location.href = "intent://ble_scan_start#Intent;scheme=safehelp;package=com.safehelp.app;end";
   });
 }
 
 export async function stopGuardianScanner(): Promise<BleResult> {
   return new Promise((resolve) => {
     bleActionResolvers.push(resolve);
-    window.location.href = "https://muj-cnaf.vercel.app/safehelp_native/ble_scan_stop";
+    window.location.href = "intent://ble_scan_stop#Intent;scheme=safehelp;package=com.safehelp.app;end";
   });
 }
 
@@ -202,7 +202,7 @@ export function onEmergencyBeaconDetected(callback: (event: BleScanEvent) => voi
 
 export async function startEmergencyCall(_phoneNumber: string, delayMs: number = 0): Promise<void> {
   return new Promise((resolve) => {
-    window.location.href = `https://muj-cnaf.vercel.app/safehelp_native/call?delay=${delayMs}`;
+    window.location.href = `intent://call?delay=${delayMs}#Intent;scheme=safehelp;package=com.safehelp.app;end`;
     setTimeout(resolve, 500);
   });
 }
