@@ -1,0 +1,14 @@
+[
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.safehelp.app",
+      "sha256_cert_fingerprints": [
+        "6C:FB:E8:89:35:69:F8:B1:AA:F7:28:10:49:BF:E1:BE:ED:7D:0A:E5:3E:2D:B5:E8:C0:40:BF:17:F7:8F:8D:CD"
+      ]
+    }
+  }
+]

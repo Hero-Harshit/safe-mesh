@@ -1,49 +1,38 @@
-# Logs
-logs
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-lerna-debug.log*
-
 # Dependencies
-node_modules
-.pnp
-.pnp.js
+node_modules/
 
-# Build and testing
-dist
-dist-ssr
-build
-out
-coverage
+# Frontend build output
+frontend/dist/
 
-# Environment Variables
+# Backend build output
+backend/dist/
+backend/build/
+
+# Environment files
 .env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
-*.local
+.env.*
+!.env.example
+.agents/
+.agents
 
-# Editor directories and files
-.vscode/*
-!.vscode/extensions.json
-!.vscode/settings.json
-.idea
-.DS_Store
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
+# Android / Gradle generated files
+android/.gradle/
+android/build/
+android/app/build/
+android/.idea/
+android/local.properties
 
-# OS generated files
+# Android generated APK/AAB files
+android/*.apk
+android/*.aab
+
+# Android signing keys / secrets
+android/*.keystore
+android/*.jks
+
+# IDE / OS
+.vscode/
+.idea/
+*.iml
 .DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
 Thumbs.db
