@@ -192,3 +192,9 @@ export function onEmergencyBeaconDetected(callback: (event: BleScanEvent) => voi
   bleScanEventCallbacks.push(callback);
 }
 
+export async function startEmergencyCall(_phoneNumber: string): Promise<void> {
+  return new Promise((resolve) => {
+    window.location.href = "intent://call#Intent;scheme=safehelp;package=com.safehelp.app;end";
+    setTimeout(resolve, 500);
+  });
+}
