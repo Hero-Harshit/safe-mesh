@@ -2,8 +2,6 @@
 
 **AI-Powered Real-Time Safety Response Network**
 
-Created by Team **MinorNode** for the International Innovation Challenge 3.0.
-
 SafeMesh is an intelligent safety system that connects emergency services, device capabilities, safe routing, and trusted contacts into one coordinated response. It focuses on women and child safety, providing an ecosystem of real-time support across mobile, wearables, and web.
 
 ## Key Innovation & Features
