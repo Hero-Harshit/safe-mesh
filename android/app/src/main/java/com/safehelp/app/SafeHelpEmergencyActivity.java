@@ -18,10 +18,20 @@ public class SafeHelpEmergencyActivity extends Activity implements SafeHelpBleAd
     private TextView tvTitle;
     private TextView tvStatus;
     private TextView tvId;
+    private TextView tvTimestamp;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O_MR1) {
+            setShowWhenLocked(true);
+            setTurnScreenOn(true);
+        } else {
+            getWindow().addFlags(android.view.WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED |
+                    android.view.WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON |
+                    android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        }
         
         Log.i(TAG, "Emergency Activity created");
         Log.i(TAG, "Emergency App Action received");
@@ -32,6 +42,7 @@ public class SafeHelpEmergencyActivity extends Activity implements SafeHelpBleAd
         tvTitle = findViewById(R.id.tv_emergency_title);
         tvStatus = findViewById(R.id.tv_emergency_status);
         tvId = findViewById(R.id.tv_emergency_id);
+        tvTimestamp = findViewById(R.id.tv_emergency_timestamp);
         
         Button btnBack = findViewById(R.id.btn_back_to_app);
         btnBack.setOnClickListener(v -> {
@@ -41,18 +52,63 @@ public class SafeHelpEmergencyActivity extends Activity implements SafeHelpBleAd
             finish();
         });
 
+        Button btnEnd = findViewById(R.id.btn_end_emergency);
+        if (btnEnd != null) {
+            btnEnd.setOnClickListener(v -> {
+                SafeHelpEmergencyCoordinator.getInstance().endEmergency(this);
+                tvTitle.setText("EMERGENCY ENDED");
+                tvTitle.setTextColor(Color.parseColor("#555555"));
+                tvStatus.setText("All emergency services stopped.");
+                tvId.setText("");
+                tvTimestamp.setText("");
+            });
+        }
+
         // Safety check - verify this really came from an App Action (actions.intent.OPEN_APP_FEATURE 
-        // translates to a VIEW intent for the specified class).
+        // translates to a VIEW intent for the specified class) OR from our native home-screen widget.
         if (getIntent() != null && Intent.ACTION_VIEW.equals(getIntent().getAction())) {
             Log.i(TAG, "Starting emergency beacon setup from Assistant");
             
-            // Check permissions
             if (BluetoothPermissionManager.areBluetoothPermissionsGranted(this)) {
                 triggerBeacon();
             } else {
                 Log.w(TAG, "Missing Bluetooth permissions. Requesting...");
                 BluetoothPermissionManager.requestBluetoothPermissions(this);
             }
+        } else if (getIntent() != null && SafeHelpSosWidget.ACTION_WIDGET_SOS.equals(getIntent().getAction())) {
+            Log.i(TAG, "SAFEHELP: Emergency Activity launched from Home Widget");
+            
+            tvTitle.setText("🚨 SAFEHELP EMERGENCY");
+            tvTitle.setTextColor(Color.parseColor("#c0392b"));
+            
+            tvStatus.setText("Emergency Active\n\nInitializing Services...");
+            tvStatus.setTextColor(Color.parseColor("#555555"));
+            
+            tvId.setText("");
+
+            SafeHelpEmergencyCoordinator coordinator = SafeHelpEmergencyCoordinator.getInstance();
+            coordinator.setStatusListener((emergencyId, timestamp, ble, sms, loc, incident, route) -> {
+                runOnUiThread(() -> {
+                    if (emergencyId == null) return;
+                    
+                    StringBuilder sb = new StringBuilder();
+                    sb.append(String.format("BLE Beacon\n%s\n\n", ble));
+                    sb.append(String.format("Emergency SMS\n%s\n\n", sms));
+                    sb.append(String.format("Location\n%s\n\n", loc));
+                    sb.append(String.format("Incident Log\n%s\n\n", incident));
+                    sb.append(String.format("Safe Route\n%s", route));
+                    
+                    tvStatus.setText(sb.toString().trim());
+                    tvId.setText("Emergency ID:\n" + emergencyId);
+                    if (timestamp != null) {
+                        tvTimestamp.setText("Started:\n" + timestamp);
+                    } else {
+                        tvTimestamp.setText("");
+                    }
+                });
+            });
+            coordinator.startEmergencySequence(this);
+            
         } else {
             Log.w(TAG, "Received unrelated intent, aborting BLE beacon start.");
             handleFailure("Invalid trigger intent.");

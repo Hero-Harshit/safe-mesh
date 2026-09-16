@@ -35,7 +35,7 @@ public class BleActionActivity extends Activity {
             return;
         }
 
-        pendingAction = intent.getData().getHost(); // "ble_start" or "ble_stop"
+        pendingAction = intent.getData().getLastPathSegment(); // "ble_start" or "ble_stop" or "ble_scan_start" or "ble_scan_stop"
 
         if (hasBlePermissions()) {
             executeBleAction(pendingAction);

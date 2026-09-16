@@ -45,7 +45,29 @@
         android:textStyle="bold"
         android:letterSpacing="0.2"
         android:textColor="#c0392b"
+        android:layout_marginBottom="16dp"/>
+
+    <TextView
+        android:id="@+id/tv_emergency_timestamp"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text=""
+        android:textSize="16sp"
+        android:textStyle="bold"
+        android:textColor="#555555"
         android:layout_marginBottom="48dp"/>
+
+    <Button
+        android:id="@+id/btn_end_emergency"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:padding="16dp"
+        android:backgroundTint="#e74c3c"
+        android:textColor="#ffffff"
+        android:text="END EMERGENCY"
+        android:textStyle="bold"
+        android:textSize="16sp"
+        android:layout_marginBottom="16dp"/>
 
     <Button
         android:id="@+id/btn_back_to_app"

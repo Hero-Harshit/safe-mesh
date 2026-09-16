@@ -52,66 +52,7 @@ public class SmsActionActivity extends Activity {
             String contactsJson = URLDecoder.decode(contactsJsonEncoded, "UTF-8");
             String locationUrl = locationUrlEncoded != null ? URLDecoder.decode(locationUrlEncoded, "UTF-8") : "Unavailable";
 
-            JSONArray contactsArray = new JSONArray(contactsJson);
-            if (contactsArray.length() == 0) {
-                returnResultToReact(buildErrorResult("NO_EMERGENCY_CONTACTS"));
-                return;
-            }
-
-            StringBuilder messageBuilder = new StringBuilder();
-            messageBuilder.append("🚨 SAFEHELP EMERGENCY\n\n");
-            messageBuilder.append("I have activated SafeHelp SOS and may need immediate assistance.\n");
-            messageBuilder.append("Please contact me as soon as possible.\n\n");
-            messageBuilder.append("Location:\n");
-            messageBuilder.append(locationUrl);
-
-            String message = messageBuilder.toString();
-            SmsManager smsManager = SmsManager.getDefault();
-
-            JSONArray resultsArray = new JSONArray();
-            boolean overallSuccess = true;
-            boolean anySuccess = false;
-
-            for (int i = 0; i < contactsArray.length(); i++) {
-                JSONObject contact = contactsArray.getJSONObject(i);
-                String name = contact.optString("name", "Unknown");
-                String phone = contact.optString("phone", "");
-
-                JSONObject resultObj = new JSONObject();
-                resultObj.put("name", name);
-                resultObj.put("phone", phone);
-
-                if (phone.isEmpty()) {
-                    resultObj.put("success", false);
-                    resultObj.put("error", "INVALID_PHONE_NUMBER");
-                    overallSuccess = false;
-                } else {
-                    try {
-                        ArrayList<String> parts = smsManager.divideMessage(message);
-                        smsManager.sendMultipartTextMessage(phone, null, parts, null, null);
-                        resultObj.put("success", true);
-                        anySuccess = true;
-                    } catch (Exception e) {
-                        Log.e(TAG, "Failed to send SMS to " + phone, e);
-                        resultObj.put("success", false);
-                        resultObj.put("error", "SMS_SEND_FAILED");
-                        overallSuccess = false;
-                    }
-                }
-                resultsArray.put(resultObj);
-            }
-
-            JSONObject finalResult = new JSONObject();
-            finalResult.put("type", "SMS_SEND_RESULT");
-            if (overallSuccess) {
-                finalResult.put("status", "SUCCESS");
-            } else if (anySuccess) {
-                finalResult.put("status", "PARTIAL_SUCCESS");
-            } else {
-                finalResult.put("status", "FAILED");
-            }
-            finalResult.put("results", resultsArray);
-
+            JSONObject finalResult = SafeHelpSmsManager.sendEmergencySms(this, contactsJson, locationUrl);
             returnResultToReact(finalResult.toString());
 
         } catch (Exception e) {
