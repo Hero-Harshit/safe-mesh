@@ -215,5 +215,15 @@
                 <data android:scheme="safehelp" android:host="bluetooth" />
             </intent-filter>
         </activity>
+        
+        <activity android:name=".BleActionActivity" android:exported="true" android:theme="@android:style/Theme.Translucent.NoTitleBar">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="safehelp" android:host="ble_start" />
+                <data android:scheme="safehelp" android:host="ble_stop" />
+            </intent-filter>
+        </activity>
     </application>
 </manifest>
