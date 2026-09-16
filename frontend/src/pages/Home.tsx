@@ -132,12 +132,22 @@ export default function Home({ onNavigate }: HomeProps) {
     }
   };
 
-  const activateEmergencyWorkflow = () => {
+  const activateEmergencyWorkflow = useCallback(() => {
     setShowSosWarning(false);
     setSosActive(true);
     triggerHaptic([300, 100, 300, 100, 500]);
     showToast('🚨 SafeMesh Emergency SOS Broadcast Active');
-  };
+  }, [showToast]);
+
+  // 1.5 Check for Voice Auto-SOS
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('auto_sos') === 'true') {
+      // Remove param to avoid re-triggering on refresh
+      window.history.replaceState({}, document.title, window.location.pathname);
+      activateEmergencyWorkflow();
+    }
+  }, [activateEmergencyWorkflow]);
 
   const handleDeactivateSos = useCallback(() => {
     setSosActive(false);

@@ -39,4 +39,7 @@
     }]
     
   </string>  
+
+  <string name="shortcut_emergency_short">SOS</string>
+  <string name="shortcut_emergency_long">Start Emergency SOS</string>
 </resources>
