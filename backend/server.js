@@ -25,7 +25,16 @@ if (MONGO_URI) {
   console.warn('WARNING: MONGO_URI is not defined in .env');
 }
 
-const groq = new Groq({ apiKey: GROQ_API_KEY });
+let groq = null;
+if (GROQ_API_KEY) {
+  try {
+    groq = new Groq({ apiKey: GROQ_API_KEY });
+  } catch (err) {
+    console.warn('Groq client initialization warning:', err.message);
+  }
+} else {
+  console.warn('WARNING: GROQ_API_KEY is not defined in .env - will use deterministic safety scoring fallback');
+}
 
 // Health check endpoint
 app.get('/health', (req, res) => {
@@ -55,8 +64,21 @@ const CATEGORY_PRIORITY = {
 app.post('/api/safety/escape-route', async (req, res) => {
   const { latitude, longitude, timestamp } = req.body;
 
-  if (!latitude || !longitude) {
-    return res.status(400).json({ success: false, reason: 'MISSING_COORDINATES' });
+  if (typeof latitude !== 'number' || typeof longitude !== 'number') {
+    return res.status(400).json({ success: false, reason: 'MISSING_OR_INVALID_COORDINATES' });
+  }
+
+  if (latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) {
+    return res.status(400).json({ success: false, reason: 'COORDINATES_OUT_OF_BOUNDS' });
+  }
+
+  if (!TOMTOM_API_KEY) {
+    console.warn('TomTom escape route requested but TOMTOM_API_KEY is not configured');
+    return res.status(503).json({ 
+      success: false, 
+      reason: 'TOMTOM_API_KEY_NOT_CONFIGURED',
+      message: 'TOMTOM_API_KEY is missing from environment variables'
+    });
   }
 
   try {
@@ -131,8 +153,9 @@ app.post('/api/safety/escape-route', async (req, res) => {
     let groqReason = "";
     
     // 3. Groq Reasoning
-    try {
-      const prompt = `
+    if (groq) {
+      try {
+        const prompt = `
 You are an emergency safety assistant evaluating destinations for someone in an SOS situation.
 Here are the top candidates within 1km:
 ${JSON.stringify(topCandidates, null, 2)}
@@ -148,23 +171,24 @@ Instructions:
 }
 `;
 
-      const groqCompletion = await groq.chat.completions.create({
-        messages: [
-          { role: 'system', content: 'You are a critical emergency routing assistant. Output ONLY valid JSON.' },
-          { role: 'user', content: prompt }
-        ],
-        model: 'llama-3.3-70b-versatile',
-        response_format: { type: 'json_object' },
-        temperature: 0.1,
-      });
+        const groqCompletion = await groq.chat.completions.create({
+          messages: [
+            { role: 'system', content: 'You are a critical emergency routing assistant. Output ONLY valid JSON.' },
+            { role: 'user', content: prompt }
+          ],
+          model: 'llama-3.3-70b-versatile',
+          response_format: { type: 'json_object' },
+          temperature: 0.1,
+        });
 
-      const groqResult = JSON.parse(groqCompletion.choices[0].message.content);
-      
-      recommendedPlace = candidates.find(c => c.id === groqResult.recommendedPlaceId);
-      groqReason = groqResult.reason;
+        const groqResult = JSON.parse(groqCompletion.choices[0].message.content);
+        
+        recommendedPlace = candidates.find(c => c.id === groqResult.recommendedPlaceId);
+        groqReason = groqResult.reason;
 
-    } catch (groqError) {
-      console.error("Groq Reasoning Failed:", groqError);
+      } catch (groqError) {
+        console.error("Groq Reasoning Failed:", groqError.message);
+      }
     }
 
     // 4. Fallback if Groq failed or returned invalid ID

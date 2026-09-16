@@ -1,4 +1,4 @@
-const CACHE_NAME = 'safehelp-v1';
+const CACHE_NAME = 'safemesh-v1';
 
 // Minimal service worker for PWA installation requirement.
 // It caches the root for offline capability.

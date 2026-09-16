@@ -1,12 +1,12 @@
 {
-  "name": "SafeHelp",
-  "short_name": "SafeHelp",
+  "name": "SafeMesh",
+  "short_name": "SafeMesh",
   "start_url": "/",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#f9fafb",
   "theme_color": "#ef4444",
-  "description": "SafeHelp - Personal Safety Hub",
+  "description": "SafeMesh — AI-Powered Real-Time Safety Response Network",
   "icons": [
     {
       "src": "/icon-192.png",

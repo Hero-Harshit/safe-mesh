@@ -1,8 +1,8 @@
 {
   "packageId": "com.safehelp.app",
   "host": "muj-cnaf.vercel.app",
-  "name": "SafeHelp",
-  "launcherName": "SafeHelp",
+  "name": "SafeMesh",
+  "launcherName": "SafeMesh",
   "display": "standalone",
   "themeColor": "#EF4444",
   "themeColorDark": "#000000",

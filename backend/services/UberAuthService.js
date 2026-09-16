@@ -3,13 +3,23 @@ const axios = require('axios');
 const uberConfig = require('../config/uber');
 const OAuthState = require('../models/OAuthState');
 
-// Encryption setup
-const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY || crypto.randomBytes(32).toString('hex'); // Fallback for local testing if not set
+// Encryption setup: guaranteed 32-byte Buffer
+function getKeyBuffer() {
+  const key = process.env.ENCRYPTION_KEY;
+  if (key && key.length === 64 && /^[0-9a-fA-F]+$/.test(key)) {
+    return Buffer.from(key, 'hex');
+  }
+  if (key && key.length > 0) {
+    return crypto.createHash('sha256').update(key).digest();
+  }
+  return crypto.createHash('sha256').update('safemesh_default_dev_encryption_key').digest();
+}
+
 const IV_LENGTH = 16;
 
 function encrypt(text) {
   const iv = crypto.randomBytes(IV_LENGTH);
-  const cipher = crypto.createCipheriv('aes-256-cbc', Buffer.from(ENCRYPTION_KEY, 'hex'), iv);
+  const cipher = crypto.createCipheriv('aes-256-cbc', getKeyBuffer(), iv);
   let encrypted = cipher.update(text);
   encrypted = Buffer.concat([encrypted, cipher.final()]);
   return iv.toString('hex') + ':' + encrypted.toString('hex');
@@ -19,7 +29,7 @@ function decrypt(text) {
   const textParts = text.split(':');
   const iv = Buffer.from(textParts.shift(), 'hex');
   const encryptedText = Buffer.from(textParts.join(':'), 'hex');
-  const decipher = crypto.createDecipheriv('aes-256-cbc', Buffer.from(ENCRYPTION_KEY, 'hex'), iv);
+  const decipher = crypto.createDecipheriv('aes-256-cbc', getKeyBuffer(), iv);
   let decrypted = decipher.update(encryptedText);
   decrypted = Buffer.concat([decrypted, decipher.final()]);
   return decrypted.toString();

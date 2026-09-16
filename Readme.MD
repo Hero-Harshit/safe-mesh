@@ -52,12 +52,26 @@ SafeMesh operates on a modular, layered architecture:
 
 ## Environment Variables
 
-To run the backend, create a `.env` file in the `backend` directory with the following variables:
+To configure the backend, a default `.env` is provided in the `backend` directory. Customize it with your keys as needed:
 
 ```env
 PORT=5000
+MONGO_URI=mongodb+srv://<username>:<password>@cluster.mongodb.net/safemesh
 TOMTOM_API_KEY=your_tomtom_api_key_here
 GROQ_API_KEY=your_groq_api_key_here
+
+# Uber Sandbox Configuration
+UBER_ENV=sandbox
+UBER_BASE_URL=https://sandbox-api.uber.com
+UBER_LOGIN_URL=https://login.uber.com
+UBER_CLIENT_ID=your_uber_client_id
+UBER_CLIENT_SECRET=your_uber_client_secret
+UBER_REDIRECT_URI=http://localhost:5000/api/uber/callback
+UBER_SCOPES=request
+
+# Security
+ENCRYPTION_KEY=0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+FRONTEND_URL=http://localhost:5173
 ```
 
 ## Installation & Setup
@@ -67,7 +81,7 @@ Navigate to the backend directory, install dependencies, and start the server:
 ```bash
 cd backend
 npm install
-npm start # or node server.js
+npm start # runs "node server.js"
 ```
 The backend will run on `http://localhost:5000` by default.
 
@@ -78,10 +92,12 @@ cd frontend
 npm install
 npm run dev
 ```
-The frontend will typically run on `http://localhost:5173`.
+The frontend will run on `http://localhost:5173` with automated proxying to the backend API.
 
-### 3. Android App
-The `android` directory contains the source code for building the APK/AAB. It serves as a TWA (Trusted Web Activity) wrapping the deployed frontend URL, offering native-like installation.
+### 3. Android App & Direct APK Installation
+- **Root APK (`SafeMesh.apk`)**: Located right at the repository root (`./SafeMesh.apk`), outside all subfolders, ready for direct transfer and installation on any Android device.
+- **In-App Direct Download**: When launching the web app on any device, a prominent **"Download SafeMesh Android App (.APK)"** banner is displayed right at the top, enabling instant download with one tap.
+- **Android Source**: The `android/` directory contains the complete source code, keystore, and Gradle build files for building and signing the app.
 
 ## Product Principles & Impact
 

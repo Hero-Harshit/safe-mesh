@@ -24,8 +24,8 @@ def twaManifest = [
     applicationId: 'com.safehelp.app',
     hostName: 'muj-cnaf.vercel.app', // The domain being opened in the TWA.
     launchUrl: '/', // The start path for the TWA. Must be relative to the domain.
-    name: 'SafeHelp', // The application name.
-    launcherName: 'SafeHelp', // The name shown on the Android Launcher.
+    name: 'SafeMesh', // The application name.
+    launcherName: 'SafeMesh', // The name shown on the Android Launcher.
     themeColor: '#EF4444', // The color used for the status bar.
     themeColorDark: '#000000', // The color used for the dark status bar.
     navigationColor: '#000000', // The color used for the navigation bar.

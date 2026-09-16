@@ -73,10 +73,22 @@ router.get('/callback', async (req, res) => {
   }
 });
 
+const mongoose = require('mongoose');
+
 // GET /api/uber/status - Get connection status safely
 router.get('/status', async (req, res) => {
   try {
     const providerUserId = 'sandbox-user-1';
+
+    if (mongoose.connection.readyState !== 1) {
+      return res.json({
+        success: true,
+        connected: false,
+        environment: uberConfig.env,
+        notice: 'Database offline: running in sandbox preview mode'
+      });
+    }
+
     const connection = await UberConnection.findOne({ providerUserId });
 
     if (!connection) {
@@ -107,6 +119,9 @@ router.get('/status', async (req, res) => {
 router.post('/disconnect', async (req, res) => {
   try {
     const providerUserId = 'sandbox-user-1';
+    if (mongoose.connection.readyState !== 1) {
+      return res.json({ success: true, message: 'Disconnected (memory mode)' });
+    }
     await UberConnection.deleteOne({ providerUserId });
     
     res.json({ success: true, message: 'Disconnected' });

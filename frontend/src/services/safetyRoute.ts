@@ -25,7 +25,7 @@ export interface EscapeRouteResponse {
 }
 
 export async function getEscapeRoute(latitude: number, longitude: number): Promise<EscapeRouteResponse> {
-  const baseUrl = 'https://muj-k53c.onrender.com';
+  const baseUrl = import.meta.env.VITE_API_BASE_URL ?? '';
   
   try {
     const response = await fetch(`${baseUrl}/api/safety/escape-route`, {

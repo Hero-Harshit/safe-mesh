@@ -122,10 +122,28 @@ export function initNativeBridge() {
   });
 }
 
+function isAndroid(): boolean {
+  return typeof navigator !== 'undefined' && /android/i.test(navigator.userAgent);
+}
+
 export async function requestBluetoothPermissions(): Promise<boolean> {
   return new Promise((resolve) => {
-    bluetoothResultResolvers.push(resolve);
-    window.location.href = "intent://bluetooth#Intent;scheme=safehelp;package=com.safehelp.app;end";
+    if (!isAndroid()) {
+      return resolve(false);
+    }
+    const timer = setTimeout(() => {
+      resolve(false);
+    }, 2000);
+    bluetoothResultResolvers.push((granted) => {
+      clearTimeout(timer);
+      resolve(granted);
+    });
+    try {
+      window.location.href = "intent://bluetooth#Intent;scheme=safehelp;package=com.safehelp.app;end";
+    } catch {
+      clearTimeout(timer);
+      resolve(false);
+    }
   });
 }
 
@@ -135,8 +153,22 @@ export function areBluetoothPermissionsGranted(): boolean | null {
 
 export async function requestSmsPermissions(): Promise<boolean> {
   return new Promise((resolve) => {
-    smsResultResolvers.push(resolve);
-    window.location.href = "intent://sms#Intent;scheme=safehelp;package=com.safehelp.app;end";
+    if (!isAndroid()) {
+      return resolve(false);
+    }
+    const timer = setTimeout(() => {
+      resolve(false);
+    }, 2000);
+    smsResultResolvers.push((granted) => {
+      clearTimeout(timer);
+      resolve(granted);
+    });
+    try {
+      window.location.href = "intent://sms#Intent;scheme=safehelp;package=com.safehelp.app;end";
+    } catch {
+      clearTimeout(timer);
+      resolve(false);
+    }
   });
 }
 
@@ -146,53 +178,130 @@ export function areSmsPermissionsGranted(): boolean | null {
 
 export async function pickNativeContact(): Promise<{name: string, phone: string} | null> {
   return new Promise((resolve) => {
-    contactResultResolvers.push(resolve);
-    window.location.href = "intent://contact_picker#Intent;scheme=safehelp;package=com.safehelp.app;end";
+    if (!isAndroid()) {
+      return resolve(null);
+    }
+    const timer = setTimeout(() => resolve(null), 5000);
+    contactResultResolvers.push((c) => {
+      clearTimeout(timer);
+      resolve(c);
+    });
+    try {
+      window.location.href = "intent://contact_picker#Intent;scheme=safehelp;package=com.safehelp.app;end";
+    } catch {
+      clearTimeout(timer);
+      resolve(null);
+    }
   });
 }
 
 export async function syncEmergencyContactsToNative(contacts: {name: string, phone: string}[]): Promise<void> {
   return new Promise((resolve) => {
+    if (!isAndroid()) return resolve();
     const contactsJson = encodeURIComponent(JSON.stringify(contacts));
-    window.location.href = `intent://sync_contacts?contacts=${contactsJson}#Intent;scheme=safehelp;package=com.safehelp.app;end`;
+    try {
+      window.location.href = `intent://sync_contacts?contacts=${contactsJson}#Intent;scheme=safehelp;package=com.safehelp.app;end`;
+    } catch {
+      // ignore
+    }
     setTimeout(resolve, 300);
   });
 }
 
 export async function sendEmergencySms(contacts: {name: string, phone: string}[], locationUrl: string | null): Promise<SmsSendResult> {
   return new Promise((resolve) => {
-    smsActionResolvers.push(resolve);
+    if (!isAndroid()) {
+      return resolve({ status: 'FAILED', error: 'NATIVE_SMS_UNAVAILABLE' });
+    }
+    const timer = setTimeout(() => resolve({ status: 'ERROR', error: 'TIMEOUT' }), 5000);
+    smsActionResolvers.push((res) => {
+      clearTimeout(timer);
+      resolve(res);
+    });
     const contactsJson = encodeURIComponent(JSON.stringify(contacts));
     const locString = encodeURIComponent(locationUrl || "Unavailable");
-    window.location.href = `intent://send_sms?contacts=${contactsJson}&location=${locString}#Intent;scheme=safehelp;package=com.safehelp.app;end`;
+    try {
+      window.location.href = `intent://send_sms?contacts=${contactsJson}&location=${locString}#Intent;scheme=safehelp;package=com.safehelp.app;end`;
+    } catch {
+      clearTimeout(timer);
+      resolve({ status: 'ERROR', error: 'INTENT_LAUNCH_FAILED' });
+    }
   });
 }
 
 export async function startEmergencyBeacon(): Promise<BleResult> {
   return new Promise((resolve) => {
-    bleActionResolvers.push(resolve);
-    window.location.href = "intent://ble_start#Intent;scheme=safehelp;package=com.safehelp.app;end";
+    if (!isAndroid()) {
+      return resolve({ success: false, running: false, error: 'NOT_ON_ANDROID' });
+    }
+    const timer = setTimeout(() => resolve({ success: false, running: false, error: 'TIMEOUT' }), 3000);
+    bleActionResolvers.push((res) => {
+      clearTimeout(timer);
+      resolve(res);
+    });
+    try {
+      window.location.href = "intent://ble_start#Intent;scheme=safehelp;package=com.safehelp.app;end";
+    } catch {
+      clearTimeout(timer);
+      resolve({ success: false, running: false, error: 'INTENT_FAILED' });
+    }
   });
 }
 
 export async function stopEmergencyBeacon(): Promise<BleResult> {
   return new Promise((resolve) => {
-    bleActionResolvers.push(resolve);
-    window.location.href = "intent://ble_stop#Intent;scheme=safehelp;package=com.safehelp.app;end";
+    if (!isAndroid()) {
+      return resolve({ success: true, running: false });
+    }
+    const timer = setTimeout(() => resolve({ success: true, running: false }), 2000);
+    bleActionResolvers.push((res) => {
+      clearTimeout(timer);
+      resolve(res);
+    });
+    try {
+      window.location.href = "intent://ble_stop#Intent;scheme=safehelp;package=com.safehelp.app;end";
+    } catch {
+      clearTimeout(timer);
+      resolve({ success: true, running: false });
+    }
   });
 }
 
 export async function startGuardianScanner(): Promise<BleResult> {
   return new Promise((resolve) => {
-    bleActionResolvers.push(resolve);
-    window.location.href = "intent://ble_scan_start#Intent;scheme=safehelp;package=com.safehelp.app;end";
+    if (!isAndroid()) {
+      return resolve({ success: false, running: false, error: 'NOT_ON_ANDROID' });
+    }
+    const timer = setTimeout(() => resolve({ success: false, running: false, error: 'TIMEOUT' }), 3000);
+    bleActionResolvers.push((res) => {
+      clearTimeout(timer);
+      resolve(res);
+    });
+    try {
+      window.location.href = "intent://ble_scan_start#Intent;scheme=safehelp;package=com.safehelp.app;end";
+    } catch {
+      clearTimeout(timer);
+      resolve({ success: false, running: false, error: 'INTENT_FAILED' });
+    }
   });
 }
 
 export async function stopGuardianScanner(): Promise<BleResult> {
   return new Promise((resolve) => {
-    bleActionResolvers.push(resolve);
-    window.location.href = "intent://ble_scan_stop#Intent;scheme=safehelp;package=com.safehelp.app;end";
+    if (!isAndroid()) {
+      return resolve({ success: true, running: false });
+    }
+    const timer = setTimeout(() => resolve({ success: true, running: false }), 2000);
+    bleActionResolvers.push((res) => {
+      clearTimeout(timer);
+      resolve(res);
+    });
+    try {
+      window.location.href = "intent://ble_scan_stop#Intent;scheme=safehelp;package=com.safehelp.app;end";
+    } catch {
+      clearTimeout(timer);
+      resolve({ success: true, running: false });
+    }
   });
 }
 
@@ -202,7 +311,15 @@ export function onEmergencyBeaconDetected(callback: (event: BleScanEvent) => voi
 
 export async function startEmergencyCall(_phoneNumber: string, delayMs: number = 0): Promise<void> {
   return new Promise((resolve) => {
-    window.location.href = `intent://call?delay=${delayMs}#Intent;scheme=safehelp;package=com.safehelp.app;end`;
+    if (!isAndroid()) {
+      window.location.href = `tel:${_phoneNumber || '112'}`;
+      return resolve();
+    }
+    try {
+      window.location.href = `intent://call?delay=${delayMs}#Intent;scheme=safehelp;package=com.safehelp.app;end`;
+    } catch {
+      window.location.href = `tel:${_phoneNumber || '112'}`;
+    }
     setTimeout(resolve, 500);
   });
 }

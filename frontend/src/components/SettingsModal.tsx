@@ -178,6 +178,18 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose, onShowToa
             <p className="about-desc">
               SafeMesh is a distributed, privacy-first personal safety network engineered with zero-knowledge encryption and offline peer mesh failover.
             </p>
+            <div className="about-apk-download-row">
+              <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Android Native Package:</span>
+              <a
+                href="/SafeMesh.apk"
+                download="SafeMesh.apk"
+                className="apk-download-btn"
+                style={{ padding: '6px 12px', fontSize: '0.75rem' }}
+                title="Download SafeMesh APK"
+              >
+                <span>⬇️</span> Download .APK
+              </a>
+            </div>
           </div>
         </div>
       </div>

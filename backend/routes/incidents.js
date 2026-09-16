@@ -3,6 +3,12 @@ const router = express.Router();
 const Incident = require('../models/Incident');
 const IncidentEvent = require('../models/IncidentEvent');
 
+const mongoose = require('mongoose');
+const isDbConnected = () => mongoose.connection.readyState === 1;
+
+// In-memory fallback stores for demo / offline operation without MongoDB
+const memoryIncidents = new Map();
+
 // POST /api/incidents - Start a new incident
 router.post('/', async (req, res) => {
   try {
@@ -21,19 +27,42 @@ router.post('/', async (req, res) => {
     const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
     const incidentId = `INC_${dateStr}_${emergencyId}_${Date.now()}`;
 
-    const incident = new Incident({
-      incidentId,
-      emergencyId,
-      sender: {
-        safehelpId: sender.safehelpId,
-        location: {
-          latitude: location?.latitude,
-          longitude: location?.longitude
+    if (isDbConnected()) {
+      const incident = new Incident({
+        incidentId,
+        emergencyId,
+        sender: {
+          safehelpId: sender.safehelpId,
+          location: {
+            latitude: location?.latitude,
+            longitude: location?.longitude
+          }
         }
-      }
-    });
-
-    await incident.save();
+      });
+      await incident.save();
+    } else {
+      memoryIncidents.set(incidentId, {
+        incidentId,
+        emergencyId,
+        status: 'active',
+        sender: {
+          safehelpId: sender.safehelpId,
+          location: {
+            latitude: location?.latitude,
+            longitude: location?.longitude
+          }
+        },
+        detectionSummary: {
+          totalGuardians: 0,
+          firstDetectedAt: null,
+          lastDetectedAt: null,
+          uniqueGuardians: []
+        },
+        createdAt: new Date(),
+        endedAt: null
+      });
+      console.log(`SAFEHELP_INCIDENT: [in-memory] incident created ${incidentId}`);
+    }
 
     console.log(`SAFEHELP_INCIDENT: incident created ${incidentId}`);
 
@@ -78,6 +107,39 @@ router.post('/:incidentId/events', async (req, res) => {
     }
 
     // 1. Find and verify incident
+    if (!isDbConnected()) {
+      const inc = memoryIncidents.get(incidentId);
+      if (!inc) {
+        return res.status(404).json({
+          success: false,
+          error: 'INCIDENT_NOT_FOUND',
+          message: 'The requested incident does not exist.'
+        });
+      }
+      if (inc.status !== 'active') {
+        return res.status(400).json({
+          success: false,
+          error: 'INCIDENT_NOT_ACTIVE',
+          message: 'This incident is no longer active.'
+        });
+      }
+      if (inc.emergencyId !== emergencyId) {
+        return res.status(400).json({
+          success: false,
+          error: 'EMERGENCY_ID_MISMATCH',
+          message: 'The emergencyId does not match the incident.'
+        });
+      }
+      if (!inc.detectionSummary.uniqueGuardians.includes(guardianId)) {
+        inc.detectionSummary.uniqueGuardians.push(guardianId);
+        inc.detectionSummary.totalGuardians = inc.detectionSummary.uniqueGuardians.length;
+      }
+      return res.json({
+        success: true,
+        eventId: `mem_evt_${Date.now()}`
+      });
+    }
+
     const incident = await Incident.findOne({ incidentId });
     if (!incident) {
       return res.status(404).json({
@@ -184,6 +246,20 @@ router.post('/:incidentId/end', async (req, res) => {
   try {
     const { incidentId } = req.params;
     const { endedAt } = req.body;
+
+    if (!isDbConnected()) {
+      const inc = memoryIncidents.get(incidentId);
+      if (!inc || inc.status !== 'active') {
+        return res.status(404).json({
+          success: false,
+          error: 'INCIDENT_NOT_FOUND',
+          message: 'Incident not found or already ended.'
+        });
+      }
+      inc.status = 'ended';
+      inc.endedAt = endedAt ? new Date(endedAt) : new Date();
+      return res.json({ success: true });
+    }
 
     const incident = await Incident.findOneAndUpdate(
       { incidentId, status: 'active' },

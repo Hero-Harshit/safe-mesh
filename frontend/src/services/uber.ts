@@ -103,12 +103,27 @@ export async function bookUber(pickup: { latitude: number, longitude: number }, 
 }
 
 export async function getUberRideStatus(requestId: string): Promise<UberBookingResponse> {
-  const res = await fetch(`${API_BASE}/api/uber/requests/${requestId}`);
-  const data = await res.json();
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE}/api/uber/requests/${requestId}`);
+  } catch (err: any) {
+    const error = new Error(`Network error while checking ride status: ${err.message}`);
+    (error as any).code = 'NETWORK_ERROR';
+    throw error;
+  }
+
+  let data: any;
+  try {
+    data = await res.json();
+  } catch {
+    const error = new Error(`Invalid server response (HTTP ${res.status})`);
+    (error as any).code = 'INVALID_RESPONSE';
+    throw error;
+  }
 
   if (!res.ok || !data.success) {
     const error = new Error(data.error || 'Failed to get ride status.');
-    (error as any).code = data.error;
+    (error as any).code = data.error || 'UNKNOWN_ERROR';
     throw error;
   }
 
@@ -116,9 +131,14 @@ export async function getUberRideStatus(requestId: string): Promise<UberBookingR
 }
 
 export async function cancelUberRide(requestId: string): Promise<boolean> {
-  const res = await fetch(`${API_BASE}/api/uber/requests/${requestId}`, {
-    method: 'DELETE'
-  });
-  const data = await res.json();
-  return data.success;
+  try {
+    const res = await fetch(`${API_BASE}/api/uber/requests/${requestId}`, {
+      method: 'DELETE'
+    });
+    const data = await res.json().catch(() => null);
+    return Boolean(data?.success);
+  } catch (error) {
+    console.error('Error cancelling Uber ride:', error);
+    return false;
+  }
 }
