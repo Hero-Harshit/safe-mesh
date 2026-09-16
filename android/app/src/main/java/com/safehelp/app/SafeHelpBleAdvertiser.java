@@ -63,12 +63,24 @@ public class SafeHelpBleAdvertiser {
     // @SuppressLint("MissingPermission") because the caller (BleActionActivity)
     // guarantees permissions are granted before this method is invoked.
 
+    public interface BleAdvertiseListener {
+        void onStartSuccess(String emergencyId);
+        void onStartFailure(int errorCode);
+    }
+
+    private BleAdvertiseListener currentListener;
+
+    public void setListener(BleAdvertiseListener listener) {
+        this.currentListener = listener;
+    }
+
     @SuppressLint("MissingPermission")
     public JSONObject startEmergencyBeacon(Context context) {
         Log.i(TAG, "Checking permissions");
         try {
             if (isRunning) {
                 Log.w(TAG, "Already advertising");
+                if (currentListener != null) currentListener.onStartSuccess(currentEmergencyId);
                 JSONObject r = new JSONObject();
                 r.put("type", "BLE_ADVERTISING_RESULT");
                 r.put("success", true);
@@ -80,6 +92,7 @@ public class SafeHelpBleAdvertiser {
             // Double-check — BleActionActivity should have already enforced this.
             if (!BluetoothPermissionManager.areBluetoothPermissionsGranted(context)) {
                 Log.e(TAG, "Permission check failed inside advertiser");
+                if (currentListener != null) currentListener.onStartFailure(-1);
                 return errorResult("BLUETOOTH_PERMISSION_DENIED");
             }
 
@@ -90,12 +103,14 @@ public class SafeHelpBleAdvertiser {
                     (BluetoothManager) context.getSystemService(Context.BLUETOOTH_SERVICE);
             if (bluetoothManager == null) {
                 Log.e(TAG, "BluetoothManager unavailable");
+                if (currentListener != null) currentListener.onStartFailure(-1);
                 return errorResult("BLUETOOTH_UNAVAILABLE");
             }
 
             BluetoothAdapter adapter = bluetoothManager.getAdapter();
             if (adapter == null) {
                 Log.e(TAG, "BluetoothAdapter null");
+                if (currentListener != null) currentListener.onStartFailure(-1);
                 return errorResult("BLUETOOTH_UNAVAILABLE");
             }
 
@@ -103,6 +118,7 @@ public class SafeHelpBleAdvertiser {
             // checked/requested it above via BleActionActivity.
             if (!adapter.isEnabled()) {
                 Log.e(TAG, "Bluetooth is disabled");
+                if (currentListener != null) currentListener.onStartFailure(-1);
                 return errorResult("BLUETOOTH_DISABLED");
             }
 
@@ -110,6 +126,7 @@ public class SafeHelpBleAdvertiser {
             bleAdvertiser = adapter.getBluetoothLeAdvertiser();
             if (bleAdvertiser == null) {
                 Log.e(TAG, "BLE advertising not supported on this hardware");
+                if (currentListener != null) currentListener.onStartFailure(-1);
                 return errorResult("BLE_ADVERTISING_UNSUPPORTED");
             }
 
@@ -137,6 +154,9 @@ public class SafeHelpBleAdvertiser {
                 @Override
                 public void onStartSuccess(AdvertiseSettings settingsInEffect) {
                     Log.i(TAG, "Advertising started");
+                    if (currentListener != null) {
+                        currentListener.onStartSuccess(currentEmergencyId);
+                    }
                 }
 
                 @Override
@@ -144,6 +164,9 @@ public class SafeHelpBleAdvertiser {
                     Log.e(TAG, "Advertising failed with error code: " + errorCode);
                     isRunning = false;
                     currentEmergencyId = null;
+                    if (currentListener != null) {
+                        currentListener.onStartFailure(errorCode);
+                    }
                 }
             };
 

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="shortcut_emergency_label">Emergency</string>
+    <string-array name="emergency_synonyms">
+        <item>Emergency</item>
+        <item>Emergency help</item>
+        <item>Safety</item>
+        <item>SOS</item>
+        <item>Help</item>
+    </string-array>
+</resources>

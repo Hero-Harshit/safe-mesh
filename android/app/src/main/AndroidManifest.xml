@@ -231,5 +231,11 @@
                 <data android:scheme="safehelp" android:host="ble_scan_stop" />
             </intent-filter>
         </activity>
+        
+        <activity android:name=".SafeHelpEmergencyActivity" android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+            </intent-filter>
+        </activity>
     </application>
 </manifest>
