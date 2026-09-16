@@ -99,6 +99,12 @@ public class BleActionActivity extends Activity {
             result = advertiser.startEmergencyBeacon(this);
         } else if ("ble_stop".equals(action)) {
             result = advertiser.stopEmergencyBeacon(this);
+        } else if ("ble_scan_start".equals(action)) {
+            SafeHelpBleScanner scanner = SafeHelpBleScanner.getInstance();
+            result = scanner.startGuardianScanner(this);
+        } else if ("ble_scan_stop".equals(action)) {
+            SafeHelpBleScanner scanner = SafeHelpBleScanner.getInstance();
+            result = scanner.stopGuardianScanner(this);
         }
 
         if (result != null) {
