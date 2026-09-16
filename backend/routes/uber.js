@@ -99,7 +99,7 @@ router.get('/status', async (req, res) => {
     });
   } catch (error) {
     console.error('Error checking Uber status:', error);
-    res.status(500).json({ success: false, error: 'SERVER_ERROR' });
+    res.status(500).json({ success: false, error: 'SERVER_ERROR', message: error.message });
   }
 });
 
@@ -181,7 +181,8 @@ router.post('/book', async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'SERVER_ERROR',
-      message: 'Failed to book sandbox ride due to a server error.'
+      message: 'Failed to book sandbox ride due to a server error.',
+      details: error.message
     });
   }
 });
