@@ -260,7 +260,7 @@ export const StartupPermissionFlow: React.FC<StartupPermissionFlowProps> = ({
             </div>
             <h3 className="step-title">SMS ACCESS</h3>
             <p className="step-explanation">
-              SafeHelp uses SMS to notify your emergency contacts when an SOS is activated.
+              SafeMesh uses SMS to notify your emergency contacts when an SOS is activated.
             </p>
 
             <div className="step-actions">

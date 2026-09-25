@@ -38,10 +38,14 @@ export const EmergencyMode: React.FC<EmergencyModeProps> = ({
   const beaconTriggeredRef = React.useRef(false);
   const callTriggeredRef = React.useRef(false);
 
+  const primaryContact = contacts.find((c) => c.isPrimary) || contacts[0];
+  const emergencyTargetNumber = primaryContact?.phone || '112';
+  const emergencyTargetName = primaryContact?.name ? `${primaryContact.name} (${primaryContact.phone})` : '112 (National Emergency)';
+
   useEffect(() => {
     if (secondsActive === 0 && !callTriggeredRef.current) {
       // Fire immediately to bypass Chrome intent restrictions, but tell Android to wait 20s
-      startEmergencyCall("9422039955", 20000).catch(console.error);
+      startEmergencyCall(emergencyTargetNumber, 20000).catch(console.error);
     }
     if (secondsActive === 10 && !level30Alert) {
       setLevel30Alert(true);
@@ -53,7 +57,7 @@ export const EmergencyMode: React.FC<EmergencyModeProps> = ({
       triggerHaptic([100, 100, 100, 100, 100]);
       // Call is already executing on the native side due to the 20s delayed intent
     }
-  }, [secondsActive, level30Alert]);
+  }, [secondsActive, level30Alert, emergencyTargetNumber]);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -173,15 +177,15 @@ export const EmergencyMode: React.FC<EmergencyModeProps> = ({
 
         {/* Immediate Emergency Action Shortcuts */}
         <div className="emergency-action-stack">
-          {/* Level 3: Auto 112 Call (T=20s) */}
+          {/* Level 3: Auto Emergency Call (T=20s) */}
           <div className="emergency-hero-btn" style={{ cursor: 'default', backgroundColor: '#1E293B' }}>
             <div className="btn-icon-box bg-white-soft">
               <PhoneCallIcon size={22} color="#FFFFFF" />
             </div>
             <div className="btn-copy">
-              <span className="btn-headline">Auto-Dial 112 (9422039955)</span>
+              <span className="btn-headline">Auto-Dial {emergencyTargetName}</span>
               <span className="btn-tagline">
-                {level60Uber ? 'Call Initiated. Connecting...' : 'Will auto-dial in 20s...'}
+                {level60Uber ? `Connecting to ${emergencyTargetNumber}...` : 'Will auto-dial in 20s...'}
               </span>
             </div>
           </div>

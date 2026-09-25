@@ -20,6 +20,7 @@ import {
   deleteEmergencyContact,
   triggerHaptic,
 } from '../services/emergency';
+import { syncEmergencyContactsToNative } from '../services/native';
 
 import type { RealLocationData } from '../services/location';
 import {
@@ -96,9 +97,11 @@ export default function Home({ onNavigate }: HomeProps) {
     }
   }, [permissions.location, loadLocation]);
 
-  // 3. Load contacts
+  // 3. Load contacts and sync to native
   useEffect(() => {
-    setContacts(getEmergencyContacts());
+    const loaded = getEmergencyContacts();
+    setContacts(loaded);
+    syncEmergencyContactsToNative(loaded.map(c => ({ name: c.name, phone: c.phone }))).catch(() => {});
   }, []);
 
   const showToast = useCallback((msg: string) => {
@@ -159,11 +162,13 @@ export default function Home({ onNavigate }: HomeProps) {
   const handleAddContact = (contactData: Omit<EmergencyContact, 'id'>) => {
     const updated = saveEmergencyContact(contactData);
     setContacts(updated);
+    syncEmergencyContactsToNative(updated.map(c => ({ name: c.name, phone: c.phone }))).catch(() => {});
   };
 
   const handleDeleteContact = (id: string) => {
     const updated = deleteEmergencyContact(id);
     setContacts(updated);
+    syncEmergencyContactsToNative(updated.map(c => ({ name: c.name, phone: c.phone }))).catch(() => {});
   };
 
   return (

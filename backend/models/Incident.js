@@ -31,6 +31,11 @@ const incidentSchema = new mongoose.Schema({
     lastDetectedAt: { type: Date, default: null },
     uniqueGuardians: [{ type: String }] // Used internally to track unique guardians accurately
   },
+  triggerSource: {
+    type: String,
+    default: 'web',
+    index: true
+  },
   createdAt: { type: Date, default: Date.now, index: true },
   endedAt: { type: Date, default: null }
 });

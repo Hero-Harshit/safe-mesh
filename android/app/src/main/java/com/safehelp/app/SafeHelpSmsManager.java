@@ -38,13 +38,7 @@ public class SafeHelpSmsManager {
                 if (savedContacts != null && !savedContacts.isEmpty()) {
                     contactsArray = new JSONArray(savedContacts);
                 } else {
-                    // Fallback to test contact for widget testing
-                    contactsArray = new JSONArray();
-                    JSONObject testContact = new JSONObject();
-                    testContact.put("name", "Test Guardian");
-                    testContact.put("phone", "9422039955");
-                    contactsArray.put(testContact);
-                    Log.i(TAG, "No contacts found. Using fallback test contact: 9422039955");
+                    Log.w(TAG, "No emergency contacts configured in SharedPreferences.");
                 }
             }
 

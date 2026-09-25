@@ -111,7 +111,7 @@ export function initNativeBridge() {
         const decodedPayload = decodeURIComponent(payloadStr);
         const event = JSON.parse(decodedPayload) as BleScanEvent;
         
-        if (event.type === 'SAFEHELP_EMERGENCY_DETECTED') {
+        if (event.type === 'SAFEHELP_EMERGENCY_DETECTED' || event.type === 'SAFEMESH_EMERGENCY_DETECTED') {
           bleScanEventCallbacks.forEach(cb => cb(event));
         }
       } catch (e) {
@@ -309,16 +309,17 @@ export function onEmergencyBeaconDetected(callback: (event: BleScanEvent) => voi
   bleScanEventCallbacks.push(callback);
 }
 
-export async function startEmergencyCall(_phoneNumber: string, delayMs: number = 0): Promise<void> {
+export async function startEmergencyCall(phoneNumber: string = '112', delayMs: number = 0): Promise<void> {
   return new Promise((resolve) => {
+    const targetNumber = phoneNumber || '112';
     if (!isAndroid()) {
-      window.location.href = `tel:${_phoneNumber || '112'}`;
+      window.location.href = `tel:${targetNumber}`;
       return resolve();
     }
     try {
-      window.location.href = `intent://call?delay=${delayMs}#Intent;scheme=safehelp;package=com.safehelp.app;end`;
+      window.location.href = `intent://call?number=${encodeURIComponent(targetNumber)}&delay=${delayMs}#Intent;scheme=safehelp;package=com.safehelp.app;end`;
     } catch {
-      window.location.href = `tel:${_phoneNumber || '112'}`;
+      window.location.href = `tel:${targetNumber}`;
     }
     setTimeout(resolve, 500);
   });

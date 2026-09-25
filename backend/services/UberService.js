@@ -1,6 +1,10 @@
 const UberApiClient = require('./UberApiClient');
 const BookingSession = require('../models/BookingSession');
 const SafeRide = require('../models/SafeRide');
+const mongoose = require('mongoose');
+
+const isDbConnected = () => mongoose.connection.readyState === 1;
+const memorySafeRides = new Map();
 
 class UberService {
   /**
@@ -34,10 +38,17 @@ class UberService {
   async bookRide(providerUserId, pickup, destination) {
     // 0. Duplicate Ride Protection
     // Check if there is already an active ride for this user
-    const existingRide = await SafeRide.findOne({
-      providerUserId,
-      status: { $nin: ['completed', 'cancelled', 'failed'] }
-    });
+    let existingRide = null;
+    if (isDbConnected()) {
+      existingRide = await SafeRide.findOne({
+        providerUserId,
+        status: { $nin: ['completed', 'cancelled', 'failed'] }
+      });
+    } else {
+      existingRide = Array.from(memorySafeRides.values()).find(
+        (r) => r.providerUserId === providerUserId && !['completed', 'cancelled', 'failed'].includes(r.status)
+      );
+    }
 
     if (existingRide) {
       // Return the existing ride immediately, do not create a new one
@@ -82,8 +93,9 @@ class UberService {
       throw new Error('RIDE_REQUEST_FAILED');
     }
 
-    // 5. Save to MongoDB SafeRide
-    const safeRide = await SafeRide.create({
+    // 5. Save to MongoDB or In-Memory
+    let safeRide;
+    const rideData = {
       providerUserId,
       provider: 'uber',
       environment: 'sandbox',
@@ -98,7 +110,19 @@ class UberService {
       estimatedFare: estimate.fare.display,
       currency: estimate.fare.currency_code,
       status: requestResult.status || 'processing'
-    });
+    };
+
+    if (isDbConnected()) {
+      safeRide = await SafeRide.create(rideData);
+    } else {
+      safeRide = {
+        ...rideData,
+        _id: `mem_ride_${Date.now()}`,
+        createdAt: new Date(),
+        save: async function () { return this; }
+      };
+      memorySafeRides.set(safeRide.providerRideId, safeRide);
+    }
 
     // 6. Return normalized structure
     return this._formatRideResponse(safeRide, estimate);
@@ -108,7 +132,10 @@ class UberService {
    * Gets ride status from Uber, syncs it to MongoDB, returns normalized.
    */
   async getRideStatus(providerUserId, requestId) {
-    const safeRide = await SafeRide.findOne({ providerRideId: requestId, providerUserId });
+    const safeRide = isDbConnected()
+      ? await SafeRide.findOne({ providerRideId: requestId, providerUserId })
+      : memorySafeRides.get(requestId);
+
     if (!safeRide) {
       throw new Error('RIDE_NOT_FOUND');
     }
@@ -137,7 +164,10 @@ class UberService {
    * Cancels the Sandbox ride and updates MongoDB.
    */
   async cancelRide(providerUserId, requestId) {
-    const safeRide = await SafeRide.findOne({ providerRideId: requestId, providerUserId });
+    const safeRide = isDbConnected()
+      ? await SafeRide.findOne({ providerRideId: requestId, providerUserId })
+      : memorySafeRides.get(requestId);
+
     if (!safeRide) {
       throw new Error('RIDE_NOT_FOUND');
     }

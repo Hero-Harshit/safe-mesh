@@ -1,4 +1,5 @@
 const axios = require('axios');
+const mongoose = require('mongoose');
 const uberConfig = require('../config/uber');
 const UberConnection = require('../models/UberConnection');
 const UberAuthService = require('./UberAuthService');
@@ -8,6 +9,10 @@ class UberApiClient {
    * Helper to get a configured Axios instance for the given user.
    */
   async getClient(providerUserId) {
+    if (mongoose.connection.readyState !== 1) {
+      throw new Error('UBER_NOT_CONNECTED');
+    }
+
     const connection = await UberConnection.findOne({ providerUserId });
     
     if (!connection) {

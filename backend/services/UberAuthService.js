@@ -35,6 +35,10 @@ function decrypt(text) {
   return decrypted.toString();
 }
 
+const mongoose = require('mongoose');
+const isDbConnected = () => mongoose.connection.readyState === 1;
+const memoryStates = new Set();
+
 class UberAuthService {
   /**
    * Decrypts an encrypted token.
@@ -48,7 +52,11 @@ class UberAuthService {
    */
   async generateAuthUrl() {
     const state = crypto.randomBytes(16).toString('hex');
-    await OAuthState.create({ state });
+    if (isDbConnected()) {
+      await OAuthState.create({ state });
+    } else {
+      memoryStates.add(state);
+    }
 
     const url = new URL(`${uberConfig.loginUrl}/oauth/v2/authorize`);
     url.searchParams.append('client_id', uberConfig.clientId);
@@ -65,12 +73,19 @@ class UberAuthService {
    */
   async exchangeCode(code, state) {
     // Validate state
-    const validState = await OAuthState.findOne({ state });
-    if (!validState) {
-      throw new Error('UBER_OAUTH_STATE_MISMATCH');
+    if (isDbConnected()) {
+      const validState = await OAuthState.findOne({ state });
+      if (!validState) {
+        throw new Error('UBER_OAUTH_STATE_MISMATCH');
+      }
+      // State is single-use
+      await OAuthState.deleteOne({ state });
+    } else {
+      if (!memoryStates.has(state)) {
+        throw new Error('UBER_OAUTH_STATE_MISMATCH');
+      }
+      memoryStates.delete(state);
     }
-    // State is single-use
-    await OAuthState.deleteOne({ state });
 
     // Exchange code for token
     const tokenUrl = `${uberConfig.loginUrl}/oauth/v2/token`;

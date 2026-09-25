@@ -14,7 +14,8 @@ import androidx.core.content.ContextCompat;
 public class CallActionActivity extends Activity {
 
     private static final int PERMISSION_REQUEST_CALL_PHONE = 4001;
-    private static final String DEFAULT_EMERGENCY_NUMBER = "9422039955";
+    private static final String DEFAULT_EMERGENCY_NUMBER = "112";
+    private String emergencyNumberToDial = DEFAULT_EMERGENCY_NUMBER;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -30,6 +31,10 @@ public class CallActionActivity extends Activity {
                     Log.e("CallActionActivity", "Invalid delay parameter");
                 }
             }
+            String numberParam = getIntent().getData().getQueryParameter("number");
+            if (numberParam != null && !numberParam.trim().isEmpty()) {
+                emergencyNumberToDial = numberParam.trim();
+            }
         }
         
         final long finalDelay = delayMs;
@@ -38,7 +43,7 @@ public class CallActionActivity extends Activity {
             ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.CALL_PHONE}, PERMISSION_REQUEST_CALL_PHONE);
         } else {
             if (finalDelay > 0) {
-                Log.d("CallActionActivity", "Waiting " + finalDelay + "ms to make call...");
+                Log.d("CallActionActivity", "Waiting " + finalDelay + "ms to make call to " + emergencyNumberToDial + "...");
                 new android.os.Handler().postDelayed(this::makeCall, finalDelay);
             } else {
                 makeCall();
@@ -49,7 +54,7 @@ public class CallActionActivity extends Activity {
     private void makeCall() {
         try {
             Intent callIntent = new Intent(Intent.ACTION_CALL);
-            callIntent.setData(Uri.parse("tel:" + DEFAULT_EMERGENCY_NUMBER));
+            callIntent.setData(Uri.parse("tel:" + emergencyNumberToDial));
             startActivity(callIntent);
         } catch (SecurityException e) {
             Log.e("CallActionActivity", "Permission Denied: " + e.getMessage());

@@ -29,17 +29,18 @@ SafeMesh operates on a modular, layered architecture:
 ## Tech Stack
 
 ### Frontend & Device Layer
-- **React / TypeScript / Vite**
-- **Tailwind CSS** (for responsive design)
+- **React 19 / TypeScript / Vite**
+- **Custom Modern Responsive CSS Design System**
 - **PWA-ready architecture**
-- **Android / Trusted Web Activity (TWA)** wrappers
+- **Android Trusted Web Activity (TWA) with Native Java Intent Bridge & BLE Mesh Support**
 
 ### Backend & Intelligence
-- **Node.js API (Express)**
-- **TomTom API** (for routing & geocoding)
-- **Groq SDK** (for AI incident classification)
-- **PostgreSQL + PostGIS** (Location engine / Geospatial matching)
-- **Authentication & Event Logging**
+- **Node.js (Express 5)**
+- **TomTom Maps & Routing API** (Pedestrian routing & geocoding)
+- **Groq SDK (Llama 3.3 70B)** (Intelligent real-time emergency routing reasoning)
+- **MongoDB + Mongoose** (With automated in-memory standalone fallback)
+- **Uber Sandbox API Integration** (Automated ride dispatch pipeline)
+- **Immutable Incident & Audit Event Logging Engine**
 
 ## Prerequisites
 

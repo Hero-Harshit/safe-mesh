@@ -20,12 +20,9 @@ router.get('/callback', async (req, res) => {
   const { code, state, error: authError } = req.query;
 
   // URL of the frontend app
-  // In development, this is typically http://localhost:5173 or the Vercel URL
-  // We'll rely on the frontend being hosted at muj-cnaf.vercel.app as per instructions
-  // or a fallback frontend URI if supplied
   const frontendSandboxUrl = process.env.FRONTEND_URL 
     ? `${process.env.FRONTEND_URL}/uber-sandbox`
-    : 'https://muj-cnaf.vercel.app/uber-sandbox';
+    : 'http://localhost:5173/uber-sandbox';
 
   if (authError) {
     console.error('Uber OAuth error from provider:', authError);
@@ -42,14 +39,24 @@ router.get('/callback', async (req, res) => {
 
     const tokenExpiresAt = new Date(Date.now() + tokenData.expiresIn * 1000);
 
-    // Save connection to DB
-    // Since this is a single user test dashboard, we just upsert a single UberConnection record
-    // In a real app, you would tie this to the authenticated user's ID
     const providerUserId = 'sandbox-user-1';
 
-    await UberConnection.findOneAndUpdate(
-      { providerUserId },
-      {
+    if (mongoose.connection.readyState === 1) {
+      await UberConnection.findOneAndUpdate(
+        { providerUserId },
+        {
+          provider: 'uber',
+          environment: uberConfig.env,
+          providerUserId,
+          accessTokenEncrypted: tokenData.accessTokenEncrypted,
+          refreshTokenEncrypted: tokenData.refreshTokenEncrypted,
+          tokenExpiresAt,
+          scopes: tokenData.scopes,
+        },
+        { upsert: true, new: true }
+      );
+    } else {
+      memoryUberConnection = {
         provider: 'uber',
         environment: uberConfig.env,
         providerUserId,
@@ -57,9 +64,8 @@ router.get('/callback', async (req, res) => {
         refreshTokenEncrypted: tokenData.refreshTokenEncrypted,
         tokenExpiresAt,
         scopes: tokenData.scopes,
-      },
-      { upsert: true, new: true }
-    );
+      };
+    }
 
     // Successfully connected! Redirect to the frontend sandbox page
     res.redirect(`${frontendSandboxUrl}?success=true`);
@@ -74,22 +80,19 @@ router.get('/callback', async (req, res) => {
 });
 
 const mongoose = require('mongoose');
+let memoryUberConnection = null;
 
 // GET /api/uber/status - Get connection status safely
 router.get('/status', async (req, res) => {
   try {
     const providerUserId = 'sandbox-user-1';
 
-    if (mongoose.connection.readyState !== 1) {
-      return res.json({
-        success: true,
-        connected: false,
-        environment: uberConfig.env,
-        notice: 'Database offline: running in sandbox preview mode'
-      });
+    let connection = null;
+    if (mongoose.connection.readyState === 1) {
+      connection = await UberConnection.findOne({ providerUserId });
+    } else {
+      connection = memoryUberConnection;
     }
-
-    const connection = await UberConnection.findOne({ providerUserId });
 
     if (!connection) {
       return res.json({

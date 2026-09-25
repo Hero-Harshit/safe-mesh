@@ -8,17 +8,19 @@ const isDbConnected = () => mongoose.connection.readyState === 1;
 
 // In-memory fallback stores for demo / offline operation without MongoDB
 const memoryIncidents = new Map();
+const memoryIncidentEvents = [];
 
 // POST /api/incidents - Start a new incident
 router.post('/', async (req, res) => {
   try {
-    const { emergencyId, sender, location } = req.body;
+    const { emergencyId, sender, location, triggerSource } = req.body;
+    const senderId = sender?.safemeshId || sender?.safehelpId || sender?.userId;
 
-    if (!emergencyId || !sender || !sender.safehelpId) {
+    if (!emergencyId || !sender || !senderId) {
       return res.status(400).json({
         success: false,
         error: 'INVALID_REQUEST',
-        message: 'Missing required fields: emergencyId, sender.safehelpId'
+        message: 'Missing required fields: emergencyId, sender.safemeshId (or safehelpId)'
       });
     }
 
@@ -31,8 +33,9 @@ router.post('/', async (req, res) => {
       const incident = new Incident({
         incidentId,
         emergencyId,
+        triggerSource: triggerSource || 'web',
         sender: {
-          safehelpId: sender.safehelpId,
+          safehelpId: senderId,
           location: {
             latitude: location?.latitude,
             longitude: location?.longitude
@@ -46,7 +49,7 @@ router.post('/', async (req, res) => {
         emergencyId,
         status: 'active',
         sender: {
-          safehelpId: sender.safehelpId,
+          safehelpId: senderId,
           location: {
             latitude: location?.latitude,
             longitude: location?.longitude
@@ -59,12 +62,13 @@ router.post('/', async (req, res) => {
           uniqueGuardians: []
         },
         createdAt: new Date(),
-        endedAt: null
+        endedAt: null,
+        triggerSource: triggerSource || 'web'
       });
-      console.log(`SAFEHELP_INCIDENT: [in-memory] incident created ${incidentId}`);
+      console.log(`SAFEMESH_INCIDENT: [in-memory] incident created ${incidentId}`);
     }
 
-    console.log(`SAFEHELP_INCIDENT: incident created ${incidentId}`);
+    console.log(`SAFEMESH_INCIDENT: incident created ${incidentId}`);
 
     res.json({
       success: true,
@@ -134,9 +138,30 @@ router.post('/:incidentId/events', async (req, res) => {
         inc.detectionSummary.uniqueGuardians.push(guardianId);
         inc.detectionSummary.totalGuardians = inc.detectionSummary.uniqueGuardians.length;
       }
+      const detectedDate = new Date(detectedAt);
+      if (!inc.detectionSummary.firstDetectedAt || detectedDate < new Date(inc.detectionSummary.firstDetectedAt)) {
+        inc.detectionSummary.firstDetectedAt = detectedDate;
+      }
+      if (!inc.detectionSummary.lastDetectedAt || detectedDate > new Date(inc.detectionSummary.lastDetectedAt)) {
+        inc.detectionSummary.lastDetectedAt = detectedDate;
+      }
+      const eventId = `mem_evt_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+      memoryIncidentEvents.push({
+        _id: eventId,
+        incidentId,
+        emergencyId,
+        guardianId,
+        eventType: 'guardian_detection',
+        detectedAt: detectedDate,
+        rssi,
+        proximity,
+        location,
+        appVersion,
+        createdAt: new Date()
+      });
       return res.json({
         success: true,
-        eventId: `mem_evt_${Date.now()}`
+        eventId
       });
     }
 
@@ -200,27 +225,17 @@ router.post('/:incidentId/events', async (req, res) => {
     }
 
     // 3. Update Incident Summary Safely
-    const updateQuery = {
-      $addToSet: { 'detectionSummary.uniqueGuardians': guardianId }
-    };
-    
-    // Only set firstDetectedAt if it doesn't exist
-    if (!incident.detectionSummary.firstDetectedAt || incident.detectionSummary.firstDetectedAt > event.detectedAt) {
-        // Handled via separate logic or $min to avoid race conditions
-    }
-
-    await Incident.findOneAndUpdate(
+    const detectedDate = new Date(detectedAt);
+    const updatedIncident = await Incident.findOneAndUpdate(
       { incidentId },
       { 
         $addToSet: { 'detectionSummary.uniqueGuardians': guardianId },
-        $min: { 'detectionSummary.firstDetectedAt': event.detectedAt },
-        $max: { 'detectionSummary.lastDetectedAt': event.detectedAt }
+        $min: { 'detectionSummary.firstDetectedAt': detectedDate },
+        $max: { 'detectionSummary.lastDetectedAt': detectedDate }
       },
       { new: true }
     );
     
-    // Calculate total guardians efficiently
-    const updatedIncident = await Incident.findOne({ incidentId });
     if (updatedIncident) {
       updatedIncident.detectionSummary.totalGuardians = updatedIncident.detectionSummary.uniqueGuardians.length;
       await updatedIncident.save();
@@ -238,6 +253,65 @@ router.post('/:incidentId/events', async (req, res) => {
       error: 'SERVER_ERROR',
       message: 'Failed to record event'
     });
+  }
+});
+
+// GET /api/incidents - List recent incidents (for auditing / dashboard)
+router.get('/', async (req, res) => {
+  try {
+    if (!isDbConnected()) {
+      const list = Array.from(memoryIncidents.values());
+      return res.json({ success: true, count: list.length, incidents: list });
+    }
+
+    const incidents = await Incident.find().sort({ createdAt: -1 }).limit(50);
+    res.json({ success: true, count: incidents.length, incidents });
+  } catch (error) {
+    console.error('Error fetching incidents:', error);
+    res.status(500).json({ success: false, error: 'SERVER_ERROR', message: 'Failed to fetch incidents' });
+  }
+});
+
+// GET /api/incidents/:incidentId - Fetch single incident details
+router.get('/:incidentId', async (req, res) => {
+  try {
+    const { incidentId } = req.params;
+
+    if (!isDbConnected()) {
+      const inc = memoryIncidents.get(incidentId);
+      if (!inc) {
+        return res.status(404).json({ success: false, error: 'INCIDENT_NOT_FOUND', message: 'Incident not found' });
+      }
+      return res.json({ success: true, incident: inc });
+    }
+
+    const incident = await Incident.findOne({ incidentId });
+    if (!incident) {
+      return res.status(404).json({ success: false, error: 'INCIDENT_NOT_FOUND', message: 'Incident not found' });
+    }
+
+    res.json({ success: true, incident });
+  } catch (error) {
+    console.error('Error fetching incident:', error);
+    res.status(500).json({ success: false, error: 'SERVER_ERROR', message: 'Failed to fetch incident' });
+  }
+});
+
+// GET /api/incidents/:incidentId/events - Fetch all events for an incident (audit trail)
+router.get('/:incidentId/events', async (req, res) => {
+  try {
+    const { incidentId } = req.params;
+
+    if (!isDbConnected()) {
+      const events = memoryIncidentEvents.filter(e => e.incidentId === incidentId);
+      return res.json({ success: true, count: events.length, events });
+    }
+
+    const events = await IncidentEvent.find({ incidentId }).sort({ detectedAt: 1 });
+    res.json({ success: true, count: events.length, events });
+  } catch (error) {
+    console.error('Error fetching incident events:', error);
+    res.status(500).json({ success: false, error: 'SERVER_ERROR', message: 'Failed to fetch events' });
   }
 });
 
@@ -278,7 +352,7 @@ router.post('/:incidentId/end', async (req, res) => {
       });
     }
 
-    console.log(`SAFEHELP_INCIDENT: incident ended ${incidentId}`);
+    console.log(`SAFEMESH_INCIDENT: incident ended ${incidentId}`);
 
     res.json({
       success: true
