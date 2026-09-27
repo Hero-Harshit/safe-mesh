@@ -31,7 +31,7 @@ export const EmergencyMode: React.FC<EmergencyModeProps> = ({
   });
   
   const [level30Alert, setLevel30Alert] = useState(false);
-  const [level60Uber, setLevel60Uber] = useState(false);
+
   
   const smsTriggeredRef = React.useRef(false);
   const routeTriggeredRef = React.useRef(false);
@@ -53,7 +53,7 @@ export const EmergencyMode: React.FC<EmergencyModeProps> = ({
     }
     if (secondsActive === 20 && !callTriggeredRef.current) {
       callTriggeredRef.current = true;
-      setLevel60Uber(true);
+
       triggerHaptic([100, 100, 100, 100, 100]);
       // Call is already executing on the native side due to the 20s delayed intent
     }
@@ -185,23 +185,12 @@ export const EmergencyMode: React.FC<EmergencyModeProps> = ({
             <div className="btn-copy">
               <span className="btn-headline">Auto-Dial {emergencyTargetName}</span>
               <span className="btn-tagline">
-                {level60Uber ? `Connecting to ${emergencyTargetNumber}...` : 'Will auto-dial in 20s...'}
+                {'Will auto-dial in 20s...'}
               </span>
             </div>
           </div>
 
-          {/* Level 3: Uber Simulation (T=20s) */}
-          {level60Uber && (
-            <div className="emergency-hero-btn" style={{ cursor: 'default', backgroundColor: '#000000' }}>
-              <div className="btn-icon-box" style={{ backgroundColor: 'rgba(255,255,255,0.2)' }}>
-                <ShieldCheckIcon size={22} color="#FFFFFF" />
-              </div>
-              <div className="btn-copy">
-                <span className="btn-headline">Emergency Uber Requested</span>
-                <span className="btn-tagline">Driver arriving in ~3 mins. Stay safe.</span>
-              </div>
-            </div>
-          )}
+
 
           {/* Level 2: Neighborhood Alert (T=10s) */}
           {level30Alert && (

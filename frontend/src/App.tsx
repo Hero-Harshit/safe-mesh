@@ -1,8 +1,7 @@
 import { useState, useEffect } from 'react';
 import Home from './pages/Home';
 import NearbyGuardianSetup from './pages/NearbyGuardianSetup';
-import UberBookingTest from './pages/UberBookingTest';
-import UberSandbox from './pages/UberSandbox';
+
 import StartupPermissionFlow from './components/StartupPermissionFlow';
 import {
   subscribePermissions,
@@ -19,8 +18,7 @@ import { initNativeBridge } from './services/native';
 function getInitialView(): string {
   if (typeof window === 'undefined') return 'home';
   const path = window.location.pathname.toLowerCase();
-  if (path.includes('uber-sandbox') || path.includes('uber_sandbox')) return 'uber_sandbox';
-  if (path.includes('uber-test') || path.includes('uber_test')) return 'uber_test';
+
   if (path.includes('nearby-guardian') || path.includes('nearby_guardian')) return 'nearby_guardian';
   const params = new URLSearchParams(window.location.search);
   const viewParam = params.get('view');
@@ -96,12 +94,7 @@ export default function App() {
               onBack={() => handleNavigate('home')}
             />
           )}
-          {currentView === 'uber_test' && (
-            <UberBookingTest onBack={() => handleNavigate('home')} />
-          )}
-          {currentView === 'uber_sandbox' && (
-            <UberSandbox onBack={() => handleNavigate('home')} />
-          )}
+
         </>
       )}
     </div>
