@@ -131,7 +131,7 @@ public class BleActionActivity extends Activity {
         try {
             String encodedPayload = URLEncoder.encode(jsonPayload, "UTF-8");
             String hashFragment = "ble_result=" + encodedPayload;
-            Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse("https://muj-cnaf.vercel.app/#" + hashFragment));
+            Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse("https://safety-mesh.vercel.app/#" + hashFragment));
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP);
             startActivity(intent);
         } catch (Exception e) {

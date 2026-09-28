@@ -111,7 +111,7 @@ export function initNativeBridge() {
         const decodedPayload = decodeURIComponent(payloadStr);
         const event = JSON.parse(decodedPayload) as BleScanEvent;
         
-        if (event.type === 'SAFEHELP_EMERGENCY_DETECTED' || event.type === 'SAFEMESH_EMERGENCY_DETECTED') {
+        if (event.type === 'SAFEHELP_EMERGENCY_DETECTED' || event.type === 'SAFETYMESH_EMERGENCY_DETECTED') {
           bleScanEventCallbacks.forEach(cb => cb(event));
         }
       } catch (e) {

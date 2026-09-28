@@ -1,12 +1,12 @@
 /**
  * permissions.ts
- * Centralized Permission Manager for SafeMesh
+ * Centralized Permission Manager for SafetyMesh
  * Handles Location, Bluetooth, and Notifications with reactive state and foreground re-checks.
  */
 
 export type PermissionStatus = 'GRANTED' | 'DENIED' | 'BLOCKED' | 'UNKNOWN' | 'PROMPT';
 
-export interface SafeMeshPermissionsState {
+export interface SafetyMeshPermissionsState {
   location: PermissionStatus;
   bluetooth: PermissionStatus;
   notifications: PermissionStatus;
@@ -14,9 +14,9 @@ export interface SafeMeshPermissionsState {
   isInitialFlowCompleted: boolean;
 }
 
-const STORAGE_KEY_ONBOARDING = 'safemesh_permission_flow_completed';
+const STORAGE_KEY_ONBOARDING = 'safetymesh_permission_flow_completed';
 
-let cachedState: SafeMeshPermissionsState = {
+let cachedState: SafetyMeshPermissionsState = {
   location: 'UNKNOWN',
   bluetooth: 'UNKNOWN',
   notifications: 'UNKNOWN',
@@ -24,13 +24,13 @@ let cachedState: SafeMeshPermissionsState = {
   isInitialFlowCompleted: localStorage.getItem(STORAGE_KEY_ONBOARDING) === 'true',
 };
 
-const listeners = new Set<(state: SafeMeshPermissionsState) => void>();
+const listeners = new Set<(state: SafetyMeshPermissionsState) => void>();
 
 function notifyListeners() {
   listeners.forEach((listener) => listener({ ...cachedState }));
 }
 
-export function subscribePermissions(listener: (state: SafeMeshPermissionsState) => void): () => void {
+export function subscribePermissions(listener: (state: SafetyMeshPermissionsState) => void): () => void {
   listeners.add(listener);
   listener({ ...cachedState });
   return () => {
@@ -38,7 +38,7 @@ export function subscribePermissions(listener: (state: SafeMeshPermissionsState)
   };
 }
 
-export function getPermissionsState(): SafeMeshPermissionsState {
+export function getPermissionsState(): SafetyMeshPermissionsState {
   return { ...cachedState };
 }
 
@@ -166,7 +166,7 @@ export async function requestNotificationPermission(): Promise<PermissionStatus>
  */
 export async function checkBluetoothPermission(): Promise<PermissionStatus> {
   // Check local cache if granted via Android bridge
-  const isAndroidGranted = localStorage.getItem('safemesh_bt_granted');
+  const isAndroidGranted = localStorage.getItem('safetymesh_bt_granted');
   if (isAndroidGranted === 'true') {
     cachedState.bluetooth = 'GRANTED';
     notifyListeners();
@@ -216,7 +216,7 @@ export async function requestBluetoothPermission(): Promise<PermissionStatus> {
         acceptAllDevices: true,
       });
       cachedState.bluetooth = 'GRANTED';
-      localStorage.setItem('safemesh_bt_granted', 'true');
+      localStorage.setItem('safetymesh_bt_granted', 'true');
       notifyListeners();
       return 'GRANTED';
     } catch (e: any) {
@@ -233,7 +233,7 @@ export async function requestBluetoothPermission(): Promise<PermissionStatus> {
 
   // If in web simulation or user allows
   cachedState.bluetooth = 'GRANTED';
-  localStorage.setItem('safemesh_bt_granted', 'true');
+  localStorage.setItem('safetymesh_bt_granted', 'true');
   notifyListeners();
   return 'GRANTED';
 }
@@ -242,7 +242,7 @@ export async function requestBluetoothPermission(): Promise<PermissionStatus> {
  * Check SMS Permission
  */
 export async function checkSmsPermission(): Promise<PermissionStatus> {
-  const isAndroidGranted = localStorage.getItem('safemesh_sms_granted');
+  const isAndroidGranted = localStorage.getItem('safetymesh_sms_granted');
   if (isAndroidGranted === 'true') {
     cachedState.sms = 'GRANTED';
   } else {
@@ -273,7 +273,7 @@ export async function requestSmsPermission(): Promise<PermissionStatus> {
 /**
  * Re-check all permissions (called on startup and whenever app returns to foreground)
  */
-export async function refreshAllPermissions(): Promise<SafeMeshPermissionsState> {
+export async function refreshAllPermissions(): Promise<SafetyMeshPermissionsState> {
   await Promise.allSettled([
     checkLocationPermission(),
     checkBluetoothPermission(),
@@ -299,19 +299,19 @@ if (typeof window !== 'undefined') {
   window.addEventListener('hashchange', () => {
     if (window.location.hash.includes('bt_result=granted')) {
       cachedState.bluetooth = 'GRANTED';
-      localStorage.setItem('safemesh_bt_granted', 'true');
+      localStorage.setItem('safetymesh_bt_granted', 'true');
       notifyListeners();
     } else if (window.location.hash.includes('bt_result=denied')) {
       cachedState.bluetooth = 'DENIED';
-      localStorage.setItem('safemesh_bt_granted', 'false');
+      localStorage.setItem('safetymesh_bt_granted', 'false');
       notifyListeners();
     } else if (window.location.hash.includes('sms_result=granted')) {
       cachedState.sms = 'GRANTED';
-      localStorage.setItem('safemesh_sms_granted', 'true');
+      localStorage.setItem('safetymesh_sms_granted', 'true');
       notifyListeners();
     } else if (window.location.hash.includes('sms_result=denied')) {
       cachedState.sms = 'DENIED';
-      localStorage.setItem('safemesh_sms_granted', 'false');
+      localStorage.setItem('safetymesh_sms_granted', 'false');
       notifyListeners();
     }
   });

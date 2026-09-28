@@ -13,8 +13,8 @@ export const SosPermissionWarningModal: React.FC<SosPermissionWarningModalProps>
   onCancel,
 }) => {
   return (
-    <div className="safemesh-modal-backdrop" onClick={onCancel} role="alertdialog">
-      <div className="safemesh-modal-sheet alert-sheet" onClick={(e) => e.stopPropagation()}>
+    <div className="safetymesh-modal-backdrop" onClick={onCancel} role="alertdialog">
+      <div className="safetymesh-modal-sheet alert-sheet" onClick={(e) => e.stopPropagation()}>
         <div className="modal-pill-indicator"></div>
 
         <div className="warning-icon-box">
@@ -23,7 +23,7 @@ export const SosPermissionWarningModal: React.FC<SosPermissionWarningModalProps>
 
         <h2 className="warning-title">Location Access Disabled</h2>
         <p className="warning-desc">
-          SafeMesh cannot share your live coordinates with emergency responders or your emergency contacts without Location permission.
+          SafetyMesh cannot share your live coordinates with emergency responders or your emergency contacts without Location permission.
         </p>
 
         <div className="warning-action-stack">

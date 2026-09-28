@@ -103,8 +103,8 @@ export const EmergencyContactsModal: React.FC<EmergencyContactsModalProps> = ({
   };
 
   return (
-    <div className="safemesh-modal-backdrop" onClick={onClose}>
-      <div className="safemesh-modal-sheet" onClick={(e) => e.stopPropagation()}>
+    <div className="safetymesh-modal-backdrop" onClick={onClose}>
+      <div className="safetymesh-modal-sheet" onClick={(e) => e.stopPropagation()}>
         <div className="modal-pill-indicator"></div>
 
         <div className="modal-sheet-header">
@@ -215,7 +215,7 @@ export const EmergencyContactsModal: React.FC<EmergencyContactsModalProps> = ({
           {contacts.length === 0 && !showAddForm && (
             <div style={{ textAlign: 'center', padding: '2rem 1rem', color: '#64748B' }}>
               <h3 style={{ marginBottom: '0.5rem', color: '#1E293B' }}>NO EMERGENCY CONTACTS</h3>
-              <p>Add a trusted contact so SafeMesh can notify them during an emergency.</p>
+              <p>Add a trusted contact so SafetyMesh can notify them during an emergency.</p>
               <button
                 className="action-button-primary"
                 style={{ marginTop: '12px', display: 'inline-flex', width: 'auto', padding: '8px 16px' }}

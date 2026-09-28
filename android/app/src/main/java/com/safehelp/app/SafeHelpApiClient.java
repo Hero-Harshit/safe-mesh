@@ -14,7 +14,7 @@ import java.util.Scanner;
 public class SafeHelpApiClient {
     private static final String TAG = "SAFEHELP_API";
     // Hardcoded for Phase 2 widget sequence per user's production backend
-    private static final String BASE_URL = "https://muj-k53c.onrender.com";
+    private static final String BASE_URL = "https://safe-mesh.onrender.com";
 
     public interface ApiCallback {
         void onResult(boolean success, String responseOrError);

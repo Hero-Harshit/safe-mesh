@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { SettingsGearIcon, ShieldCheckIcon } from './Icons';
 import { subscribePermissions, requestSmsPermission } from '../services/permissions';
-import type { SafeMeshPermissionsState } from '../services/permissions';
+import type { SafetyMeshPermissionsState } from '../services/permissions';
 
 interface SettingsModalProps {
   onClose: () => void;
@@ -14,7 +14,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose, onShowToa
   const [stealthMode, setStealthMode] = useState(false);
   const [meshRelay, setMeshRelay] = useState(true);
   
-  const [permissions, setPermissions] = useState<SafeMeshPermissionsState>({
+  const [permissions, setPermissions] = useState<SafetyMeshPermissionsState>({
     location: 'UNKNOWN',
     bluetooth: 'UNKNOWN',
     notifications: 'UNKNOWN',
@@ -45,8 +45,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose, onShowToa
   };
 
   return (
-    <div className="safemesh-modal-backdrop" onClick={onClose}>
-      <div className="safemesh-modal-sheet" onClick={(e) => e.stopPropagation()}>
+    <div className="safetymesh-modal-backdrop" onClick={onClose}>
+      <div className="safetymesh-modal-sheet" onClick={(e) => e.stopPropagation()}>
         <div className="modal-pill-indicator"></div>
 
         <div className="modal-sheet-header">
@@ -75,7 +75,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose, onShowToa
                 <span className="profile-name">Alex Sharma</span>
                 <span className="verified-badge">VERIFIED</span>
               </div>
-              <span className="profile-sub">SafeMesh ID: SM-8921-IN</span>
+              <span className="profile-sub">SafetyMesh ID: SM-8921-IN</span>
               <span className="profile-blood">Medical Info: O+ Blood • No Allergies</span>
             </div>
           </div>
@@ -169,23 +169,23 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose, onShowToa
             </div>
           </div>
 
-          {/* About safe mesh */}
-          <div className="about-safemesh-card">
+          {/* About safety mesh */}
+          <div className="about-safetymesh-card">
             <div className="about-header">
               <ShieldCheckIcon size={18} color="#10B981" />
-              <span className="about-title">SafeMesh Core v1.0.0</span>
+              <span className="about-title">SafetyMesh Core v1.0.0</span>
             </div>
             <p className="about-desc">
-              SafeMesh is a distributed, privacy-first personal safety network engineered with zero-knowledge encryption and offline peer mesh failover.
+              SafetyMesh is a distributed, privacy-first personal safety network engineered with zero-knowledge encryption and offline peer mesh failover.
             </p>
             <div className="about-apk-download-row">
               <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Android Native Package:</span>
               <a
-                href="/SafeMesh.apk"
-                download="SafeMesh.apk"
+                href="/SafetyMesh.apk"
+                download="SafetyMesh.apk"
                 className="apk-download-btn"
                 style={{ padding: '6px 12px', fontSize: '0.75rem' }}
-                title="Download SafeMesh APK"
+                title="Download SafetyMesh APK"
               >
                 <span>⬇️</span> Download .APK
               </a>

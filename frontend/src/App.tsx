@@ -8,7 +8,7 @@ import {
   getPermissionsState,
   refreshAllPermissions,
 } from './services/permissions';
-import type { SafeMeshPermissionsState } from './services/permissions';
+import type { SafetyMeshPermissionsState } from './services/permissions';
 import { subscribeLocation } from './services/location';
 import type { RealLocationData } from './services/location';
 
@@ -28,7 +28,7 @@ function getInitialView(): string {
 
 export default function App() {
   const [currentView, setCurrentView] = useState<string>(getInitialView);
-  const [permissions, setPermissions] = useState<SafeMeshPermissionsState>(getPermissionsState());
+  const [permissions, setPermissions] = useState<SafetyMeshPermissionsState>(getPermissionsState());
   const [location, setLocation] = useState<RealLocationData | null>(null);
 
   const handleNavigate = (view: string) => {
@@ -82,7 +82,7 @@ export default function App() {
           }}
         />
       ) : (
-        /* 2. Main SafeMesh Application */
+        /* 2. Main SafetyMesh Application */
         <>
           {currentView === 'home' && <Home onNavigate={handleNavigate} />}
           {currentView === 'nearby_guardian' && (

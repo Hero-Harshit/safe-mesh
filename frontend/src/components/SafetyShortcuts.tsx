@@ -105,7 +105,7 @@ export const SafetyShortcuts: React.FC<SafetyShortcutsProps> = ({
         <button
           className="shortcut-card compact-card"
           onClick={onSettingsClick}
-          aria-label="Open SafeMesh App Settings"
+          aria-label="Open SafetyMesh App Settings"
         >
           <div className="compact-header-row">
             <div className="shortcut-icon-circle bg-slate-tint">

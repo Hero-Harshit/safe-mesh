@@ -1,12 +1,12 @@
 {
-  "name": "SafeMesh",
-  "short_name": "SafeMesh",
+  "name": "SafetyMesh",
+  "short_name": "SafetyMesh",
   "start_url": "/",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#f9fafb",
   "theme_color": "#ef4444",
-  "description": "SafeMesh — AI-Powered Real-Time Safety Response Network",
+  "description": "SafetyMesh — AI-Powered Real-Time Safety Response Network",
   "icons": [
     {
       "src": "/icon-192.png",

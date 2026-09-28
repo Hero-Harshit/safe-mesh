@@ -1,6 +1,6 @@
 /**
  * location.ts
- * Real device location service for SafeMesh.
+ * Real device location service for SafetyMesh.
  * Strict Rule: Never invent or hardcode dummy/fake locations or coordinates.
  */
 

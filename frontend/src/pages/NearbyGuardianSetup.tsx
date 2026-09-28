@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import SafeMeshHeader from '../components/SafeMeshHeader';
+import SafetyMeshHeader from '../components/SafetyMeshHeader';
 import { GuardianMeshIcon, ShieldCheckIcon } from '../components/Icons';
 import type { PermissionStatus } from '../services/permissions';
 import type { LocationData } from '../services/location';
@@ -77,7 +77,7 @@ export const NearbyGuardianSetup: React.FC<NearbyGuardianSetupProps> = ({
     if (result.success) {
       setIsBeaconActive(true);
       setEmergencyId(result.emergencyId || null);
-      setStatusMsg('SafeMesh Emergency Beacon Active!');
+      setStatusMsg('SafetyMesh Emergency Beacon Active!');
     } else {
       if (result.error === 'BLUETOOTH_PERMISSION_DENIED') {
         const granted = await requestBluetoothPermissions();
@@ -87,7 +87,7 @@ export const NearbyGuardianSetup: React.FC<NearbyGuardianSetupProps> = ({
           if (retryResult.success) {
             setIsBeaconActive(true);
             setEmergencyId(retryResult.emergencyId || null);
-            setStatusMsg('SafeMesh Emergency Beacon Active!');
+            setStatusMsg('SafetyMesh Emergency Beacon Active!');
           } else {
             setStatusMsg('Failed to start beacon: ' + retryResult.error);
           }
@@ -165,8 +165,8 @@ export const NearbyGuardianSetup: React.FC<NearbyGuardianSetupProps> = ({
   };
 
   return (
-    <div className="safemesh-page-container">
-      <SafeMeshHeader
+    <div className="safetymesh-page-container">
+      <SafetyMeshHeader
         locationPermission={locationPermission}
         hasLocationData={location !== null && location.status === 'LIVE'}
         isLocating={false}
@@ -204,7 +204,7 @@ export const NearbyGuardianSetup: React.FC<NearbyGuardianSetupProps> = ({
           </div>
 
           <p className="mesh-status-description">
-            SafeMesh forms local peer-to-peer encrypted mesh paths between nearby smartphones. Manually start the emergency broadcast below to test the Android BLE advertiser.
+            SafetyMesh forms local peer-to-peer encrypted mesh paths between nearby smartphones. Manually start the emergency broadcast below to test the Android BLE advertiser.
           </p>
 
           {isBeaconActive && emergencyId && (
@@ -303,7 +303,7 @@ export const NearbyGuardianSetup: React.FC<NearbyGuardianSetupProps> = ({
 
         <div className="guardian-security-footnote">
           <p>
-            🔒 <strong>Zero Knowledge Protection</strong>: No fake devices are simulated. SafeMesh strictly broadcasts peer SOS packets only when an emergency is explicitly triggered.
+            🔒 <strong>Zero Knowledge Protection</strong>: No fake devices are simulated. SafetyMesh strictly broadcasts peer SOS packets only when an emergency is explicitly triggered.
           </p>
         </div>
       </div>

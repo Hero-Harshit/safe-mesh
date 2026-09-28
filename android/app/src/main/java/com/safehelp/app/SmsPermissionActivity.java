@@ -31,7 +31,7 @@ public class SmsPermissionActivity extends Activity {
         // We use a URL hash instead of query parameters to prevent the TWA from reloading.
         // Chrome handles the ACTION_VIEW intent by updating the hash in the existing Custom Tab.
         String hashFragment = granted ? "sms_result=granted" : "sms_result=denied";
-        Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse("https://muj-cnaf.vercel.app/#" + hashFragment));
+        Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse("https://safety-mesh.vercel.app/#" + hashFragment));
         // Ensure it routes to the existing TWA task
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP);
         startActivity(intent);

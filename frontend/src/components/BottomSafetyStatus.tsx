@@ -107,7 +107,7 @@ export const BottomSafetyStatus: React.FC<BottomSafetyStatusProps> = ({
         </div>
       </div>
 
-      <div className="safemesh-footer-tagline">
+      <div className="safetymesh-footer-tagline">
         <span className="footer-line"></span>
         <span className="footer-text">A SAFER TOMORROW TOGETHER</span>
         <span className="footer-line"></span>

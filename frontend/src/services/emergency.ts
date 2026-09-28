@@ -7,7 +7,7 @@ export interface EmergencyContact {
   isPrimary?: boolean;
 }
 
-const STORAGE_KEY = 'safemesh_contacts';
+const STORAGE_KEY = 'safetymesh_contacts';
 
 export function getEmergencyContacts(): EmergencyContact[] {
   try {
@@ -58,7 +58,7 @@ export function triggerHaptic(pattern: number | number[] = [200, 100, 200]): voi
 
 export function generateSmsLink(phone: string, mapsUrl?: string): string {
   const cleanPhone = phone.replace(/[^0-9+]/g, '');
-  const body = `EMERGENCY ALERT from SafeMesh! I need immediate help. ${
+  const body = `EMERGENCY ALERT from SafetyMesh! I need immediate help. ${
     mapsUrl ? `My live location: ${mapsUrl}` : 'Please reach out immediately!'
   }`;
   return `sms:${cleanPhone}?body=${encodeURIComponent(body)}`;

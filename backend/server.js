@@ -3,8 +3,6 @@ const cors = require('cors');
 const dotenv = require('dotenv');
 const axios = require('axios');
 const { Groq } = require('groq-sdk');
-const mongoose = require('mongoose');
-
 dotenv.config();
 
 const app = express();
@@ -14,16 +12,8 @@ app.use(express.json());
 const PORT = process.env.PORT || 5000;
 const TOMTOM_API_KEY = process.env.TOMTOM_API_KEY;
 const GROQ_API_KEY = process.env.GROQ_API_KEY;
-const MONGO_URI = process.env.MONGO_URI;
 
-// Connect to MongoDB
-if (MONGO_URI && MONGO_URI.trim()) {
-  mongoose.connect(MONGO_URI)
-    .then(() => console.log('MongoDB connected successfully'))
-    .catch(err => console.error('MongoDB connection error:', err));
-} else {
-  console.warn('NOTICE: MONGO_URI is not configured in .env — running with in-memory persistence');
-}
+// Supabase is used for data persistence; initialized directly in route handlers.
 
 let groq = null;
 if (GROQ_API_KEY && GROQ_API_KEY.trim()) {
@@ -94,7 +84,7 @@ app.post('/api/safety/escape-route', async (req, res) => {
       success: true,
       fallback: true,
       destination: fallbackDestination,
-      reason: 'Recommended 24/7 manned emergency post along well-lit main thoroughfare (SafeMesh Deterministic Safety Engine).',
+      reason: 'Recommended 24/7 manned emergency post along well-lit main thoroughfare (SafetyMesh Deterministic Safety Engine).',
       route: fallbackRoute
     });
   }

@@ -42,8 +42,8 @@ export const SafeRouteModal: React.FC<SafeRouteModalProps> = ({
   };
 
   return (
-    <div className="safemesh-modal-backdrop" onClick={onClose}>
-      <div className="safemesh-modal-sheet" onClick={(e) => e.stopPropagation()}>
+    <div className="safetymesh-modal-backdrop" onClick={onClose}>
+      <div className="safetymesh-modal-sheet" onClick={(e) => e.stopPropagation()}>
         <div className="modal-pill-indicator"></div>
 
         <div className="modal-sheet-header">

@@ -199,7 +199,7 @@ public class SafeHelpBleScanner {
 
             String encodedPayload = URLEncoder.encode(event.toString(), "UTF-8");
             String hashFragment = "ble_event=" + encodedPayload;
-            Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse("https://muj-cnaf.vercel.app/#" + hashFragment));
+            Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse("https://safety-mesh.vercel.app/#" + hashFragment));
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP);
             context.startActivity(intent);
         } catch (Exception e) {

@@ -12,10 +12,10 @@ import {
   requestSmsPermission,
   setInitialFlowCompleted,
 } from '../services/permissions';
-import type { SafeMeshPermissionsState } from '../services/permissions';
+import type { SafetyMeshPermissionsState } from '../services/permissions';
 
 interface StartupPermissionFlowProps {
-  initialState: SafeMeshPermissionsState;
+  initialState: SafetyMeshPermissionsState;
   onComplete: () => void;
 }
 
@@ -37,7 +37,7 @@ export const StartupPermissionFlow: React.FC<StartupPermissionFlowProps> = ({
       : 'location'
   );
 
-  const [permissions, setPermissions] = useState<SafeMeshPermissionsState>(initialState);
+  const [permissions, setPermissions] = useState<SafetyMeshPermissionsState>(initialState);
   const [isRequesting, setIsRequesting] = useState(false);
 
   const handleEnableLocation = async () => {
@@ -99,7 +99,7 @@ export const StartupPermissionFlow: React.FC<StartupPermissionFlowProps> = ({
             <ShieldLogoIcon size={36} color="#DC2626" />
           </div>
           <div className="onboarding-title-group">
-            <span className="onboarding-brand-name">SAFE MESH</span>
+            <span className="onboarding-brand-name">SAFETY MESH</span>
             <span className="onboarding-brand-sub">Your personal safety network.</span>
           </div>
         </div>
@@ -107,7 +107,7 @@ export const StartupPermissionFlow: React.FC<StartupPermissionFlowProps> = ({
         <div className="onboarding-intro">
           <h2 className="onboarding-headline">Let's get your safety system ready.</h2>
           <p className="onboarding-desc">
-            SafeMesh requires essential device permissions to protect you in real-time.
+            SafetyMesh requires essential device permissions to protect you in real-time.
           </p>
         </div>
 
@@ -200,7 +200,7 @@ export const StartupPermissionFlow: React.FC<StartupPermissionFlowProps> = ({
             </div>
             <h3 className="step-title">Bluetooth / Nearby Devices</h3>
             <p className="step-explanation">
-              Used to connect SafeMesh with offline peer safety nodes, supported wearables, and
+              Used to connect SafetyMesh with offline peer safety nodes, supported wearables, and
               nearby safety peripherals even when cellular coverage drops.
             </p>
 
@@ -260,7 +260,7 @@ export const StartupPermissionFlow: React.FC<StartupPermissionFlowProps> = ({
             </div>
             <h3 className="step-title">SMS ACCESS</h3>
             <p className="step-explanation">
-              SafeMesh uses SMS to notify your emergency contacts when an SOS is activated.
+              SafetyMesh uses SMS to notify your emergency contacts when an SOS is activated.
             </p>
 
             <div className="step-actions">
@@ -293,7 +293,7 @@ export const StartupPermissionFlow: React.FC<StartupPermissionFlowProps> = ({
         )}
 
         <div className="onboarding-privacy-note">
-          <span>🔒 SafeMesh adheres to strict zero-knowledge privacy. No fake data is ever shared.</span>
+          <span>🔒 SafetyMesh adheres to strict zero-knowledge privacy. No fake data is ever shared.</span>
         </div>
       </div>
     </div>

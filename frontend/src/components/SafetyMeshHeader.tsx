@@ -2,7 +2,7 @@ import React from 'react';
 import { ShieldLogoIcon, UserAvatarIcon } from './Icons';
 import type { PermissionStatus } from '../services/permissions';
 
-interface SafeMeshHeaderProps {
+interface SafetyMeshHeaderProps {
   onProfileClick?: () => void;
   locationPermission: PermissionStatus;
   hasLocationData: boolean;
@@ -10,7 +10,7 @@ interface SafeMeshHeaderProps {
   isEmergencyActive?: boolean;
 }
 
-export const SafeMeshHeader: React.FC<SafeMeshHeaderProps> = ({
+export const SafetyMeshHeader: React.FC<SafetyMeshHeaderProps> = ({
   onProfileClick,
   locationPermission,
   hasLocationData,
@@ -36,7 +36,7 @@ export const SafeMeshHeader: React.FC<SafeMeshHeaderProps> = ({
   }
 
   return (
-    <header className="safemesh-header">
+    <header className="safetymesh-header">
       <div className="header-brand">
         <div className="brand-logo-container">
           <ShieldLogoIcon size={30} color="#DC2626" />
@@ -69,4 +69,4 @@ export const SafeMeshHeader: React.FC<SafeMeshHeaderProps> = ({
   );
 };
 
-export default SafeMeshHeader;
+export default SafetyMeshHeader;

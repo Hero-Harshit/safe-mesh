@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import SafeMeshHeader from '../components/SafeMeshHeader';
+import SafetyMeshHeader from '../components/SafetyMeshHeader';
 import GreetingSection from '../components/GreetingSection';
 import LocationContextBar from '../components/LocationContextBar';
 import EmergencySOSButton from '../components/EmergencySOSButton';
@@ -29,7 +29,7 @@ import {
   clearLocationWatch,
 } from '../services/location';
 
-import type { SafeMeshPermissionsState } from '../services/permissions';
+import type { SafetyMeshPermissionsState } from '../services/permissions';
 import {
   subscribePermissions,
   refreshAllPermissions,
@@ -42,7 +42,7 @@ interface HomeProps {
 
 export default function Home({ onNavigate }: HomeProps) {
   // Real permissions state
-  const [permissions, setPermissions] = useState<SafeMeshPermissionsState>({
+  const [permissions, setPermissions] = useState<SafetyMeshPermissionsState>({
     location: 'UNKNOWN',
     bluetooth: 'UNKNOWN',
     notifications: 'UNKNOWN',
@@ -139,7 +139,7 @@ export default function Home({ onNavigate }: HomeProps) {
     setShowSosWarning(false);
     setSosActive(true);
     triggerHaptic([300, 100, 300, 100, 500]);
-    showToast('🚨 SafeMesh Emergency SOS Broadcast Active');
+    showToast('🚨 SafetyMesh Emergency SOS Broadcast Active');
   }, [showToast]);
 
   // 1.5 Check for Voice Auto-SOS
@@ -172,9 +172,9 @@ export default function Home({ onNavigate }: HomeProps) {
   };
 
   return (
-    <div className="safemesh-dashboard-shell">
+    <div className="safetymesh-dashboard-shell">
       {/* 1. Header with dynamic safety status based on real device state */}
-      <SafeMeshHeader
+      <SafetyMeshHeader
         onProfileClick={() => setActiveModal('settings')}
         locationPermission={permissions.location}
         hasLocationData={location !== null && location.status === 'LIVE'}
@@ -188,7 +188,7 @@ export default function Home({ onNavigate }: HomeProps) {
           <div className="apk-badge-icon">📱</div>
           <div className="apk-banner-text">
             <div className="apk-banner-title">
-              SafeMesh Android App <span className="apk-badge-pill">APK</span>
+              SafetyMesh Android App <span className="apk-badge-pill">APK</span>
             </div>
             <div className="apk-banner-subtitle">
               Install for offline BLE mesh & background panic trigger
@@ -196,11 +196,11 @@ export default function Home({ onNavigate }: HomeProps) {
           </div>
         </div>
         <a
-          href="/SafeMesh.apk"
-          download="SafeMesh.apk"
+          href="/SafetyMesh.apk"
+          download="SafetyMesh.apk"
           className="apk-download-btn"
           id="download-apk-top-btn"
-          title="Download SafeMesh Native Android App (.APK)"
+          title="Download SafetyMesh Native Android App (.APK)"
         >
           <span>⬇️</span>
           <span>Download APK</span>

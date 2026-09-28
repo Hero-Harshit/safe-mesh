@@ -12,7 +12,7 @@ function getKeyBuffer() {
   if (key && key.length > 0) {
     return crypto.createHash('sha256').update(key).digest();
   }
-  return crypto.createHash('sha256').update('safemesh_default_dev_encryption_key').digest();
+  return crypto.createHash('sha256').update('safetymesh_default_dev_encryption_key').digest();
 }
 
 const IV_LENGTH = 16;

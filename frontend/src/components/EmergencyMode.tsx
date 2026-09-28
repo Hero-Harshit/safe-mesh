@@ -138,7 +138,7 @@ export const EmergencyMode: React.FC<EmergencyModeProps> = ({
     : 'Acquiring high-precision lock...';
 
   return (
-    <div className="safemesh-emergency-backdrop" role="alertdialog" aria-modal="true">
+    <div className="safetymesh-emergency-backdrop" role="alertdialog" aria-modal="true">
       <div className="emergency-fullscreen-sheet">
         {/* Urgent yet Composed Status Banner */}
         <div className="emergency-alert-header">
