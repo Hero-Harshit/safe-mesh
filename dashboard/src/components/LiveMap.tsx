@@ -40,7 +40,7 @@ export interface IncidentEvent {
 }
 
 interface LiveMapProps {
-  onIncidentSelect: (incident: Incident) => void;
+  onIncidentSelect?: (incident: Incident) => void;
   incidents: Incident[];
   liveEvents?: IncidentEvent[];
 }
@@ -86,12 +86,13 @@ export default function LiveMap({ onIncidentSelect, incidents, liveEvents = [] }
     : defaultCenter;
 
   return (
-    <div style={{ height: '100%', width: '100%', zIndex: 1 }}>
+    <div style={{ height: '100%', width: '100%', position: 'relative', zIndex: 1 }}>
       <MapContainer 
         center={mapCenter} 
         zoom={13} 
         style={{ height: '100%', width: '100%', background: '#1a1a1c' }}
         zoomControl={false}
+        attributionControl={false}
       >
         <MapUpdater center={mapCenter} />
         <TileLayer
@@ -109,7 +110,11 @@ export default function LiveMap({ onIncidentSelect, incidents, liveEvents = [] }
               position={latLng}
               icon={incidentIcon}
               eventHandlers={{
-                click: () => onIncidentSelect(incident)
+                click: () => {
+                  if (onIncidentSelect) {
+                    onIncidentSelect(incident)
+                  }
+                }
               }}
             >
               <Popup>

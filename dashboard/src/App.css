@@ -30,9 +30,9 @@
 .sidebar {
   pointer-events: auto; /* Re-enable clicks */
   width: 250px;
-  background: rgba(10, 10, 14, 0.45);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
+  background: rgba(10, 10, 14, 0.75);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   border-right: 1px solid rgba(255, 255, 255, 0.05);
   display: flex;
   flex-direction: column;
@@ -55,6 +55,7 @@
 .sidebar-header h1 .gradient-text {
   background: linear-gradient(to right, var(--accent-primary), var(--accent-hover));
   -webkit-background-clip: text;
+  background-clip: text;
   -webkit-text-fill-color: transparent;
 }
 
@@ -131,7 +132,7 @@
 
 /* Glassmorphism utility for floating UI elements */
 .glass-panel {
-  background: rgba(0, 0, 0, 0.75); /* Darker so it pops */
+  background: rgba(20, 20, 25, 0.45);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border: 1px solid rgba(255, 255, 255, 0.08);

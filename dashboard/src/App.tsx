@@ -1,16 +1,17 @@
 import { useState, useEffect } from 'react'
-import { Map, AlertTriangle, Activity, Users, Radio, Clock, Navigation } from 'lucide-react'
+import { Map as MapIcon, AlertTriangle, Activity, Users, X } from 'lucide-react'
 import './App.css'
 import LiveMap from './components/LiveMap'
 import Analytics from './components/Analytics'
+import IncidentsTab from './components/IncidentsTab'
 import type { Incident, IncidentEvent } from './components/LiveMap'
 import { supabase } from './lib/supabase'
 
 function App() {
   const [activeTab, setActiveTab] = useState('map')
-  const [selectedIncident, setSelectedIncident] = useState<Incident | null>(null)
   const [recentIncidents, setRecentIncidents] = useState<Incident[]>([])
   const [liveEvents, setLiveEvents] = useState<IncidentEvent[]>([])
+  const [isAlertsModalOpen, setIsAlertsModalOpen] = useState(false)
 
   useEffect(() => {
     // 1. Fetch initial incidents
@@ -44,9 +45,6 @@ function App() {
           setRecentIncidents((prev) => 
             prev.map(inc => inc.incident_id === payload.new.incident_id ? (payload.new as Incident) : inc)
           )
-          setSelectedIncident((prev) => 
-            prev?.incident_id === payload.new.incident_id ? (payload.new as Incident) : prev
-          )
         }
       )
       .subscribe()
@@ -73,21 +71,30 @@ function App() {
     <div className="dashboard-layout">
       {/* Map Layer (Background) */}
       <div className="map-container-wrapper">
-        {activeTab === 'map' ? (
-          <LiveMap 
-            onIncidentSelect={setSelectedIncident} 
-            incidents={recentIncidents} 
-            liveEvents={liveEvents} 
-          />
-        ) : activeTab === 'analytics' ? (
-          <div style={{ position: 'absolute', top: 0, left: 250, right: 350, bottom: 0, zIndex: 20, background: 'rgba(10,10,14,0.95)', overflow: 'hidden' }}>
+        {/* The Map is ALWAYS rendered in the background */}
+        <LiveMap 
+          incidents={recentIncidents} 
+          liveEvents={liveEvents} 
+        />
+        {/* End of Map Layer */}
+        
+        {activeTab === 'analytics' && (
+          <div style={{ position: 'absolute', top: 0, left: 250, right: 0, bottom: 0, zIndex: 20, background: 'rgba(10,10,14,0.7)', backdropFilter: 'blur(3px)', WebkitBackdropFilter: 'blur(3px)', overflow: 'hidden', pointerEvents: 'auto' }}>
              <Analytics incidents={recentIncidents} liveEvents={liveEvents} />
           </div>
-        ) : (
-          <div className="map-placeholder" style={{ marginLeft: '250px', marginRight: '350px' }}>
+        )}
+        
+        {activeTab === 'incidents' && (
+          <div style={{ position: 'absolute', top: 0, left: 250, right: 0, bottom: 0, zIndex: 20, background: 'rgba(10,10,14,0.7)', backdropFilter: 'blur(3px)', WebkitBackdropFilter: 'blur(3px)', overflow: 'hidden', pointerEvents: 'auto' }}>
+             <IncidentsTab incidents={recentIncidents} liveEvents={liveEvents} />
+          </div>
+        )}
+        
+        {activeTab === 'personnel' && (
+          <div style={{ position: 'absolute', top: 0, left: 250, right: 0, bottom: 0, zIndex: 20, background: 'rgba(10,10,14,0.7)', backdropFilter: 'blur(3px)', WebkitBackdropFilter: 'blur(3px)', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'auto' }}>
             <div style={{ textAlign: 'center' }}>
-              <Activity size={48} style={{ marginBottom: '1rem', opacity: 0.5 }} />
-              <p>{activeTab.charAt(0).toUpperCase() + activeTab.slice(1)} Module Pending</p>
+              <Activity size={48} style={{ marginBottom: '1rem', opacity: 0.5, margin: '0 auto' }} />
+              <p>Personnel Module Pending</p>
             </div>
           </div>
         )}
@@ -108,7 +115,7 @@ function App() {
               className={`nav-item ${activeTab === 'map' ? 'active' : ''}`}
               onClick={() => setActiveTab('map')}
             >
-              <Map size={20} />
+              <MapIcon size={20} />
               <span>Live Map</span>
             </div>
             <div 
@@ -136,79 +143,80 @@ function App() {
           
         </aside>
 
-        {/* Right Side Panel */}
-        <aside className="side-panel">
-          <div className="side-panel-header">
-            <h2>Active Alerts</h2>
+        {/* FLOATING ALERTS PILL (Only on Map Tab) */}
+        {activeTab === 'map' && (
+          <div 
+            onClick={() => setIsAlertsModalOpen(!isAlertsModalOpen)}
+            className="glass-panel" 
+            style={{ 
+              position: 'absolute', top: '1.5rem', right: '1.5rem', zIndex: 50, 
+              padding: '0.5rem 1.25rem', borderRadius: '2rem', cursor: 'pointer', 
+              display: 'flex', alignItems: 'center', gap: '0.75rem', 
+              background: 'rgba(20,20,25,0.8)', border: '1px solid rgba(255,255,255,0.1)',
+              boxShadow: '0 4px 15px rgba(0,0,0,0.3)', transition: 'all 0.2s ease',
+              pointerEvents: 'auto'
+            }}
+          >
+            <AlertTriangle size={18} color="var(--danger)" />
+            <span style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.9rem' }}>Alerts</span>
+            <span style={{ 
+              background: 'var(--danger)', color: 'white', padding: '0.1rem 0.6rem', 
+              borderRadius: '1rem', fontSize: '0.8rem', fontWeight: 700 
+            }}>
+              {recentIncidents.filter(i => i.status === 'Active' || i.status === 'Dispatched').length}
+            </span>
           </div>
-          <div className="side-panel-content">
-            {selectedIncident ? (
-              <div className="glass-panel" style={{ padding: '1.25rem' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
-                  <div style={{ backgroundColor: 'var(--warning-bg)', color: 'var(--warning)', padding: '0.5rem', borderRadius: '50%' }}>
-                    <AlertTriangle size={20} />
-                  </div>
-                  <div>
-                    <h3 style={{ fontSize: '1rem', color: 'var(--text-primary)' }}>Selected Incident</h3>
-                    <span style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>ID: {selectedIncident.incident_id.slice(0, 8)}</span>
-                  </div>
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <Clock size={16} /> <span>{new Date(selectedIncident.created_at).toLocaleString()}</span>
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <Navigation size={16} /> 
-                    <span>
-                      {selectedIncident.sender_location?.coordinates 
-                        ? `${selectedIncident.sender_location.coordinates[1].toFixed(4)}, ${selectedIncident.sender_location.coordinates[0].toFixed(4)}`
-                        : 'Unknown Location'}
-                    </span>
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <Activity size={16} /> <span style={{ 
-                      color: selectedIncident.status === 'Resolved' ? 'var(--success)' : 
-                             selectedIncident.status === 'Dispatched' ? 'var(--accent-primary)' : 'var(--warning)'
-                    }}>{selectedIncident.status}</span>
-                  </div>
-                </div>
-                <button style={{ 
-                  width: '100%', padding: '0.75rem', marginTop: '1rem', 
-                  backgroundColor: 'var(--accent-primary)', color: 'white', 
-                  borderRadius: '0.5rem', fontWeight: 'bold' 
-                }}>
-                  Dispatch Unit
-                </button>
-              </div>
-            ) : null}
+        )}
 
-            <h3 style={{ fontSize: '0.85rem', color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '1px', marginTop: selectedIncident ? '1rem' : '0' }}>
-              Recent Activity
-            </h3>
+        {/* ALERTS MODAL */}
+        {activeTab === 'map' && isAlertsModalOpen && (
+          <div className="glass-panel" style={{ 
+            position: 'absolute', top: '4.5rem', right: '1.5rem', width: '350px', maxHeight: '70vh', 
+            zIndex: 50, display: 'flex', flexDirection: 'column', 
+            boxShadow: '0 10px 40px rgba(0,0,0,0.5)', borderRadius: '1rem', overflow: 'hidden',
+            pointerEvents: 'auto'
+          }}>
+            <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(0,0,0,0.3)' }}>
+              <h2 style={{ fontSize: '1.1rem', fontWeight: 600, color: 'var(--danger)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <AlertTriangle size={18} />
+                Recent Alerts
+              </h2>
+              <X size={18} style={{ cursor: 'pointer', color: 'var(--text-tertiary)' }} onClick={() => setIsAlertsModalOpen(false)} />
+            </div>
             
-            {recentIncidents.slice(0, 10).map(inc => (
-              <div key={inc.incident_id} className="glass-panel" style={{ padding: '1rem', cursor: 'pointer', transition: 'border-color 0.2s' }}
-                   onClick={() => setSelectedIncident(inc)}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
-                  <div style={{ backgroundColor: 'var(--danger-bg)', color: 'var(--danger)', padding: '0.5rem', borderRadius: '50%' }}>
-                    <Radio size={16} />
+            <div style={{ flexGrow: 1, overflowY: 'auto', padding: '1rem', display: 'flex', flexDirection: 'column', gap: '1rem', background: 'rgba(20,20,25,0.6)' }}>
+              {recentIncidents.length === 0 ? (
+                <p style={{ color: 'var(--text-tertiary)', textAlign: 'center', marginTop: '2rem', fontSize: '0.9rem' }}>No recent incidents found.</p>
+              ) : (
+                recentIncidents.map(incident => (
+                  <div key={incident.incident_id} style={{ 
+                    background: 'rgba(0,0,0,0.4)', 
+                    borderLeft: `3px solid ${incident.status === 'Resolved' ? 'var(--success)' : incident.status === 'Dispatched' ? 'var(--accent-primary)' : 'var(--danger)'}`, 
+                    padding: '1rem', borderRadius: '0.5rem' 
+                  }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                      <span style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.9rem', fontFamily: 'monospace' }}>
+                        {incident.incident_id.split('-')[0]}-{incident.incident_id.split('-')[1]}
+                      </span>
+                      <span style={{ color: 'var(--text-tertiary)', fontSize: '0.8rem' }}>
+                        {new Date(incident.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                      </span>
+                    </div>
+                    <div style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
+                      {incident.trigger_source || 'Unknown Source'}
+                    </div>
+                    <div style={{ 
+                      marginTop: '0.5rem', fontSize: '0.8rem', fontWeight: 600, textTransform: 'uppercase',
+                      color: incident.status === 'Resolved' ? 'var(--success)' : incident.status === 'Dispatched' ? 'var(--accent-primary)' : 'var(--danger)' 
+                    }}>
+                      {incident.status}
+                    </div>
                   </div>
-                  <div>
-                    <h3 style={{ fontSize: '0.9rem', color: 'var(--text-primary)' }}>Emergency Ping</h3>
-                    <span style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>
-                      {new Date(inc.created_at).toLocaleTimeString()}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            ))}
-            {recentIncidents.length === 0 && (
-              <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                No recent activity.
-              </p>
-            )}
+                ))
+              )}
+            </div>
           </div>
-        </aside>
+        )}
       </div>
     </div>
   )
