@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Map, AlertTriangle, Activity, Users, Radio, Clock, Navigation } from 'lucide-react'
 import './App.css'
 import LiveMap from './components/LiveMap'
+import Analytics from './components/Analytics'
 import type { Incident, IncidentEvent } from './components/LiveMap'
 import { supabase } from './lib/supabase'
 
@@ -78,8 +79,12 @@ function App() {
             incidents={recentIncidents} 
             liveEvents={liveEvents} 
           />
+        ) : activeTab === 'analytics' ? (
+          <div style={{ position: 'absolute', top: 0, left: 250, right: 350, bottom: 0, zIndex: 20, background: 'rgba(10,10,14,0.95)', overflow: 'hidden' }}>
+             <Analytics incidents={recentIncidents} liveEvents={liveEvents} />
+          </div>
         ) : (
-          <div className="map-placeholder">
+          <div className="map-placeholder" style={{ marginLeft: '250px', marginRight: '350px' }}>
             <div style={{ textAlign: 'center' }}>
               <Activity size={48} style={{ marginBottom: '1rem', opacity: 0.5 }} />
               <p>{activeTab.charAt(0).toUpperCase() + activeTab.slice(1)} Module Pending</p>
