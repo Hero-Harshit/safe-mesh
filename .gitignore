@@ -39,3 +39,4 @@ Thumbs.db
 
 # Project Docs
 implementation_plan.md
+.supabase_schema.sql
