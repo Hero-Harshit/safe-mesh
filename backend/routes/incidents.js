@@ -109,7 +109,7 @@ router.post('/:incidentId/events', async (req, res) => {
 
     // 2. Insert event (duplicate protection via timeBucket & DB constraint)
     const detectedTimestamp = new Date(detectedAt).getTime();
-    const WINDOW_SECONDS = 10;
+    const WINDOW_SECONDS = 60;
     const timeBucket = Math.floor(detectedTimestamp / (WINDOW_SECONDS * 1000));
 
     const { data: eventResult, error: insertError } = await supabase

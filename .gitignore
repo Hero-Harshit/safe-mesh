@@ -36,3 +36,6 @@ android/*.jks
 *.iml
 .DS_Store
 Thumbs.db
+
+# Project Docs
+implementation_plan.md
