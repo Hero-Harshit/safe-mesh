@@ -196,7 +196,9 @@ function App() {
                   }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
                       <span style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.9rem', fontFamily: 'monospace' }}>
-                        {incident.incident_id.split('-')[0]}-{incident.incident_id.split('-')[1]}
+                        {incident.incident_id.includes('-') 
+                          ? incident.incident_id.split('-').slice(0, 2).join('-') 
+                          : incident.incident_id.slice(0, 16)}
                       </span>
                       <span style={{ color: 'var(--text-tertiary)', fontSize: '0.8rem' }}>
                         {new Date(incident.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}

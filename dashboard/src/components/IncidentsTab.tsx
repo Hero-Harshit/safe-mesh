@@ -1,7 +1,6 @@
 import { useState, useMemo } from 'react';
 import { supabase } from '../lib/supabase';
 import { 
-  AlertTriangle, 
   CheckCircle, 
   Clock, 
   Navigation, 
@@ -141,28 +140,28 @@ const SIMULATED_INCIDENTS: Incident[] = [
 ];
 
 const SIMULATED_EVENTS: IncidentEvent[] = [
-  { id: 1, incident_id: 'INC-8a4b2-001', guardian_id: 'guard_alpha_99', detected_at: new Date(Date.now() - 1000 * 60 * 2).toISOString(), latitude: 18.5204, longitude: 73.8567, rssi: -65 },
-  { id: 2, incident_id: 'INC-8a4b2-001', guardian_id: 'guard_beta_42', detected_at: new Date(Date.now() - 1000 * 60 * 1.5).toISOString(), latitude: 18.5209, longitude: 73.8572, rssi: -72 },
-  { id: 3, incident_id: 'INC-8a4b2-001', guardian_id: 'guard_delta_17', detected_at: new Date(Date.now() - 1000 * 60 * 1).toISOString(), latitude: 18.5215, longitude: 73.8580, rssi: -60 },
+  { id: '1', incident_id: 'INC-8a4b2-001', guardian_id: 'guard_alpha_99', detected_at: new Date(Date.now() - 1000 * 60 * 2).toISOString(), latitude: 18.5204, longitude: 73.8567, location: { type: 'Point', coordinates: [73.8567, 18.5204] }, rssi: -65 },
+  { id: '2', incident_id: 'INC-8a4b2-001', guardian_id: 'guard_beta_42', detected_at: new Date(Date.now() - 1000 * 60 * 1.5).toISOString(), latitude: 18.5209, longitude: 73.8572, location: { type: 'Point', coordinates: [73.8572, 18.5209] }, rssi: -72 },
+  { id: '3', incident_id: 'INC-8a4b2-001', guardian_id: 'guard_delta_17', detected_at: new Date(Date.now() - 1000 * 60 * 1).toISOString(), latitude: 18.5215, longitude: 73.8580, location: { type: 'Point', coordinates: [73.8580, 18.5215] }, rssi: -60 },
   
-  { id: 4, incident_id: 'INC-9x3c1-002', guardian_id: 'guard_gamma_11', detected_at: new Date(Date.now() - 1000 * 60 * 12).toISOString(), latitude: 18.5210, longitude: 73.8580, rssi: -80 },
+  { id: '4', incident_id: 'INC-9x3c1-002', guardian_id: 'guard_gamma_11', detected_at: new Date(Date.now() - 1000 * 60 * 12).toISOString(), latitude: 18.5210, longitude: 73.8580, location: { type: 'Point', coordinates: [73.8580, 18.5210] }, rssi: -80 },
   
-  { id: 5, incident_id: 'INC-2v7d9-003', guardian_id: 'guard_zeta_88', detected_at: new Date(Date.now() - 1000 * 60 * 45).toISOString(), latitude: 18.5150, longitude: 73.8510, rssi: -90 },
-  { id: 6, incident_id: 'INC-2v7d9-003', guardian_id: 'guard_eta_22', detected_at: new Date(Date.now() - 1000 * 60 * 43).toISOString(), latitude: 18.5155, longitude: 73.8505, rssi: -85 },
+  { id: '5', incident_id: 'INC-2v7d9-003', guardian_id: 'guard_zeta_88', detected_at: new Date(Date.now() - 1000 * 60 * 45).toISOString(), latitude: 18.5150, longitude: 73.8510, location: { type: 'Point', coordinates: [73.8510, 18.5150] }, rssi: -90 },
+  { id: '6', incident_id: 'INC-2v7d9-003', guardian_id: 'guard_eta_22', detected_at: new Date(Date.now() - 1000 * 60 * 43).toISOString(), latitude: 18.5155, longitude: 73.8505, location: { type: 'Point', coordinates: [73.8505, 18.5155] }, rssi: -85 },
 
-  { id: 7, incident_id: 'INC-3j4k5-008', guardian_id: 'guard_theta_33', detected_at: new Date(Date.now() - 1000 * 60 * 3).toISOString(), latitude: 18.5220, longitude: 73.8650, rssi: -70 },
-  { id: 8, incident_id: 'INC-3j4k5-008', guardian_id: 'guard_iota_44', detected_at: new Date(Date.now() - 1000 * 60 * 2).toISOString(), latitude: 18.5225, longitude: 73.8645, rssi: -65 },
-  { id: 9, incident_id: 'INC-3j4k5-008', guardian_id: 'guard_kappa_55', detected_at: new Date(Date.now() - 1000 * 60 * 1).toISOString(), latitude: 18.5230, longitude: 73.8640, rssi: -60 },
+  { id: '7', incident_id: 'INC-3j4k5-008', guardian_id: 'guard_theta_33', detected_at: new Date(Date.now() - 1000 * 60 * 3).toISOString(), latitude: 18.5220, longitude: 73.8650, location: { type: 'Point', coordinates: [73.8650, 18.5220] }, rssi: -70 },
+  { id: '8', incident_id: 'INC-3j4k5-008', guardian_id: 'guard_iota_44', detected_at: new Date(Date.now() - 1000 * 60 * 2).toISOString(), latitude: 18.5225, longitude: 73.8645, location: { type: 'Point', coordinates: [73.8645, 18.5225] }, rssi: -65 },
+  { id: '9', incident_id: 'INC-3j4k5-008', guardian_id: 'guard_kappa_55', detected_at: new Date(Date.now() - 1000 * 60 * 1).toISOString(), latitude: 18.5230, longitude: 73.8640, location: { type: 'Point', coordinates: [73.8640, 18.5230] }, rssi: -60 },
 
-  { id: 10, incident_id: 'INC-4d5e6-005', guardian_id: 'guard_lambda_66', detected_at: new Date(Date.now() - 1000 * 60 * 18).toISOString(), latitude: 18.5300, longitude: 73.8600, rssi: -75 },
-  { id: 11, incident_id: 'INC-4d5e6-005', guardian_id: 'guard_mu_77', detected_at: new Date(Date.now() - 1000 * 60 * 17).toISOString(), latitude: 18.5295, longitude: 73.8605, rssi: -70 },
+  { id: '10', incident_id: 'INC-4d5e6-005', guardian_id: 'guard_lambda_66', detected_at: new Date(Date.now() - 1000 * 60 * 18).toISOString(), latitude: 18.5300, longitude: 73.8600, location: { type: 'Point', coordinates: [73.8600, 18.5300] }, rssi: -75 },
+  { id: '11', incident_id: 'INC-4d5e6-005', guardian_id: 'guard_mu_77', detected_at: new Date(Date.now() - 1000 * 60 * 17).toISOString(), latitude: 18.5295, longitude: 73.8605, location: { type: 'Point', coordinates: [73.8605, 18.5295] }, rssi: -70 },
 
-  { id: 12, incident_id: 'INC-6l7m8-009', guardian_id: 'guard_nu_88', detected_at: new Date(Date.now() - 1000 * 60 * 22).toISOString(), latitude: 18.5350, longitude: 73.8500, rssi: -82 },
-  { id: 13, incident_id: 'INC-6l7m8-009', guardian_id: 'guard_xi_99', detected_at: new Date(Date.now() - 1000 * 60 * 21).toISOString(), latitude: 18.5345, longitude: 73.8505, rssi: -78 },
+  { id: '12', incident_id: 'INC-6l7m8-009', guardian_id: 'guard_nu_88', detected_at: new Date(Date.now() - 1000 * 60 * 22).toISOString(), latitude: 18.5350, longitude: 73.8500, location: { type: 'Point', coordinates: [73.8500, 18.5350] }, rssi: -82 },
+  { id: '13', incident_id: 'INC-6l7m8-009', guardian_id: 'guard_xi_99', detected_at: new Date(Date.now() - 1000 * 60 * 21).toISOString(), latitude: 18.5345, longitude: 73.8505, location: { type: 'Point', coordinates: [73.8505, 18.5345] }, rssi: -78 },
 
-  { id: 14, incident_id: 'INC-8t9u0-013', guardian_id: 'guard_omicron_11', detected_at: new Date(Date.now() - 1000 * 60 * 110).toISOString(), latitude: 18.5050, longitude: 73.8480, rssi: -88 },
-  { id: 15, incident_id: 'INC-8t9u0-013', guardian_id: 'guard_pi_22', detected_at: new Date(Date.now() - 1000 * 60 * 105).toISOString(), latitude: 18.5055, longitude: 73.8475, rssi: -85 },
-  { id: 16, incident_id: 'INC-8t9u0-013', guardian_id: 'guard_rho_33', detected_at: new Date(Date.now() - 1000 * 60 * 100).toISOString(), latitude: 18.5060, longitude: 73.8470, rssi: -80 },
+  { id: '14', incident_id: 'INC-8t9u0-013', guardian_id: 'guard_omicron_11', detected_at: new Date(Date.now() - 1000 * 60 * 110).toISOString(), latitude: 18.5050, longitude: 73.8480, location: { type: 'Point', coordinates: [73.8480, 18.5050] }, rssi: -88 },
+  { id: '15', incident_id: 'INC-8t9u0-013', guardian_id: 'guard_pi_22', detected_at: new Date(Date.now() - 1000 * 60 * 105).toISOString(), latitude: 18.5055, longitude: 73.8475, location: { type: 'Point', coordinates: [73.8475, 18.5055] }, rssi: -85 },
+  { id: '16', incident_id: 'INC-8t9u0-013', guardian_id: 'guard_rho_33', detected_at: new Date(Date.now() - 1000 * 60 * 100).toISOString(), latitude: 18.5060, longitude: 73.8470, location: { type: 'Point', coordinates: [73.8470, 18.5060] }, rssi: -80 },
 ];
 
 export default function IncidentsTab({ incidents, liveEvents }: IncidentsTabProps) {
@@ -410,7 +409,9 @@ export default function IncidentsTab({ incidents, liveEvents }: IncidentsTabProp
                               </p>
                               <div style={{ display: 'flex', gap: '1rem', fontSize: '0.8rem', color: 'var(--text-tertiary)', marginTop: '0.2rem' }}>
                                 <span>{new Date(evt.detected_at).toLocaleTimeString()}</span>
-                                <span style={{ display: 'flex', alignItems: 'center', gap: '0.2rem' }}><MapPin size={12} /> {evt.latitude.toFixed(4)}, {evt.longitude.toFixed(4)}</span>
+                                <span style={{ display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
+                                  <MapPin size={12} /> {(evt.latitude ?? evt.location?.coordinates[1] ?? 0).toFixed(4)}, {(evt.longitude ?? evt.location?.coordinates[0] ?? 0).toFixed(4)}
+                                </span>
                               </div>
                             </div>
                           </div>

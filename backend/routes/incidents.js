@@ -144,6 +144,9 @@ router.post('/:incidentId/events', async (req, res) => {
 
     // 3. Update Incident Summary (in Postgres, we fetch, merge, and update jsonb)
     let summary = incident.detection_summary || { totalGuardians: 0, firstDetectedAt: null, lastDetectedAt: null, uniqueGuardians: [] };
+    if (!Array.isArray(summary.uniqueGuardians)) {
+      summary.uniqueGuardians = [];
+    }
     const detectedDateStr = new Date(detectedAt).toISOString();
     
     let isUpdated = false;

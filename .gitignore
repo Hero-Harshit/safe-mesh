@@ -3,6 +3,7 @@ node_modules/
 
 # Frontend build output
 frontend/dist/
+dashboard/dist/
 
 # Backend build output
 backend/dist/

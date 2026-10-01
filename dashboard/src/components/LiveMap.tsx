@@ -22,21 +22,26 @@ export interface PointGeometry {
 
 export interface Incident {
   incident_id: string;
-  sender_safehelp_id: string;
+  sender_safehelp_id?: string;
   sender_location: PointGeometry;
   created_at: string;
   status: string;
   trigger_source: string;
+  ended_at?: string | null;
+  guardian_id?: string;
+  emergency_id?: string;
 }
 
 export interface IncidentEvent {
-  id: string;
+  id: string | number;
   incident_id: string;
   guardian_id: string;
-  location: PointGeometry;
+  location?: PointGeometry;
   detected_at: string;
-  rssi: number;
-  proximity: string;
+  rssi?: number;
+  proximity?: string;
+  latitude?: number;
+  longitude?: number;
 }
 
 interface LiveMapProps {
@@ -75,6 +80,8 @@ export default function LiveMap({ onIncidentSelect, incidents, liveEvents = [] }
     liveEvents.forEach(evt => {
       if (evt.location?.coordinates) {
         locations.set(evt.incident_id, [evt.location.coordinates[1], evt.location.coordinates[0]]);
+      } else if (evt.latitude !== undefined && evt.longitude !== undefined) {
+        locations.set(evt.incident_id, [evt.latitude, evt.longitude]);
       }
     });
 
