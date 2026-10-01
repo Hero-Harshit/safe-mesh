@@ -59,21 +59,19 @@ export const SafetyShortcuts: React.FC<SafetyShortcutsProps> = ({
       {/* Secondary Row: Nearby Guardian */}
       <div className="shortcuts-row-two-col">
         <button
-          className="shortcut-card compact-card span-2-col"
+          className="shortcut-card primary-card"
           onClick={onGuardianClick}
           aria-label="Open Nearby Guardian mesh network"
         >
-          <div className="compact-header-row">
-            <div className="shortcut-icon-circle bg-blue-tint">
-              <GuardianMeshIcon size={18} color="#3B82F6" />
-            </div>
-            <div className="compact-arrow">
-              <ChevronRightIcon size={13} color="#94A3B8" />
-            </div>
+          <div className="shortcut-icon-circle bg-blue-tint">
+            <GuardianMeshIcon size={20} color="#3B82F6" />
           </div>
-          <div className="shortcut-text-block compact-text">
+          <div className="shortcut-text-block">
             <span className="shortcut-title">Nearby Guardian</span>
             <span className="shortcut-subtitle">People around you</span>
+          </div>
+          <div className="shortcut-arrow">
+            <ChevronRightIcon size={16} color="#94A3B8" />
           </div>
         </button>
       </div>
