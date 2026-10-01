@@ -183,7 +183,7 @@ export default function Home(_props: HomeProps = {}) {
       </div>
 
       {/* Central HERO SOS Button (Anchored to the bottom for thumb reachability) */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', alignItems: 'center', minHeight: 0, paddingBottom: '16px' }}>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', alignItems: 'center', minHeight: 0, paddingBottom: '4px', marginBottom: '-10px' }}>
         <EmergencySOSButton onActivate={handleSosHoldComplete} />
       </div>
 
