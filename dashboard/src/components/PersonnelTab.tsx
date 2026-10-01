@@ -8,7 +8,8 @@ import {
   Phone,
   Droplet,
   HeartPulse,
-  Activity
+  Activity,
+  Trash2
 } from 'lucide-react';
 
 export interface CitizenProfile {
@@ -27,6 +28,7 @@ export default function PersonnelTab() {
   const [users, setUsers] = useState<CitizenProfile[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [filter, setFilter] = useState<'All' | '18-25' | '26-40' | '41+'>('All');
+  const [bloodFilter, setBloodFilter] = useState<string>('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
@@ -69,6 +71,20 @@ export default function PersonnelTab() {
     };
   }, []);
 
+  const handleDeleteUser = async (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!window.confirm("Are you sure you want to delete this user? This cannot be undone.")) return;
+    
+    try {
+      const { error } = await supabase.from('citizen_profiles').delete().eq('id', id);
+      if (error) throw error;
+      setUsers(prev => prev.filter(u => u.id !== id));
+    } catch (error) {
+      console.error("Error deleting user:", error);
+      alert("Failed to delete user.");
+    }
+  };
+
   const filteredUsers = useMemo(() => {
     let result = users;
     
@@ -84,6 +100,11 @@ export default function PersonnelTab() {
         if (filter === '41+') return ageNum >= 41;
         return true;
       });
+    }
+
+    // Apply blood filter
+    if (bloodFilter !== 'All') {
+      result = result.filter(u => u.blood_group === bloodFilter);
     }
 
     // Apply search filter
@@ -134,22 +155,52 @@ export default function PersonnelTab() {
         </div>
 
         {/* Filter Pills */}
-        <div style={{ display: 'flex', gap: '0.5rem', background: 'rgba(0,0,0,0.3)', padding: '0.25rem', borderRadius: '0.5rem', border: '1px solid rgba(255,255,255,0.05)', width: 'fit-content' }}>
-          {(['All', '18-25', '26-40', '41+'] as const).map(f => (
-            <button 
-              key={f}
-              onClick={() => setFilter(f)}
-              style={{
-                background: filter === f ? 'var(--bg-hover)' : 'transparent',
-                color: filter === f ? 'var(--text-primary)' : 'var(--text-tertiary)',
-                border: 'none', padding: '0.5rem 1.25rem', borderRadius: '0.25rem',
-                fontWeight: filter === f ? 600 : 400, cursor: 'pointer', transition: 'all 0.2s',
-                fontSize: '0.9rem'
-              }}
-            >
-              Age: {f}
-            </button>
-          ))}
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem' }}>
+          <div style={{ display: 'flex', gap: '0.5rem', background: 'rgba(0,0,0,0.3)', padding: '0.25rem', borderRadius: '0.5rem', border: '1px solid rgba(255,255,255,0.05)', width: 'fit-content' }}>
+            {(['All', '18-25', '26-40', '41+'] as const).map(f => (
+              <button 
+                key={f}
+                onClick={() => setFilter(f)}
+                style={{
+                  background: filter === f ? 'var(--bg-hover)' : 'transparent',
+                  color: filter === f ? 'var(--text-primary)' : 'var(--text-tertiary)',
+                  border: 'none', padding: '0.5rem 1.25rem', borderRadius: '0.25rem',
+                  fontWeight: filter === f ? 600 : 400, cursor: 'pointer', transition: 'all 0.2s',
+                  fontSize: '0.9rem'
+                }}
+              >
+                Age: {f}
+              </button>
+            ))}
+          </div>
+
+          <div style={{ display: 'flex', gap: '0.5rem', background: 'rgba(0,0,0,0.3)', padding: '0.25rem', borderRadius: '0.5rem', border: '1px solid rgba(255,255,255,0.05)', width: 'fit-content', alignItems: 'center' }}>
+             <Droplet size={14} color="#EF4444" style={{ marginLeft: '0.5rem' }} />
+             <span style={{ color: 'var(--text-tertiary)', fontSize: '0.9rem', marginRight: '0.5rem' }}>Blood Group:</span>
+             <select 
+                value={bloodFilter} 
+                onChange={(e) => setBloodFilter(e.target.value)}
+                style={{
+                  background: 'transparent',
+                  color: 'var(--text-primary)',
+                  border: 'none',
+                  outline: 'none',
+                  cursor: 'pointer',
+                  fontSize: '0.9rem',
+                  paddingRight: '0.5rem'
+                }}
+             >
+                <option value="All" style={{ color: '#000' }}>All</option>
+                <option value="A+" style={{ color: '#000' }}>A+</option>
+                <option value="A-" style={{ color: '#000' }}>A-</option>
+                <option value="B+" style={{ color: '#000' }}>B+</option>
+                <option value="B-" style={{ color: '#000' }}>B-</option>
+                <option value="AB+" style={{ color: '#000' }}>AB+</option>
+                <option value="AB-" style={{ color: '#000' }}>AB-</option>
+                <option value="O+" style={{ color: '#000' }}>O+</option>
+                <option value="O-" style={{ color: '#000' }}>O-</option>
+             </select>
+          </div>
         </div>
       </div>
       
@@ -209,8 +260,19 @@ export default function PersonnelTab() {
                     </span>
                   </div>
 
-                  {/* Expand Toggle */}
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
+                  {/* Actions & Expand Toggle */}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '1rem' }}>
+                    <button 
+                      onClick={(e) => handleDeleteUser(user.id, e)}
+                      title="Delete User"
+                      style={{ 
+                        background: 'rgba(239, 68, 68, 0.1)', border: 'none', padding: '0.4rem', 
+                        borderRadius: '0.25rem', cursor: 'pointer', color: 'var(--danger)', 
+                        display: 'flex', alignItems: 'center', transition: 'all 0.2s' 
+                      }}
+                    >
+                      <Trash2 size={16} />
+                    </button>
                     {isExpanded ? <ChevronUp size={20} color="var(--text-tertiary)" /> : <ChevronDown size={20} color="var(--text-tertiary)" />}
                   </div>
                 </div>
