@@ -1,39 +1,13 @@
 import React from 'react';
 import { ShieldLogoIcon, UserAvatarIcon } from './Icons';
-import type { PermissionStatus } from '../services/permissions';
 
 interface SafetyMeshHeaderProps {
   onProfileClick?: () => void;
-  locationPermission: PermissionStatus;
-  hasLocationData: boolean;
-  isLocating: boolean;
-  isEmergencyActive?: boolean;
 }
 
 export const SafetyMeshHeader: React.FC<SafetyMeshHeaderProps> = ({
   onProfileClick,
-  locationPermission,
-  hasLocationData,
-  isLocating,
-  isEmergencyActive = false,
 }) => {
-  // Dynamically calculate status according to real system state
-  let statusText = 'Setup Required';
-  let pillClass = 'status-setup-required';
-
-  if (isEmergencyActive) {
-    statusText = 'SOS Active';
-    pillClass = 'status-sos-active';
-  } else if (locationPermission !== 'GRANTED') {
-    statusText = 'Location Disabled';
-    pillClass = 'status-setup-required';
-  } else if (isLocating && !hasLocationData) {
-    statusText = 'Locating...';
-    pillClass = 'status-locating';
-  } else if (hasLocationData) {
-    statusText = "You're Safe";
-    pillClass = 'status-safe';
-  }
 
   return (
     <header className="safetymesh-header">

@@ -26,7 +26,6 @@ interface NearbyGuardianSetupProps {
 }
 
 export const NearbyGuardianSetup: React.FC<NearbyGuardianSetupProps> = ({
-  locationPermission,
   bluetoothPermission,
   onBack,
   onClose,

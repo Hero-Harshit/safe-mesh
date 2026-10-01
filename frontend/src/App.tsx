@@ -1,7 +1,5 @@
 import { useState, useEffect } from 'react';
 import Home from './pages/Home';
-import NearbyGuardianSetup from './pages/NearbyGuardianSetup';
-
 import StartupPermissionFlow from './components/StartupPermissionFlow';
 import {
   subscribePermissions,
@@ -9,44 +7,12 @@ import {
   refreshAllPermissions,
 } from './services/permissions';
 import type { SafetyMeshPermissionsState } from './services/permissions';
-import { subscribeLocation } from './services/location';
-import type { RealLocationData } from './services/location';
 
 // IMPORT NATIVE BRIDGE
 import { initNativeBridge } from './services/native';
 
-function getInitialView(): string {
-  if (typeof window === 'undefined') return 'home';
-  const params = new URLSearchParams(window.location.search);
-  const viewParam = params.get('view');
-  if (viewParam) return viewParam;
-  return 'home';
-}
-
 export default function App() {
-  const [currentView, setCurrentView] = useState<string>(getInitialView);
   const [permissions, setPermissions] = useState<SafetyMeshPermissionsState>(getPermissionsState());
-  const [location, setLocation] = useState<RealLocationData | null>(null);
-
-  const handleNavigate = (view: string) => {
-    setCurrentView(view);
-    const newPath = view === 'home' ? '/' : `/${view.replace(/_/g, '-')}`;
-    if (window.location.pathname !== newPath) {
-      window.history.pushState({ view }, '', newPath);
-    }
-  };
-
-  useEffect(() => {
-    const handlePopState = (e: PopStateEvent) => {
-      if (e.state?.view) {
-        setCurrentView(e.state.view);
-      } else {
-        setCurrentView(getInitialView());
-      }
-    };
-    window.addEventListener('popstate', handlePopState);
-    return () => window.removeEventListener('popstate', handlePopState);
-  }, []);
 
   useEffect(() => {
     // INITIALIZE NATIVE BRIDGE FOR APP ACTIONS AND BLE TO WORK
@@ -56,15 +22,10 @@ export default function App() {
       setPermissions(newPerms);
     });
 
-    const unsubLoc = subscribeLocation((newLoc) => {
-      setLocation(newLoc);
-    });
-
     refreshAllPermissions();
 
     return () => {
       unsubPerms();
-      unsubLoc();
     };
   }, []);
 
@@ -80,10 +41,9 @@ export default function App() {
         />
       ) : (
         /* 2. Main SafetyMesh Application */
-        <>
-          <Home onNavigate={handleNavigate} />
-        </>
+        <Home />
       )}
     </div>
   );
 }
+

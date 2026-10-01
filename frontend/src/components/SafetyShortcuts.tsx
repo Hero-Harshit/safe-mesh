@@ -2,7 +2,6 @@ import React from 'react';
 import {
   NavigationArrowIcon,
   UsersIcon,
-  PhoneCallIcon,
   GuardianMeshIcon,
   ChevronRightIcon,
 } from './Icons';
@@ -10,14 +9,12 @@ import {
 interface SafetyShortcutsProps {
   onSafeRouteClick: () => void;
   onContactsClick: () => void;
-  onCall112Click: () => void;
   onGuardianClick: () => void;
 }
 
 export const SafetyShortcuts: React.FC<SafetyShortcutsProps> = ({
   onSafeRouteClick,
   onContactsClick,
-  onCall112Click,
   onGuardianClick,
 }) => {
   return (
@@ -59,10 +56,10 @@ export const SafetyShortcuts: React.FC<SafetyShortcutsProps> = ({
         </button>
       </div>
 
-      {/* Secondary Row: Call 112 + Nearby Guardian + Settings */}
+      {/* Secondary Row: Nearby Guardian */}
       <div className="shortcuts-row-two-col">
         <button
-          className="shortcut-card compact-card"
+          className="shortcut-card compact-card span-2-col"
           onClick={onGuardianClick}
           aria-label="Open Nearby Guardian mesh network"
         >
@@ -79,7 +76,6 @@ export const SafetyShortcuts: React.FC<SafetyShortcutsProps> = ({
             <span className="shortcut-subtitle">People around you</span>
           </div>
         </button>
-
       </div>
     </section>
   );

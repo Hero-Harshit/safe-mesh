@@ -1,10 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import SafetyMeshHeader from '../components/SafetyMeshHeader';
-import GreetingSection from '../components/GreetingSection';
-import LocationContextBar from '../components/LocationContextBar';
 import EmergencySOSButton from '../components/EmergencySOSButton';
 import SafetyShortcuts from '../components/SafetyShortcuts';
-import BottomSafetyStatus from '../components/BottomSafetyStatus';
 import SafeRouteModal from '../components/SafeRouteModal';
 import EmergencyContactsModal from '../components/EmergencyContactsModal';
 import Call112Modal from '../components/Call112Modal';
@@ -38,10 +35,10 @@ import {
 } from '../services/permissions';
 
 interface HomeProps {
-  onNavigate: (view: string) => void;
+  onNavigate?: (view: string) => void;
 }
 
-export default function Home({ onNavigate }: HomeProps) {
+export default function Home(_props: HomeProps = {}) {
   // Real permissions state
   const [permissions, setPermissions] = useState<SafetyMeshPermissionsState>({
     location: 'UNKNOWN',
@@ -53,7 +50,6 @@ export default function Home({ onNavigate }: HomeProps) {
 
   // Real device location state
   const [location, setLocation] = useState<RealLocationData | null>(null);
-  const [isLocating, setIsLocating] = useState(false);
 
   // Contacts and UI state
   const [contacts, setContacts] = useState<EmergencyContact[]>([]);
@@ -73,14 +69,11 @@ export default function Home({ onNavigate }: HomeProps) {
 
   // 2. Fetch real location if location permission is granted
   const loadLocation = useCallback(async () => {
-    setIsLocating(true);
     try {
       const loc = await fetchRealDeviceLocation();
       setLocation(loc);
     } catch {
       // Error handled by location service
-    } finally {
-      setIsLocating(false);
     }
   }, []);
 
@@ -177,10 +170,6 @@ export default function Home({ onNavigate }: HomeProps) {
       {/* 1. Header with dynamic safety status based on real device state */}
       <SafetyMeshHeader
         onProfileClick={() => setActiveModal('settings')}
-        locationPermission={permissions.location}
-        hasLocationData={location !== null && location.status === 'LIVE'}
-        isLocating={isLocating}
-        isEmergencyActive={sosActive}
       />
 
 
@@ -189,7 +178,6 @@ export default function Home({ onNavigate }: HomeProps) {
         <SafetyShortcuts
           onSafeRouteClick={() => setActiveModal('safe_route')}
           onContactsClick={() => setActiveModal('contacts')}
-          onCall112Click={() => setActiveModal('call_112')}
           onGuardianClick={() => setActiveModal('nearby_guardian')}
         />
       </div>
