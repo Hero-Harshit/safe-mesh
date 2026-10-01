@@ -206,7 +206,6 @@ export default function Home({ onNavigate }: HomeProps) {
         onContactsClick={() => setActiveModal('contacts')}
         onCall112Click={() => setActiveModal('call_112')}
         onGuardianClick={() => onNavigate('nearby_guardian')}
-        onSettingsClick={() => setActiveModal('settings')}
       />
 
 

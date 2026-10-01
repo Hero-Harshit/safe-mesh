@@ -4,7 +4,6 @@ import {
   UsersIcon,
   PhoneCallIcon,
   GuardianMeshIcon,
-  SettingsGearIcon,
   ChevronRightIcon,
 } from './Icons';
 
@@ -13,7 +12,6 @@ interface SafetyShortcutsProps {
   onContactsClick: () => void;
   onCall112Click: () => void;
   onGuardianClick: () => void;
-  onSettingsClick: () => void;
 }
 
 export const SafetyShortcuts: React.FC<SafetyShortcutsProps> = ({
@@ -21,7 +19,6 @@ export const SafetyShortcuts: React.FC<SafetyShortcutsProps> = ({
   onContactsClick,
   onCall112Click,
   onGuardianClick,
-  onSettingsClick,
 }) => {
   return (
     <section className="safety-shortcuts-container" aria-label="Safety Shortcuts">
