@@ -315,8 +315,14 @@ export const StartupPermissionFlow: React.FC<StartupPermissionFlowProps> = ({
 
             <div className="profile-form-grid">
               <div className="contact-picker-header">
-                <span style={{fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)', alignSelf: 'flex-start'}}>Primary Contact</span>
-                <button type="button" className="btn-pick-contact" onClick={handlePickContact}>Pick from Contacts</button>
+                <span className="profile-input-label">Primary Contact</span>
+                <button type="button" className="btn-pick-contact" onClick={handlePickContact}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{marginRight: '6px'}}>
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="12" cy="7" r="4"></circle>
+                  </svg>
+                  Pick from Contacts
+                </button>
               </div>
               <input type="text" className="profile-input" placeholder="Contact Name *" value={profileData.contactName} onChange={e => setProfileData({...profileData, contactName: e.target.value})} />
               <input type="tel" className="profile-input" placeholder="Contact Phone *" value={profileData.contactPhone} onChange={e => setProfileData({...profileData, contactPhone: e.target.value})} />

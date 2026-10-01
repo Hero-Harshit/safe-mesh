@@ -3050,3 +3050,35 @@ textarea.profile-input {
   transform: scale(0.97);
   background: #F1F5F9;
 }
+
+.contact-picker-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  margin-bottom: -6px;
+}
+
+.btn-pick-contact {
+  display: inline-flex;
+  align-items: center;
+  padding: 8px 14px;
+  background: #EEF2FF;
+  color: #4F46E5;
+  border: none;
+  border-radius: 12px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-pick-contact:hover {
+  background: #E0E7FF;
+  transform: translateY(-1px);
+}
+
+.btn-pick-contact:active {
+  transform: scale(0.96);
+}
