@@ -17,9 +17,6 @@ import { initNativeBridge } from './services/native';
 
 function getInitialView(): string {
   if (typeof window === 'undefined') return 'home';
-  const path = window.location.pathname.toLowerCase();
-
-  if (path.includes('nearby-guardian') || path.includes('nearby_guardian')) return 'nearby_guardian';
   const params = new URLSearchParams(window.location.search);
   const viewParam = params.get('view');
   if (viewParam) return viewParam;
@@ -84,17 +81,7 @@ export default function App() {
       ) : (
         /* 2. Main SafetyMesh Application */
         <>
-          {currentView === 'home' && <Home onNavigate={handleNavigate} />}
-          {currentView === 'nearby_guardian' && (
-            <NearbyGuardianSetup
-              location={location}
-              locationPermission={permissions.location}
-              bluetoothPermission={permissions.bluetooth}
-              onRefreshPermissions={refreshAllPermissions}
-              onBack={() => handleNavigate('home')}
-            />
-          )}
-
+          <Home onNavigate={handleNavigate} />
         </>
       )}
     </div>

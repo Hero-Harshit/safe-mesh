@@ -39,11 +39,11 @@ export const EmergencyMode: React.FC<EmergencyModeProps> = ({
   const callTriggeredRef = React.useRef(false);
 
   const primaryContact = contacts.find((c) => c.isPrimary) || contacts[0];
-  const emergencyTargetNumber = primaryContact?.phone || '112';
-  const emergencyTargetName = primaryContact?.name ? `${primaryContact.name} (${primaryContact.phone})` : '112 (National Emergency)';
+  const emergencyTargetNumber = primaryContact?.phone || '';
+  const emergencyTargetName = primaryContact?.name ? `${primaryContact.name} (${primaryContact.phone})` : 'Primary Contact (Not Set)';
 
   useEffect(() => {
-    if (secondsActive === 0 && !callTriggeredRef.current) {
+    if (secondsActive === 0 && !callTriggeredRef.current && emergencyTargetNumber) {
       // Fire immediately to bypass Chrome intent restrictions, but tell Android to wait 20s
       startEmergencyCall(emergencyTargetNumber, 20000).catch(console.error);
     }
@@ -178,14 +178,16 @@ export const EmergencyMode: React.FC<EmergencyModeProps> = ({
         {/* Immediate Emergency Action Shortcuts */}
         <div className="emergency-action-stack">
           {/* Level 3: Auto Emergency Call (T=20s) */}
-          <div className="emergency-hero-btn" style={{ cursor: 'default', backgroundColor: '#1E293B' }}>
-            <div className="btn-icon-box bg-white-soft">
-              <PhoneCallIcon size={22} color="#FFFFFF" />
+          <div className="emergency-hero-btn" style={{ cursor: 'default', backgroundColor: '#FFFFFF', border: '1px solid #E2E8F0', boxShadow: '0 4px 12px rgba(0,0,0,0.03)', color: '#1E293B' }}>
+            <div className="btn-icon-box" style={{ backgroundColor: '#F1F5F9' }}>
+              <PhoneCallIcon size={22} color="#475569" />
             </div>
             <div className="btn-copy">
-              <span className="btn-headline">Auto-Dial {emergencyTargetName}</span>
+              <span className="btn-headline">{emergencyTargetNumber ? `Auto-Dial ${emergencyTargetName}` : 'Auto-Dial Unavailable'}</span>
               <span className="btn-tagline">
-                {'Will auto-dial in 20s...'}
+                {emergencyTargetNumber 
+                  ? (secondsActive < 20 ? `Will auto-dial in ${20 - secondsActive}s...` : 'Auto-dial initiated.') 
+                  : 'Please add a primary contact to enable auto-dial.'}
               </span>
             </div>
           </div>
@@ -194,24 +196,24 @@ export const EmergencyMode: React.FC<EmergencyModeProps> = ({
 
           {/* Level 2: Neighborhood Alert (T=10s) */}
           {level30Alert && (
-            <div className="emergency-hero-btn" style={{ cursor: 'default', backgroundColor: '#EF4444' }}>
-              <div className="btn-icon-box" style={{ backgroundColor: 'rgba(255,255,255,0.2)' }}>
-                <ShieldCheckIcon size={22} color="#FFFFFF" />
+            <div className="emergency-hero-btn" style={{ cursor: 'default', backgroundColor: '#FFFFFF', border: '1px solid #FECACA', boxShadow: '0 4px 12px rgba(239,68,68,0.06)', color: '#1E293B' }}>
+              <div className="btn-icon-box" style={{ backgroundColor: '#FEE2E2' }}>
+                <ShieldCheckIcon size={22} color="#EF4444" />
               </div>
               <div className="btn-copy">
-                <span className="btn-headline">Neighborhood Alert</span>
+                <span className="btn-headline" style={{ color: '#EF4444' }}>Neighborhood Alert</span>
                 <span className="btn-tagline">Nearby guardians have been alerted.</span>
               </div>
             </div>
           )}
 
           {/* SMS Status Indicator */}
-          <div className="emergency-hero-btn" style={{ cursor: 'default', backgroundColor: '#2563EB' }}>
-            <div className="btn-icon-box bg-white-soft">
-              <UsersIcon size={22} color="#FFFFFF" />
+          <div className="emergency-hero-btn" style={{ cursor: 'default', backgroundColor: '#FFFFFF', border: '1px solid #BFDBFE', boxShadow: '0 4px 12px rgba(37,99,235,0.06)', color: '#1E293B' }}>
+            <div className="btn-icon-box" style={{ backgroundColor: '#DBEAFE' }}>
+              <UsersIcon size={22} color="#2563EB" />
             </div>
             <div className="btn-copy">
-              <span className="btn-headline">{smsStatus}</span>
+              <span className="btn-headline" style={{ color: '#2563EB' }}>{smsStatus}</span>
               <span className="btn-tagline">
                 {smsStatus === 'SMS SENT' ? 'Emergency contacts notified.' : 
                  smsStatus === 'SMS PARTIALLY SENT' ? 'Some contacts notified.' :
@@ -224,10 +226,10 @@ export const EmergencyMode: React.FC<EmergencyModeProps> = ({
           </div>
 
           {/* Safe Route Panel */}
-          <div className="emergency-hero-btn" style={{ cursor: 'default', display: 'flex', flexDirection: 'column', alignItems: 'flex-start', padding: '16px', backgroundColor: '#0F172A' }}>
+          <div className="emergency-hero-btn" style={{ cursor: 'default', display: 'flex', flexDirection: 'column', alignItems: 'flex-start', padding: '16px', backgroundColor: '#FFFFFF', border: '1px solid #E2E8F0', boxShadow: '0 4px 12px rgba(0,0,0,0.03)', color: '#1E293B' }}>
             <div style={{ display: 'flex', alignItems: 'center', marginBottom: '8px' }}>
-              <div className="btn-icon-box bg-white-soft" style={{ marginRight: '12px' }}>
-                <LocationPinIcon size={22} color="#FFFFFF" />
+              <div className="btn-icon-box" style={{ backgroundColor: '#F1F5F9', marginRight: '12px' }}>
+                <LocationPinIcon size={22} color="#475569" />
               </div>
               <div className="btn-copy">
                 <span className="btn-headline">SAFE ROUTE</span>
@@ -240,12 +242,12 @@ export const EmergencyMode: React.FC<EmergencyModeProps> = ({
             </div>
 
             {safeRouteState.data?.destination && (
-              <div style={{ width: '100%', marginTop: '8px', padding: '12px', backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: '8px' }}>
-                <div style={{ fontWeight: 'bold', color: 'white' }}>Recommended Destination:</div>
-                <div style={{ color: '#E2E8F0', fontSize: '0.9rem', marginBottom: '4px' }}>{safeRouteState.data.destination.name}</div>
+              <div style={{ width: '100%', marginTop: '8px', padding: '12px', backgroundColor: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: '8px' }}>
+                <div style={{ fontWeight: 'bold', color: '#1E293B' }}>Recommended Destination:</div>
+                <div style={{ color: '#475569', fontSize: '0.9rem', marginBottom: '4px' }}>{safeRouteState.data.destination.name}</div>
                 
                 {safeRouteState.data.route && (
-                  <div style={{ display: 'flex', justifyContent: 'space-between', color: '#CBD5E1', fontSize: '0.85rem', marginBottom: '8px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', color: '#64748B', fontSize: '0.85rem', marginBottom: '8px' }}>
                     <span>Distance: {safeRouteState.data.route.distanceMeters} m</span>
                     <span>~{Math.round(safeRouteState.data.route.durationSeconds / 60)} min walk</span>
                   </div>
@@ -288,7 +290,7 @@ export const EmergencyMode: React.FC<EmergencyModeProps> = ({
         <div className="emergency-bottom-actions">
           <button onClick={onDeactivate} className="btn-deactivate-safe">
             <ShieldCheckIcon size={20} color="#10B981" />
-            <span>I AM SAFE — CANCEL SOS</span>
+            <span>I AM SAFE CANCEL SOS</span>
           </button>
           <span className="cancel-disclaimer">
             Tap only if you are secure and no longer require assistance

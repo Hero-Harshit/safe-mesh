@@ -12,11 +12,13 @@ export const EmergencySOSButton: React.FC<EmergencySOSButtonProps> = ({ onActiva
   const [isHolding, setIsHolding] = useState(false);
   const [progress, setProgress] = useState(0); // 0 to 100
   const [showHint, setShowHint] = useState(false);
+  const [isActivated, setIsActivated] = useState(false); // Track completion state
   const holdStartTimeRef = useRef<number | null>(null);
   const animFrameRef = useRef<number | null>(null);
   const hintTimeoutRef = useRef<any>(null);
 
   const resetHold = useCallback(() => {
+    if (isActivated) return; // Prevent reset if already transitioning to green
     setIsHolding(false);
     setProgress(0);
     holdStartTimeRef.current = null;
@@ -24,16 +26,23 @@ export const EmergencySOSButton: React.FC<EmergencySOSButtonProps> = ({ onActiva
       cancelAnimationFrame(animFrameRef.current);
       animFrameRef.current = null;
     }
-  }, []);
+  }, [isActivated]);
 
   const handleHoldComplete = useCallback(() => {
-    resetHold();
+    setIsActivated(true);
     triggerHaptic([200, 80, 200, 80, 400]);
-    onActivate();
-  }, [onActivate, resetHold]);
+    // Wait 2 seconds for the slow green transition before actually navigating
+    setTimeout(() => {
+      onActivate();
+      // Reset after it's navigated away so it's clean if they come back
+      setIsActivated(false); 
+      setIsHolding(false);
+      setProgress(0);
+    }, 2000);
+  }, [onActivate]);
 
   const handleFrame = useCallback(() => {
-    if (!holdStartTimeRef.current) return;
+    if (!holdStartTimeRef.current || isActivated) return;
     const elapsed = Date.now() - holdStartTimeRef.current;
     const currentProgress = Math.min((elapsed / HOLD_DURATION_MS) * 100, 100);
     setProgress(currentProgress);
@@ -48,7 +57,7 @@ export const EmergencySOSButton: React.FC<EmergencySOSButtonProps> = ({ onActiva
     } else {
       animFrameRef.current = requestAnimationFrame(handleFrame);
     }
-  }, [handleHoldComplete]);
+  }, [handleHoldComplete, isActivated]);
 
   const startHold = (e: React.MouseEvent | React.TouchEvent) => {
     e.preventDefault();
@@ -75,40 +84,74 @@ export const EmergencySOSButton: React.FC<EmergencySOSButtonProps> = ({ onActiva
     };
   }, [resetHold]);
 
-  // Circumference for the SVG progress circle (radius = 92)
-  const radius = 92;
-  const circumference = 2 * Math.PI * radius;
-  const strokeDashoffset = circumference - (progress / 100) * circumference;
+  // Radii for the three progress circles
+  const radius1 = 92;
+  const radius2 = 106;
+  const radius3 = 120;
+
+  const circ1 = 2 * Math.PI * radius1;
+  const circ2 = 2 * Math.PI * radius2;
+  const circ3 = 2 * Math.PI * radius3;
+
+  const offset1 = circ1 - (progress / 100) * circ1;
+  const offset2 = circ2 - (progress / 100) * circ2;
+  const offset3 = circ3 - (progress / 100) * circ3;
 
   return (
     <section className="sos-hero-container" aria-label="Emergency SOS activation">
-      <div className="sos-top-label">Emergency</div>
 
       <div className="sos-button-wrapper">
-        {/* Soft Ambient Glow Rings */}
+        {/* Soft Ambient Glow Outer */}
         <div className="sos-glow-outer"></div>
         <div className={`sos-ring ring-level-3 ${isHolding ? 'holding' : ''}`}></div>
         <div className={`sos-ring ring-level-2 ${isHolding ? 'holding' : ''}`}></div>
         <div className={`sos-ring ring-level-1 ${isHolding ? 'holding' : ''}`}></div>
 
-        {/* Circular SVG Progress Ring */}
-        <svg className="sos-progress-svg" width="220" height="220" viewBox="0 0 200 200">
-          <circle
-            className="sos-progress-bg"
-            cx="100"
-            cy="100"
-            r={radius}
-            strokeWidth="5"
-          />
+        {/* Circular SVG Progress Rings (3 levels) */}
+        <svg className="sos-progress-svg" width="260" height="260" viewBox="0 0 260 260" style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%) rotate(-90deg)', pointerEvents: 'none', zIndex: 6 }}>
+          {/* Inner Ring (Level 1) */}
+          <circle className="sos-progress-bg" cx="130" cy="130" r={radius1} strokeWidth="3" opacity="0.2" />
           <circle
             className="sos-progress-bar"
-            cx="100"
-            cy="100"
-            r={radius}
-            strokeWidth="6"
-            strokeDasharray={circumference}
-            strokeDashoffset={strokeDashoffset}
+            cx="130"
+            cy="130"
+            r={radius1}
+            strokeWidth="4"
+            strokeDasharray={circ1}
+            strokeDashoffset={offset1}
             strokeLinecap="round"
+            stroke="#FFFFFF"
+            style={{ transition: 'none' }}
+          />
+
+          {/* Middle Ring (Level 2) */}
+          <circle className="sos-progress-bg" cx="130" cy="130" r={radius2} strokeWidth="2" opacity="0.15" />
+          <circle
+            className="sos-progress-bar"
+            cx="130"
+            cy="130"
+            r={radius2}
+            strokeWidth="3"
+            strokeDasharray={circ2}
+            strokeDashoffset={offset2}
+            strokeLinecap="round"
+            stroke="#FFFFFF"
+            style={{ transition: 'none' }}
+          />
+
+          {/* Outer Ring (Level 3) */}
+          <circle className="sos-progress-bg" cx="130" cy="130" r={radius3} strokeWidth="1" opacity="0.1" />
+          <circle
+            className="sos-progress-bar"
+            cx="130"
+            cy="130"
+            r={radius3}
+            strokeWidth="2"
+            strokeDasharray={circ3}
+            strokeDashoffset={offset3}
+            strokeLinecap="round"
+            stroke="#FFFFFF"
+            style={{ transition: 'none' }}
           />
         </svg>
 
@@ -122,15 +165,29 @@ export const EmergencySOSButton: React.FC<EmergencySOSButtonProps> = ({ onActiva
           onTouchEnd={cancelHold}
           onTouchCancel={cancelHold}
           aria-label="Press and hold SOS button to trigger emergency"
+          style={{
+            transition: 'background 2s ease, box-shadow 2s ease, border 2s ease, transform 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+            background: isActivated ? 'linear-gradient(135deg, #10B981 0%, #047857 100%)' : undefined,
+            boxShadow: isActivated 
+              ? '0 0 0 6px rgba(16, 185, 129, 0.7), 0 0 0 10px rgba(16, 185, 129, 0.2), 0 12px 40px rgba(16, 185, 129, 0.8), inset 0 4px 8px rgba(255, 255, 255, 0.45), inset 0 -6px 12px rgba(4, 120, 87, 0.8)' 
+              : undefined,
+            border: isActivated ? '1px solid #34D399' : 'none'
+          }}
         >
           <div className="sos-button-gloss"></div>
           <div className="sos-inner-elements">
-            <div className="sos-icon-wrap">
-              <SosBroadcastIcon size={34} color="#FFFFFF" />
-            </div>
-            <span className="sos-hero-title">SOS</span>
+            {!isActivated && (
+              <div className="sos-icon-wrap">
+                <SosBroadcastIcon size={34} color="#FFFFFF" />
+              </div>
+            )}
+            <span className="sos-hero-title">{isActivated ? "You're safe" : 'SOS'}</span>
             <span className="sos-hero-subtitle">
-              {isHolding ? `${Math.ceil((HOLD_DURATION_MS * (1 - progress / 100)) / 1000)}s to activate` : 'Hold to activate'}
+              {isActivated 
+                ? 'Help arriving' 
+                : isHolding 
+                  ? `${Math.ceil((HOLD_DURATION_MS * (1 - progress / 100)) / 1000)}s to activate` 
+                  : 'Hold to activate'}
             </span>
           </div>
         </button>

@@ -4,7 +4,11 @@ import {
   LocationPinIcon,
   GuardianMeshIcon,
   SosBroadcastIcon,
+  UsersIcon,
 } from './Icons';
+import { pickNativeContact } from '../services/native';
+import { saveEmergencyContact } from '../services/emergency';
+import { supabase } from '../services/supabase';
 import {
   requestLocationPermission,
   requestBluetoothPermission,
@@ -19,14 +23,18 @@ interface StartupPermissionFlowProps {
   onComplete: () => void;
 }
 
-type StepKey = 'location' | 'bluetooth' | 'notifications' | 'sms' | 'loading';
+type StepKey = 'profile_1' | 'profile_2' | 'profile_3' | 'location' | 'bluetooth' | 'notifications' | 'sms' | 'loading';
 
 export const StartupPermissionFlow: React.FC<StartupPermissionFlowProps> = ({
   initialState,
   onComplete,
 }) => {
+  const isProfileDone = !!localStorage.getItem('safetymesh_profile');
+
   const [currentStep, setCurrentStep] = useState<StepKey>(
-    initialState.location === 'GRANTED'
+    !isProfileDone
+      ? 'profile_1'
+      : initialState.location === 'GRANTED'
       ? initialState.bluetooth === 'GRANTED'
         ? initialState.notifications === 'GRANTED'
           ? initialState.sms === 'GRANTED'
@@ -39,6 +47,79 @@ export const StartupPermissionFlow: React.FC<StartupPermissionFlowProps> = ({
 
   const [permissions, setPermissions] = useState<SafetyMeshPermissionsState>(initialState);
   const [isRequesting, setIsRequesting] = useState(false);
+
+  const [profileData, setProfileData] = useState({
+    fullName: '',
+    phone: '',
+    age: '',
+    bloodGroup: '',
+    medical: '',
+    contactName: '',
+    contactPhone: ''
+  });
+
+  const handlePickContact = async () => {
+    const c = await pickNativeContact();
+    if (c) {
+      setProfileData(prev => ({ ...prev, contactName: c.name, contactPhone: c.phone }));
+    } else {
+      alert('Native contact picker unavailable in browser preview. Please type manually.');
+    }
+  };
+
+  const saveProfile1 = () => {
+    if (!profileData.fullName || !profileData.phone) {
+       alert("Please enter your name and phone number.");
+       return;
+    }
+    setCurrentStep('profile_2');
+  };
+
+  const saveProfile2 = () => {
+    setCurrentStep('profile_3');
+  };
+
+  const saveProfile3 = async () => {
+    if (!profileData.contactName || !profileData.contactPhone) {
+       alert("Please add an emergency contact.");
+       return;
+    }
+
+    setIsRequesting(true);
+    try {
+      const { data: authData, error: authError } = await supabase.auth.signInAnonymously();
+      if (authError) throw authError;
+
+      const { error: insertError } = await supabase
+        .from('citizen_profiles')
+        .insert({
+          id: authData.user?.id,
+          full_name: profileData.fullName,
+          phone_number: profileData.phone,
+          age: profileData.age || null,
+          blood_group: profileData.bloodGroup,
+          medical_conditions: profileData.medical,
+          primary_contact_name: profileData.contactName,
+          primary_contact_phone: profileData.contactPhone
+        });
+      
+      if (insertError) throw insertError;
+
+      localStorage.setItem('safetymesh_profile', JSON.stringify(profileData));
+      saveEmergencyContact({
+         name: profileData.contactName,
+         phone: profileData.contactPhone,
+         relation: 'Family',
+         isPrimary: true
+      });
+      setCurrentStep('location');
+    } catch (err: any) {
+      console.error('Supabase Error:', err);
+      alert('Failed to save profile. Make sure you added your VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to .env');
+    } finally {
+      setIsRequesting(false);
+    }
+  };
 
   const handleEnableLocation = async () => {
     setIsRequesting(true);
@@ -104,63 +185,153 @@ export const StartupPermissionFlow: React.FC<StartupPermissionFlowProps> = ({
           </div>
         </div>
 
-        <div className="onboarding-intro">
-          <h2 className="onboarding-headline">Let's get your safety system ready.</h2>
-          <p className="onboarding-desc">
-            SafetyMesh requires essential device permissions to protect you in real-time.
-          </p>
-        </div>
+        {/* Only show intro and permission pills during the permission flow */}
+        {!currentStep.startsWith('profile_') && (
+          <>
+            <div className="onboarding-intro">
+              <h2 className="onboarding-headline">Let's get your safety system ready.</h2>
+              <p className="onboarding-desc">
+                SafetyMesh requires essential device permissions to protect you in real-time.
+              </p>
+            </div>
 
-        {/* Step Indicator Badges */}
-        <div className="onboarding-steps-pills">
-          <div
-            className={`step-pill ${
-              permissions.location === 'GRANTED' ? 'completed' : currentStep === 'location' ? 'active' : ''
-            }`}
-          >
-            <span className="step-pill-indicator">
-              {permissions.location === 'GRANTED' ? '✓' : '1'}
-            </span>
-            <span>Location</span>
-          </div>
+            {/* Step Indicator Badges */}
+            <div className="onboarding-steps-pills">
+              <div
+                className={`step-pill ${
+                  permissions.location === 'GRANTED' ? 'completed' : currentStep === 'location' ? 'active' : ''
+                }`}
+              >
+                <span className="step-pill-indicator">
+                  {permissions.location === 'GRANTED' ? '✓' : '1'}
+                </span>
+                <span>Location</span>
+              </div>
 
-          <div
-            className={`step-pill ${
-              permissions.bluetooth === 'GRANTED' ? 'completed' : currentStep === 'bluetooth' ? 'active' : ''
-            }`}
-          >
-            <span className="step-pill-indicator">
-              {permissions.bluetooth === 'GRANTED' ? '✓' : '2'}
-            </span>
-            <span>Bluetooth</span>
-          </div>
+              <div
+                className={`step-pill ${
+                  permissions.bluetooth === 'GRANTED' ? 'completed' : currentStep === 'bluetooth' ? 'active' : ''
+                }`}
+              >
+                <span className="step-pill-indicator">
+                  {permissions.bluetooth === 'GRANTED' ? '✓' : '2'}
+                </span>
+                <span>Bluetooth</span>
+              </div>
 
-          <div
-            className={`step-pill ${
-              permissions.notifications === 'GRANTED'
-                ? 'completed'
-                : currentStep === 'notifications'
-                ? 'active'
-                : ''
-            }`}
-          >
-            <span className="step-pill-indicator">
-              {permissions.notifications === 'GRANTED' ? '✓' : '3'}
-            </span>
-            <span>Alerts</span>
-          </div>
+              <div
+                className={`step-pill ${
+                  permissions.notifications === 'GRANTED'
+                    ? 'completed'
+                    : currentStep === 'notifications'
+                    ? 'active'
+                    : ''
+                }`}
+              >
+                <span className="step-pill-indicator">
+                  {permissions.notifications === 'GRANTED' ? '✓' : '3'}
+                </span>
+                <span>Alerts</span>
+              </div>
 
-          <div
-            className={`step-pill ${
-              permissions.sms === 'GRANTED' ? 'completed' : currentStep === 'sms' ? 'active' : ''
-            }`}
-          >
-            <span className="step-pill-indicator">
-              {permissions.sms === 'GRANTED' ? '✓' : '4'}
-            </span>
-            <span>SMS</span>
+              <div
+                className={`step-pill ${
+                  permissions.sms === 'GRANTED' ? 'completed' : currentStep === 'sms' ? 'active' : ''
+                }`}
+              >
+                <span className="step-pill-indicator">
+                  {permissions.sms === 'GRANTED' ? '✓' : '4'}
+                </span>
+                <span>SMS</span>
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* Step 0.1: Profile Creation - Basic Info */}
+        {currentStep === 'profile_1' && (
+          <div className="step-detail-card">
+            <div className="step-icon-bubble bg-blue-tint">
+              <UsersIcon size={26} color="#3B82F6" />
+            </div>
+            <h3 className="step-title">Who are you?</h3>
+            <p className="step-explanation" style={{marginBottom: '16px'}}>
+              Basic details to identify you during an emergency.
+            </p>
+
+            <div className="profile-form-grid">
+              <input type="text" className="profile-input" placeholder="Full Name *" value={profileData.fullName} onChange={e => setProfileData({...profileData, fullName: e.target.value})} />
+              <input type="tel" className="profile-input" placeholder="Phone Number *" value={profileData.phone} onChange={e => setProfileData({...profileData, phone: e.target.value})} />
+            </div>
+
+            <div className="step-actions">
+              <button className="btn-enable-permission" onClick={saveProfile1}>
+                Next
+              </button>
+            </div>
           </div>
-        </div>
+        )}
+
+        {/* Step 0.2: Profile Creation - Medical Info */}
+        {currentStep === 'profile_2' && (
+          <div className="step-detail-card">
+            <div className="step-icon-bubble bg-blue-tint">
+              <ShieldLogoIcon size={26} color="#3B82F6" />
+            </div>
+            <h3 className="step-title">Medical Info</h3>
+            <p className="step-explanation" style={{marginBottom: '16px'}}>
+              Crucial information for first responders. (Optional)
+            </p>
+
+            <div className="profile-form-grid">
+              <div style={{display: 'flex', gap: '8px', width: '100%'}}>
+                <input type="number" className="profile-input" placeholder="Age" style={{flex: 1}} value={profileData.age} onChange={e => setProfileData({...profileData, age: e.target.value})} />
+                <input type="text" className="profile-input" placeholder="Blood Group (e.g. O+)" style={{flex: 1}} value={profileData.bloodGroup} onChange={e => setProfileData({...profileData, bloodGroup: e.target.value})} />
+              </div>
+              <textarea className="profile-input" placeholder="Medical Conditions / Allergies" rows={3} style={{resize: 'none', padding: '12px'}} value={profileData.medical} onChange={e => setProfileData({...profileData, medical: e.target.value})} />
+            </div>
+
+            <div className="step-actions">
+              <button className="btn-enable-permission" onClick={saveProfile2}>
+                Next
+              </button>
+              <button className="btn-skip-permission" onClick={() => setCurrentStep('profile_1')}>
+                Back
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Step 0.3: Profile Creation - Emergency Contact */}
+        {currentStep === 'profile_3' && (
+          <div className="step-detail-card">
+            <div className="step-icon-bubble bg-blue-tint">
+              <GuardianMeshIcon size={26} color="#3B82F6" />
+            </div>
+            <h3 className="step-title">Emergency Contact</h3>
+            <p className="step-explanation" style={{marginBottom: '16px'}}>
+              Who should we notify if you are in danger?
+            </p>
+
+            <div className="profile-form-grid">
+              <div className="contact-picker-header">
+                <span style={{fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)', alignSelf: 'flex-start'}}>Primary Contact</span>
+                <button type="button" className="btn-pick-contact" onClick={handlePickContact}>Pick from Contacts</button>
+              </div>
+              <input type="text" className="profile-input" placeholder="Contact Name *" value={profileData.contactName} onChange={e => setProfileData({...profileData, contactName: e.target.value})} />
+              <input type="tel" className="profile-input" placeholder="Contact Phone *" value={profileData.contactPhone} onChange={e => setProfileData({...profileData, contactPhone: e.target.value})} />
+            </div>
+
+            <div className="step-actions">
+              <button className="btn-enable-permission" onClick={saveProfile3}>
+                Save Profile
+              </button>
+              <button className="btn-skip-permission" onClick={() => setCurrentStep('profile_2')}>
+                Back
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Step 1: Location */}
         {currentStep === 'location' && (

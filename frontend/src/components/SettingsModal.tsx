@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { SettingsGearIcon, ShieldCheckIcon } from './Icons';
 import { subscribePermissions, requestSmsPermission } from '../services/permissions';
 import type { SafetyMeshPermissionsState } from '../services/permissions';
+import ProfileEditModal from './ProfileEditModal';
 
 interface SettingsModalProps {
   onClose: () => void;
@@ -9,6 +10,17 @@ interface SettingsModalProps {
 }
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose, onShowToast }) => {
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [profileData, setProfileData] = useState({
+    fullName: 'Unknown User',
+    phone: '',
+    age: '',
+    bloodGroup: 'Unknown',
+    medical: 'No medical info',
+    contactName: '',
+    contactPhone: ''
+  });
+
   const [hapticEnabled, setHapticEnabled] = useState(true);
   const [autoSms, setAutoSms] = useState(true);
   const [stealthMode, setStealthMode] = useState(false);
@@ -26,6 +38,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose, onShowToa
     const unsub = subscribePermissions((newPerms) => {
       setPermissions(newPerms);
     });
+    const saved = localStorage.getItem('safetymesh_profile');
+    if (saved) {
+      try {
+        setProfileData(JSON.parse(saved));
+      } catch (e) {}
+    }
     return () => unsub();
   }, []);
 
@@ -44,7 +62,21 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose, onShowToa
     onShowToast(`${label} ${!current ? 'Enabled' : 'Disabled'}`);
   };
 
+
   return (
+    <>
+    {isEditingProfile && (
+      <ProfileEditModal
+        initialData={profileData}
+        onClose={() => setIsEditingProfile(false)}
+        onSave={(newData) => {
+          setProfileData(newData);
+          localStorage.setItem('safetymesh_profile', JSON.stringify(newData));
+          setIsEditingProfile(false);
+          onShowToast('Profile updated');
+        }}
+      />
+    )}
     <div className="safetymesh-modal-backdrop" onClick={onClose}>
       <div className="safetymesh-modal-sheet" onClick={(e) => e.stopPropagation()}>
         <div className="modal-pill-indicator"></div>
@@ -66,17 +98,15 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose, onShowToa
 
         <div className="modal-sheet-content">
           {/* User profile card */}
-          <div className="settings-profile-card">
-            <div className="profile-badge-circle">
-              <span>AS</span>
-            </div>
+          <div className="settings-profile-card" onClick={() => setIsEditingProfile(true)} style={{ cursor: 'pointer' }}>
+
             <div className="profile-details">
               <div className="profile-name-row">
-                <span className="profile-name">Alex Sharma</span>
+                <span className="profile-name">{profileData.fullName}</span>
                 <span className="verified-badge">VERIFIED</span>
               </div>
-              <span className="profile-sub">SafetyMesh ID: SM-8921-IN</span>
-              <span className="profile-blood">Medical Info: O+ Blood • No Allergies</span>
+              <span className="profile-sub">{profileData.phone ? `Phone: ${profileData.phone}` : 'SafetyMesh ID: SM-8921-IN'}</span>
+              <span className="profile-blood">Medical: {profileData.bloodGroup} • {profileData.medical || 'None'}</span>
             </div>
           </div>
 
@@ -182,6 +212,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose, onShowToa
         </div>
       </div>
     </div>
+    </>
   );
 };
 

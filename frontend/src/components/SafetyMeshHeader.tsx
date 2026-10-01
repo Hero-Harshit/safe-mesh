@@ -51,10 +51,6 @@ export const SafetyMeshHeader: React.FC<SafetyMeshHeaderProps> = ({
       </div>
 
       <div className="header-status-area">
-        <div className={`safety-status-pill ${pillClass}`} title={`Status: ${statusText}`}>
-          <span className="status-indicator-dot"></span>
-          <span className="status-pill-label">{statusText}</span>
-        </div>
 
         <button
           className="profile-avatar-btn"

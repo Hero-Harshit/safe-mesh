@@ -123,65 +123,65 @@ export const EmergencyContactsModal: React.FC<EmergencyContactsModalProps> = ({
         </div>
 
         <div className="modal-sheet-content">
-          <div className="contacts-action-bar">
-            <span className="contacts-count-label">
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px', flexWrap: 'wrap', gap: '10px' }}>
+            <span style={{ fontSize: '15px', fontWeight: '600', color: '#1E293B' }}>
               {contacts.length} Trusted {contacts.length === 1 ? 'Contact' : 'Contacts'}
             </span>
             <div style={{ display: 'flex', gap: '8px' }}>
               <button
-                className="btn-add-contact-pill"
+                style={{ backgroundColor: '#F5F3FF', color: '#8B5CF6', padding: '8px 14px', borderRadius: '10px', fontSize: '13px', fontWeight: '600', border: '1px solid #E0E7FF', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', transition: 'all 0.2s' }}
                 onClick={() => setShowAddForm(!showAddForm)}
               >
-                {showAddForm ? '✕ Close Form' : '+ Add Contact'}
+                {showAddForm ? '✕ Close' : '+ Add'}
               </button>
               <button
-                className="btn-add-contact-pill"
-                style={{ backgroundColor: '#475569' }}
+                style={{ backgroundColor: '#F1F5F9', color: '#475569', padding: '8px 14px', borderRadius: '10px', fontSize: '13px', fontWeight: '600', border: '1px solid #E2E8F0', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', transition: 'all 0.2s' }}
                 onClick={handleAddNativeContact}
                 title="Import from phone address book"
               >
-                📱 Phone Book
+                <UsersIcon size={14} color="#475569" />
+                Phone Book
               </button>
             </div>
           </div>
 
           {/* Inline Add Contact Form */}
           {showAddForm && (
-            <form onSubmit={handleManualSubmit} style={{ backgroundColor: '#F8FAFC', padding: '16px', borderRadius: '12px', border: '1px solid #E2E8F0', marginBottom: '16px' }}>
+            <form onSubmit={handleManualSubmit} style={{ backgroundColor: '#F8FAFC', padding: '16px', borderRadius: '12px', border: '1px solid #E2E8F0', marginBottom: '20px' }}>
               <h3 style={{ margin: '0 0 12px 0', fontSize: '15px', color: '#1E293B', fontWeight: 'bold' }}>New Emergency Contact</h3>
               
-              <div style={{ marginBottom: '10px' }}>
+              <div style={{ marginBottom: '12px' }}>
                 <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#475569', marginBottom: '4px' }}>Name</label>
                 <input
                   type="text"
                   placeholder="e.g. Mom, Best Friend, Roommate"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid #CBD5E1', fontSize: '14px', boxSizing: 'border-box' }}
+                  style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #CBD5E1', fontSize: '14px', boxSizing: 'border-box' }}
                   autoFocus
                   required
                 />
               </div>
 
-              <div style={{ marginBottom: '10px' }}>
+              <div style={{ marginBottom: '12px' }}>
                 <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#475569', marginBottom: '4px' }}>Phone Number</label>
                 <input
                   type="tel"
                   placeholder="e.g. +91 9876543210"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
-                  style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid #CBD5E1', fontSize: '14px', boxSizing: 'border-box' }}
+                  style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #CBD5E1', fontSize: '14px', boxSizing: 'border-box' }}
                   required
                 />
               </div>
 
-              <div style={{ display: 'flex', gap: '10px', marginBottom: '12px' }}>
+              <div style={{ display: 'flex', gap: '10px', marginBottom: '16px' }}>
                 <div style={{ flex: 1 }}>
                   <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#475569', marginBottom: '4px' }}>Relation</label>
                   <select
                     value={relation}
                     onChange={(e) => setRelation(e.target.value as any)}
-                    style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid #CBD5E1', fontSize: '14px', boxSizing: 'border-box', backgroundColor: 'white' }}
+                    style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #CBD5E1', fontSize: '14px', boxSizing: 'border-box', backgroundColor: 'white' }}
                   >
                     <option value="Family">Family</option>
                     <option value="Friend">Friend</option>
@@ -190,12 +190,13 @@ export const EmergencyContactsModal: React.FC<EmergencyContactsModalProps> = ({
                     <option value="Other">Other</option>
                   </select>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', marginTop: '18px' }}>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: '#334155', cursor: 'pointer' }}>
+                <div style={{ display: 'flex', alignItems: 'center', marginTop: '20px' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: '#334155', cursor: 'pointer', fontWeight: '500' }}>
                     <input
                       type="checkbox"
                       checked={isPrimary}
                       onChange={(e) => setIsPrimary(e.target.checked)}
+                      style={{ width: '16px', height: '16px', accentColor: '#8B5CF6' }}
                     />
                     Set Primary
                   </label>
@@ -204,8 +205,7 @@ export const EmergencyContactsModal: React.FC<EmergencyContactsModalProps> = ({
 
               <button
                 type="submit"
-                className="action-button-primary"
-                style={{ width: '100%', padding: '10px', fontSize: '14px' }}
+                style={{ width: '100%', padding: '12px', fontSize: '14px', backgroundColor: '#8B5CF6', color: 'white', borderRadius: '8px', border: 'none', fontWeight: '600', cursor: 'pointer' }}
               >
                 Save Contact
               </button>
@@ -213,12 +213,14 @@ export const EmergencyContactsModal: React.FC<EmergencyContactsModalProps> = ({
           )}
 
           {contacts.length === 0 && !showAddForm && (
-            <div style={{ textAlign: 'center', padding: '2rem 1rem', color: '#64748B' }}>
-              <h3 style={{ marginBottom: '0.5rem', color: '#1E293B' }}>NO EMERGENCY CONTACTS</h3>
-              <p>Add a trusted contact so SafetyMesh can notify them during an emergency.</p>
+            <div style={{ textAlign: 'center', padding: '3rem 1rem', color: '#64748B', backgroundColor: '#F8FAFC', borderRadius: '12px', border: '1px dashed #CBD5E1' }}>
+              <div style={{ display: 'inline-flex', padding: '12px', borderRadius: '50%', backgroundColor: '#F1F5F9', marginBottom: '12px' }}>
+                <UsersIcon size={32} color="#94A3B8" />
+              </div>
+              <h3 style={{ marginBottom: '0.5rem', color: '#1E293B', fontSize: '16px', fontWeight: '700' }}>No Emergency Contacts</h3>
+              <p style={{ fontSize: '14px', lineHeight: '1.5', marginBottom: '16px' }}>Add a trusted contact so SafetyMesh can notify them during an emergency.</p>
               <button
-                className="action-button-primary"
-                style={{ marginTop: '12px', display: 'inline-flex', width: 'auto', padding: '8px 16px' }}
+                style={{ backgroundColor: '#10B981', color: 'white', padding: '10px 20px', borderRadius: '8px', fontSize: '14px', fontWeight: '600', border: 'none', cursor: 'pointer', boxShadow: '0 2px 6px rgba(16,185,129,0.2)' }}
                 onClick={() => setShowAddForm(true)}
               >
                 + Add Your First Contact
@@ -227,43 +229,41 @@ export const EmergencyContactsModal: React.FC<EmergencyContactsModalProps> = ({
           )}
 
           {/* Contact Cards List */}
-          <div className="contacts-stack">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {contacts.map((contact) => (
-              <div key={contact.id} className="contact-item-card">
-                <div className="contact-item-avatar">
-                  <span className="avatar-letter">{contact.name.charAt(0).toUpperCase()}</span>
-                </div>
-                <div className="contact-item-details">
-                  <div className="name-and-tag">
-                    <span className="contact-item-name">{contact.name}</span>
-                    {contact.isPrimary && <span className="primary-pill-badge">Primary</span>}
+              <div key={contact.id} style={{ display: 'flex', alignItems: 'center', backgroundColor: '#FFFFFF', border: '1.5px solid #E2E8F0', borderRadius: '14px', padding: '14px', boxShadow: '0 2px 10px rgba(15,23,42,0.02)' }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px', flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: '15px', fontWeight: '700', color: '#0F172A', wordBreak: 'break-word' }}>{contact.name}</span>
+                    {contact.isPrimary && <span style={{ backgroundColor: '#ECFDF5', color: '#10B981', padding: '2px 8px', borderRadius: '12px', fontSize: '10px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px', flexShrink: 0 }}>Primary</span>}
                   </div>
-                  <span className="contact-item-phone">{contact.phone}</span>
-                  <span className="contact-item-relation">{contact.relation}</span>
+                  <div style={{ fontSize: '13px', color: '#64748B', display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                    <span style={{ wordBreak: 'break-word' }}>{contact.phone}</span>
+                    <span style={{ color: '#CBD5E1' }}>•</span>
+                    <span>{contact.relation}</span>
+                  </div>
                 </div>
-                <div className="contact-item-buttons">
+                <div style={{ display: 'flex', gap: '6px', marginLeft: '10px' }}>
                   <a
                     href={`tel:${contact.phone}`}
-                    className="contact-action-circle call-circle"
+                    style={{ width: '36px', height: '36px', borderRadius: '10px', backgroundColor: '#ECFDF5', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #D1FAE5', flexShrink: 0 }}
                     title={`Call ${contact.name}`}
                   >
                     <PhoneCallIcon size={16} color="#10B981" />
                   </a>
                   <button
                     onClick={() => handleSendSms(contact)}
-                    className="contact-action-circle sms-circle"
+                    style={{ width: '36px', height: '36px', borderRadius: '10px', backgroundColor: '#EFF6FF', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #DBEAFE', color: '#3B82F6', fontSize: '11px', fontWeight: '700', cursor: 'pointer', flexShrink: 0 }}
                     title={`Send SOS SMS to ${contact.name}`}
                   >
                     SMS
                   </button>
                   <button
                     onClick={() => {
-                      if (confirm(`Remove ${contact.name} from emergency contacts?`)) {
-                        onDeleteContact(contact.id);
-                        onShowToast(`Removed ${contact.name}`);
-                      }
+                      onDeleteContact(contact.id);
+                      onShowToast(`Removed ${contact.name}`);
                     }}
-                    className="contact-action-circle delete-circle"
+                    style={{ width: '36px', height: '36px', borderRadius: '10px', backgroundColor: '#FEF2F2', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #FEE2E2', color: '#EF4444', fontSize: '14px', cursor: 'pointer', flexShrink: 0 }}
                     title="Delete"
                   >
                     ✕

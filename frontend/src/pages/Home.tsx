@@ -12,6 +12,7 @@ import SettingsModal from '../components/SettingsModal';
 import EmergencyMode from '../components/EmergencyMode';
 import SosPermissionWarningModal from '../components/SosPermissionWarningModal';
 import StatusMessage from '../components/StatusMessage';
+import NearbyGuardianSetup from './NearbyGuardianSetup';
 
 import type { EmergencyContact } from '../services/emergency';
 import {
@@ -56,7 +57,7 @@ export default function Home({ onNavigate }: HomeProps) {
 
   // Contacts and UI state
   const [contacts, setContacts] = useState<EmergencyContact[]>([]);
-  const [activeModal, setActiveModal] = useState<'safe_route' | 'contacts' | 'call_112' | 'settings' | null>(null);
+  const [activeModal, setActiveModal] = useState<'safe_route' | 'contacts' | 'call_112' | 'settings' | 'nearby_guardian' | null>(null);
   const [showSosWarning, setShowSosWarning] = useState(false);
   const [sosActive, setSosActive] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
@@ -101,7 +102,7 @@ export default function Home({ onNavigate }: HomeProps) {
   useEffect(() => {
     const loaded = getEmergencyContacts();
     setContacts(loaded);
-    syncEmergencyContactsToNative(loaded.map(c => ({ name: c.name, phone: c.phone }))).catch(() => {});
+    syncEmergencyContactsToNative(loaded.map(c => ({ name: c.name, phone: c.phone }))).catch(() => { });
   }, []);
 
   const showToast = useCallback((msg: string) => {
@@ -162,13 +163,13 @@ export default function Home({ onNavigate }: HomeProps) {
   const handleAddContact = (contactData: Omit<EmergencyContact, 'id'>) => {
     const updated = saveEmergencyContact(contactData);
     setContacts(updated);
-    syncEmergencyContactsToNative(updated.map(c => ({ name: c.name, phone: c.phone }))).catch(() => {});
+    syncEmergencyContactsToNative(updated.map(c => ({ name: c.name, phone: c.phone }))).catch(() => { });
   };
 
   const handleDeleteContact = (id: string) => {
     const updated = deleteEmergencyContact(id);
     setContacts(updated);
-    syncEmergencyContactsToNative(updated.map(c => ({ name: c.name, phone: c.phone }))).catch(() => {});
+    syncEmergencyContactsToNative(updated.map(c => ({ name: c.name, phone: c.phone }))).catch(() => { });
   };
 
   return (
@@ -183,41 +184,21 @@ export default function Home({ onNavigate }: HomeProps) {
       />
 
 
+      {/* Secondary Action Shortcuts (Moved to Top) */}
+      <div style={{ flexShrink: 0, marginTop: '20px' }}>
+        <SafetyShortcuts
+          onSafeRouteClick={() => setActiveModal('safe_route')}
+          onContactsClick={() => setActiveModal('contacts')}
+          onCall112Click={() => setActiveModal('call_112')}
+          onGuardianClick={() => setActiveModal('nearby_guardian')}
+        />
+      </div>
 
-      {/* 2. Greeting Section */}
-      <GreetingSection />
+      {/* Central HERO SOS Button (Anchored to the bottom for thumb reachability) */}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', alignItems: 'center', minHeight: 0, paddingBottom: '16px' }}>
+        <EmergencySOSButton onActivate={handleSosHoldComplete} />
+      </div>
 
-      {/* 3. Real Location Context Bar */}
-      <LocationContextBar
-        location={location}
-        permissionStatus={permissions.location}
-        isLocating={isLocating}
-        onRetry={loadLocation}
-        onRequestPermission={handleRequestLocation}
-        onLocationClick={() => setActiveModal('safe_route')}
-      />
-
-      {/* 4. Central HERO SOS Button */}
-      <EmergencySOSButton onActivate={handleSosHoldComplete} />
-
-      {/* 5. Secondary Action Shortcuts */}
-      <SafetyShortcuts
-        onSafeRouteClick={() => setActiveModal('safe_route')}
-        onContactsClick={() => setActiveModal('contacts')}
-        onCall112Click={() => setActiveModal('call_112')}
-        onGuardianClick={() => onNavigate('nearby_guardian')}
-      />
-
-
-
-      {/* 6. Bottom Safety Status Area (NO FAKE DATA!) */}
-      <BottomSafetyStatus
-        location={location}
-        locationPermission={permissions.location}
-        bluetoothPermission={permissions.bluetooth}
-        notificationPermission={permissions.notifications}
-        realGuardianCount={null} /* Null: waiting for backend / real mesh responders */
-      />
 
       {/* Safe Route Modal */}
       {activeModal === 'safe_route' && (
@@ -253,6 +234,19 @@ export default function Home({ onNavigate }: HomeProps) {
       {/* Settings Modal */}
       {activeModal === 'settings' && (
         <SettingsModal
+          onClose={() => setActiveModal(null)}
+          onShowToast={showToast}
+        />
+      )}
+
+      {/* Nearby Guardian Modal */}
+      {activeModal === 'nearby_guardian' && (
+        <NearbyGuardianSetup
+          location={location}
+          locationPermission={permissions.location}
+          bluetoothPermission={permissions.bluetooth}
+          onRefreshPermissions={refreshAllPermissions}
+          onBack={() => setActiveModal(null)}
           onClose={() => setActiveModal(null)}
           onShowToast={showToast}
         />
