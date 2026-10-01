@@ -4,6 +4,7 @@ import './App.css'
 import LiveMap from './components/LiveMap'
 import Analytics from './components/Analytics'
 import IncidentsTab from './components/IncidentsTab'
+import PersonnelTab from './components/PersonnelTab'
 import type { Incident, IncidentEvent } from './components/LiveMap'
 import { supabase } from './lib/supabase'
 
@@ -91,11 +92,8 @@ function App() {
         )}
         
         {activeTab === 'personnel' && (
-          <div style={{ position: 'absolute', top: 0, left: 250, right: 0, bottom: 0, zIndex: 20, background: 'rgba(10,10,14,0.7)', backdropFilter: 'blur(3px)', WebkitBackdropFilter: 'blur(3px)', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'auto' }}>
-            <div style={{ textAlign: 'center' }}>
-              <Activity size={48} style={{ marginBottom: '1rem', opacity: 0.5, margin: '0 auto' }} />
-              <p>Personnel Module Pending</p>
-            </div>
+          <div style={{ position: 'absolute', top: 0, left: 250, right: 0, bottom: 0, zIndex: 20, background: 'rgba(10,10,14,0.7)', backdropFilter: 'blur(3px)', WebkitBackdropFilter: 'blur(3px)', overflow: 'hidden', pointerEvents: 'auto' }}>
+            <PersonnelTab />
           </div>
         )}
       </div>
