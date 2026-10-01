@@ -43,7 +43,7 @@ export const SafetyMeshHeader: React.FC<SafetyMeshHeaderProps> = ({
         </div>
         <div className="brand-copy">
           <div className="brand-name">
-            <span className="name-bold">Safe</span>
+            <span className="name-bold">Safety</span>
             <span className="name-accent">Mesh</span>
           </div>
           <span className="brand-tagline">Personal Safety Network</span>

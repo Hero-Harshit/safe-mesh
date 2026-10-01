@@ -63,7 +63,7 @@ export const SafetyShortcuts: React.FC<SafetyShortcutsProps> = ({
       </div>
 
       {/* Secondary Row: Call 112 + Nearby Guardian + Settings */}
-      <div className="shortcuts-row-three-col">
+      <div className="shortcuts-row-two-col">
         <button
           className="shortcut-card compact-card"
           onClick={onCall112Click}
@@ -102,24 +102,6 @@ export const SafetyShortcuts: React.FC<SafetyShortcutsProps> = ({
           </div>
         </button>
 
-        <button
-          className="shortcut-card compact-card"
-          onClick={onSettingsClick}
-          aria-label="Open SafetyMesh App Settings"
-        >
-          <div className="compact-header-row">
-            <div className="shortcut-icon-circle bg-slate-tint">
-              <SettingsGearIcon size={18} color="#64748B" />
-            </div>
-            <div className="compact-arrow">
-              <ChevronRightIcon size={13} color="#94A3B8" />
-            </div>
-          </div>
-          <div className="shortcut-text-block compact-text">
-            <span className="shortcut-title">Settings</span>
-            <span className="shortcut-subtitle">App preferences</span>
-          </div>
-        </button>
       </div>
     </section>
   );

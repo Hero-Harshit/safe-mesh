@@ -182,30 +182,7 @@ export default function Home({ onNavigate }: HomeProps) {
         isEmergencyActive={sosActive}
       />
 
-      {/* Prominently visible APK Download Banner - Visible first thing when someone opens the app */}
-      <div className="apk-download-banner" role="banner">
-        <div className="apk-banner-content">
-          <div className="apk-badge-icon">📱</div>
-          <div className="apk-banner-text">
-            <div className="apk-banner-title">
-              SafetyMesh Android App <span className="apk-badge-pill">APK</span>
-            </div>
-            <div className="apk-banner-subtitle">
-              Install for offline BLE mesh & background panic trigger
-            </div>
-          </div>
-        </div>
-        <a
-          href="/SafetyMesh.apk"
-          download="SafetyMesh.apk"
-          className="apk-download-btn"
-          id="download-apk-top-btn"
-          title="Download SafetyMesh Native Android App (.APK)"
-        >
-          <span>⬇️</span>
-          <span>Download APK</span>
-        </a>
-      </div>
+
 
       {/* 2. Greeting Section */}
       <GreetingSection />
