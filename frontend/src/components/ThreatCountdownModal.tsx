@@ -145,8 +145,10 @@ export const ThreatCountdownModal: React.FC<ThreatCountdownModalProps> = ({
         <button
           onClick={onCancel}
           style={{
-            width: '100%',
-            padding: '14px',
+            width: 'fit-content',
+            minWidth: '220px',
+            margin: '0 auto',
+            padding: '14px 28px',
             borderRadius: '14px',
             background: '#10B981',
             color: '#FFFFFF',
@@ -158,7 +160,7 @@ export const ThreatCountdownModal: React.FC<ThreatCountdownModalProps> = ({
             letterSpacing: '0.02rem',
           }}
         >
-          I Am Safe — Dismiss Alert
+          I Am Safe Dismiss Alert
         </button>
       </div>
     </div>

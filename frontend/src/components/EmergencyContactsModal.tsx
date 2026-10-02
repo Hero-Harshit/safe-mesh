@@ -110,6 +110,7 @@ export const EmergencyContactsModal: React.FC<EmergencyContactsModalProps> = ({
           onClose();
         }
       }}
+      style={{ zIndex: 400 }}
     >
       <div className="safetymesh-modal-sheet" onClick={(e) => e.stopPropagation()}>
         <div className="modal-pill-indicator"></div>

@@ -3,7 +3,6 @@ import SafetyMeshHeader from '../components/SafetyMeshHeader';
 import EmergencySOSButton from '../components/EmergencySOSButton';
 import SafetyShortcuts from '../components/SafetyShortcuts';
 import SafeRouteModal from '../components/SafeRouteModal';
-import EmergencyContactsModal from '../components/EmergencyContactsModal';
 import Call112Modal from '../components/Call112Modal';
 import SettingsModal from '../components/SettingsModal';
 import EmergencyMode from '../components/EmergencyMode';
@@ -47,9 +46,11 @@ export default function Home(_props: HomeProps = {}) {
   // Real permissions state
   const [permissions, setPermissions] = useState<SafetyMeshPermissionsState>({
     location: 'UNKNOWN',
+    background_location: 'UNKNOWN',
     bluetooth: 'UNKNOWN',
     notifications: 'UNKNOWN',
     sms: 'UNKNOWN',
+    battery: 'UNKNOWN',
     isInitialFlowCompleted: true,
   });
 
@@ -296,21 +297,20 @@ export default function Home(_props: HomeProps = {}) {
       />
 
 
-      {/* Secondary Action Shortcuts (Moved to Top) */}
+      {/* Ambient Threat Guard (Acoustic & Snatch Sentinel) */}
+      <div style={{ flexShrink: 0, padding: '0 4px', width: '100%' }}>
+        <AmbientGuardCard
+          onThreatDetected={handleThreatDetected}
+        />
+      </div>
+
+      {/* Secondary Action Shortcuts (Moved below Ambient Guard) */}
       <div style={{ flexShrink: 0, width: '100%' }}>
         <SafetyShortcuts
           onSafeRouteClick={() => openModal('safe_route')}
           onGuardianClick={() => openModal('nearby_guardian')}
           onTimerClick={() => openModal('timer')}
           onToolkitClick={() => openModal('toolkit')}
-        />
-      </div>
-
-      {/* Ambient Threat Guard (Acoustic & Snatch Sentinel) */}
-      <div style={{ flexShrink: 0, padding: '0 4px', width: '100%' }}>
-        <AmbientGuardCard
-          onThreatDetected={handleThreatDetected}
-          onShowToast={showToast}
         />
       </div>
 
@@ -331,18 +331,6 @@ export default function Home(_props: HomeProps = {}) {
         />
       )}
 
-      {/* Emergency Contacts Modal */}
-      {activeModal === 'contacts' && (
-        <EmergencyContactsModal
-          contacts={contacts}
-          onAddContact={handleAddContact}
-          onDeleteContact={handleDeleteContact}
-          currentMapsUrl={location?.mapsUrl}
-          onClose={closeModal}
-          onShowToast={showToast}
-        />
-      )}
-
       {/* Call 112 Modal */}
       {activeModal === 'call_112' && (
         <Call112Modal
@@ -356,7 +344,10 @@ export default function Home(_props: HomeProps = {}) {
         <SettingsModal
           onClose={closeModal}
           onShowToast={showToast}
-          onOpenContacts={() => openModal('contacts')}
+          contacts={contacts}
+          onAddContact={handleAddContact}
+          onDeleteContact={handleDeleteContact}
+          currentMapsUrl={location?.mapsUrl}
         />
       )}
 

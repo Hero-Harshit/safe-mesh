@@ -8,9 +8,11 @@ export type PermissionStatus = 'GRANTED' | 'DENIED' | 'BLOCKED' | 'UNKNOWN' | 'P
 
 export interface SafetyMeshPermissionsState {
   location: PermissionStatus;
+  background_location: PermissionStatus;
   bluetooth: PermissionStatus;
   notifications: PermissionStatus;
   sms: PermissionStatus;
+  battery: PermissionStatus;
   isInitialFlowCompleted: boolean;
 }
 
@@ -18,9 +20,11 @@ const STORAGE_KEY_ONBOARDING = 'safetymesh_permission_flow_completed';
 
 let cachedState: SafetyMeshPermissionsState = {
   location: 'UNKNOWN',
+  background_location: 'UNKNOWN',
   bluetooth: 'UNKNOWN',
   notifications: 'UNKNOWN',
   sms: 'UNKNOWN',
+  battery: 'UNKNOWN',
   isInitialFlowCompleted: localStorage.getItem(STORAGE_KEY_ONBOARDING) === 'true',
 };
 
@@ -270,12 +274,60 @@ export async function requestSmsPermission(): Promise<PermissionStatus> {
   return 'PROMPT';
 }
 
+export async function checkBackgroundLocationPermission(): Promise<PermissionStatus> {
+  const isAndroidGranted = localStorage.getItem('safetymesh_bg_loc_granted');
+  if (isAndroidGranted === 'true') {
+    cachedState.background_location = 'GRANTED';
+  } else {
+    cachedState.background_location = 'PROMPT';
+  }
+  notifyListeners();
+  return cachedState.background_location;
+}
+
+export async function requestBackgroundLocationPermission(): Promise<PermissionStatus> {
+  if (window.location.protocol.startsWith('http')) {
+    try {
+      window.location.href = 'intent://background_location#Intent;scheme=safehelp;package=com.safehelp.app;end';
+    } catch {
+    }
+  }
+  cachedState.background_location = 'PROMPT';
+  notifyListeners();
+  return 'PROMPT';
+}
+
+export async function checkBatteryOptimizationPermission(): Promise<PermissionStatus> {
+  const isAndroidGranted = localStorage.getItem('safetymesh_battery_granted');
+  if (isAndroidGranted === 'true') {
+    cachedState.battery = 'GRANTED';
+  } else {
+    cachedState.battery = 'PROMPT';
+  }
+  notifyListeners();
+  return cachedState.battery;
+}
+
+export async function requestBatteryOptimizationPermission(): Promise<PermissionStatus> {
+  if (window.location.protocol.startsWith('http')) {
+    try {
+      window.location.href = 'intent://battery_optimization#Intent;scheme=safehelp;package=com.safehelp.app;end';
+    } catch {
+    }
+  }
+  cachedState.battery = 'PROMPT';
+  notifyListeners();
+  return 'PROMPT';
+}
+
 /**
  * Re-check all permissions (called on startup and whenever app returns to foreground)
  */
 export async function refreshAllPermissions(): Promise<SafetyMeshPermissionsState> {
   await Promise.allSettled([
     checkLocationPermission(),
+    checkBackgroundLocationPermission(),
+    checkBatteryOptimizationPermission(),
     checkBluetoothPermission(),
     checkNotificationPermission(),
     checkSmsPermission(),
@@ -312,6 +364,22 @@ if (typeof window !== 'undefined') {
     } else if (window.location.hash.includes('sms_result=denied')) {
       cachedState.sms = 'DENIED';
       localStorage.setItem('safetymesh_sms_granted', 'false');
+      notifyListeners();
+    } else if (window.location.hash.includes('bg_loc_result=granted')) {
+      cachedState.background_location = 'GRANTED';
+      localStorage.setItem('safetymesh_bg_loc_granted', 'true');
+      notifyListeners();
+    } else if (window.location.hash.includes('bg_loc_result=denied')) {
+      cachedState.background_location = 'DENIED';
+      localStorage.setItem('safetymesh_bg_loc_granted', 'false');
+      notifyListeners();
+    } else if (window.location.hash.includes('battery_result=granted')) {
+      cachedState.battery = 'GRANTED';
+      localStorage.setItem('safetymesh_battery_granted', 'true');
+      notifyListeners();
+    } else if (window.location.hash.includes('battery_result=denied')) {
+      cachedState.battery = 'DENIED';
+      localStorage.setItem('safetymesh_battery_granted', 'false');
       notifyListeners();
     }
   });

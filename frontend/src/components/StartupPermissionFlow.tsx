@@ -14,6 +14,8 @@ import {
   requestBluetoothPermission,
   requestNotificationPermission,
   requestSmsPermission,
+  requestBackgroundLocationPermission,
+  requestBatteryOptimizationPermission,
   setInitialFlowCompleted,
 } from '../services/permissions';
 import type { SafetyMeshPermissionsState } from '../services/permissions';
@@ -23,7 +25,7 @@ interface StartupPermissionFlowProps {
   onComplete: () => void;
 }
 
-type StepKey = 'profile_1' | 'profile_2' | 'profile_3' | 'location' | 'bluetooth' | 'notifications' | 'sms' | 'loading';
+type StepKey = 'profile_1' | 'profile_2' | 'profile_3' | 'location' | 'background_location' | 'battery' | 'bluetooth' | 'notifications' | 'sms' | 'loading';
 
 export const StartupPermissionFlow: React.FC<StartupPermissionFlowProps> = ({
   initialState,
@@ -35,13 +37,17 @@ export const StartupPermissionFlow: React.FC<StartupPermissionFlowProps> = ({
     !isProfileDone
       ? 'profile_1'
       : initialState.location === 'GRANTED'
-      ? initialState.bluetooth === 'GRANTED'
-        ? initialState.notifications === 'GRANTED'
-          ? initialState.sms === 'GRANTED'
-            ? 'loading'
-            : 'sms'
-          : 'notifications'
-        : 'bluetooth'
+      ? initialState.background_location === 'GRANTED'
+        ? initialState.battery === 'GRANTED'
+          ? initialState.bluetooth === 'GRANTED'
+            ? initialState.notifications === 'GRANTED'
+              ? initialState.sms === 'GRANTED'
+                ? 'loading'
+                : 'sms'
+              : 'notifications'
+            : 'bluetooth'
+          : 'battery'
+        : 'background_location'
       : 'location'
   );
 
@@ -125,6 +131,22 @@ export const StartupPermissionFlow: React.FC<StartupPermissionFlowProps> = ({
     setIsRequesting(true);
     const status = await requestLocationPermission();
     setPermissions((prev) => ({ ...prev, location: status }));
+    setIsRequesting(false);
+    setCurrentStep('background_location');
+  };
+
+  const handleEnableBackgroundLocation = async () => {
+    setIsRequesting(true);
+    const status = await requestBackgroundLocationPermission();
+    setPermissions((prev) => ({ ...prev, background_location: status }));
+    setIsRequesting(false);
+    setCurrentStep('battery');
+  };
+
+  const handleEnableBattery = async () => {
+    setIsRequesting(true);
+    const status = await requestBatteryOptimizationPermission();
+    setPermissions((prev) => ({ ...prev, battery: status }));
     setIsRequesting(false);
     setCurrentStep('bluetooth');
   };
@@ -361,9 +383,67 @@ export const StartupPermissionFlow: React.FC<StartupPermissionFlowProps> = ({
               </button>
               <button
                 className="btn-skip-permission"
-                onClick={() => handleSkipStep('bluetooth')}
+                onClick={() => handleSkipStep('background_location')}
               >
                 Not Now (Location Features Disabled)
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Step 1.5: Background Location */}
+        {currentStep === 'background_location' && (
+          <div className="step-detail-card">
+            <div className="step-icon-bubble bg-green-tint">
+              <LocationPinIcon size={26} color="#10B981" />
+            </div>
+            <h3 className="step-title">Background Location</h3>
+            <p className="step-explanation">
+              Required for the AI Threat Detector to track your GPS velocity and trigger alerts if you are suddenly pulled into a moving vehicle.
+            </p>
+
+            <div className="step-actions">
+              <button
+                className="btn-enable-permission"
+                onClick={handleEnableBackgroundLocation}
+                disabled={isRequesting}
+              >
+                {isRequesting ? 'Requesting...' : 'Allow All The Time'}
+              </button>
+              <button
+                className="btn-skip-permission"
+                onClick={() => handleSkipStep('battery')}
+              >
+                Not Now (Velocity Anomaly Disabled)
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Step 1.6: Battery Optimization */}
+        {currentStep === 'battery' && (
+          <div className="step-detail-card">
+            <div className="step-icon-bubble bg-amber-tint">
+              <ShieldLogoIcon size={26} color="#F59E0B" />
+            </div>
+            <h3 className="step-title">Ignore Battery Optimization</h3>
+            <p className="step-explanation">
+              Android kills background apps to save battery. To keep the AI Threat Engine running while your screen is off, you must let SafetyMesh run without restrictions.
+            </p>
+
+            <div className="step-actions">
+              <button
+                className="btn-enable-permission"
+                onClick={handleEnableBattery}
+                disabled={isRequesting}
+              >
+                {isRequesting ? 'Requesting...' : 'Allow Background Run'}
+              </button>
+              <button
+                className="btn-skip-permission"
+                onClick={() => handleSkipStep('bluetooth')}
+              >
+                Not Now (AI May Stop Working)
               </button>
             </div>
           </div>
