@@ -100,3 +100,12 @@ export const SosBroadcastIcon: React.FC<IconProps> = ({ size = 32, color = '#FFF
     <path d="M14 4.5C16 5 17.5 6.5 18 8.5" strokeWidth="2" />
   </svg>
 );
+
+export const ToolkitIcon: React.FC<IconProps> = ({ size = 20, color = '#3B82F6', ...props }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+    <rect x="3" y="3" width="7" height="7" rx="1.5" fill={color} fillOpacity="0.15" />
+    <rect x="14" y="3" width="7" height="7" rx="1.5" fill={color} fillOpacity="0.15" />
+    <rect x="14" y="14" width="7" height="7" rx="1.5" fill={color} fillOpacity="0.15" />
+    <rect x="3" y="14" width="7" height="7" rx="1.5" fill={color} fillOpacity="0.15" />
+  </svg>
+);

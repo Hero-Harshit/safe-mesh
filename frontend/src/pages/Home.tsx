@@ -8,6 +8,7 @@ import Call112Modal from '../components/Call112Modal';
 import SettingsModal from '../components/SettingsModal';
 import EmergencyMode from '../components/EmergencyMode';
 import SosPermissionWarningModal from '../components/SosPermissionWarningModal';
+import SafetyToolkitModal from '../components/SafetyToolkitModal';
 import StatusMessage from '../components/StatusMessage';
 import NearbyGuardianSetup from './NearbyGuardianSetup';
 
@@ -53,7 +54,7 @@ export default function Home(_props: HomeProps = {}) {
 
   // Contacts and UI state
   const [contacts, setContacts] = useState<EmergencyContact[]>([]);
-  const [activeModal, setActiveModal] = useState<'safe_route' | 'contacts' | 'call_112' | 'settings' | 'nearby_guardian' | null>(null);
+  const [activeModal, setActiveModal] = useState<'safe_route' | 'contacts' | 'call_112' | 'settings' | 'nearby_guardian' | 'toolkit' | null>(null);
   const [showSosWarning, setShowSosWarning] = useState(false);
   const [sosActive, setSosActive] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
@@ -179,6 +180,7 @@ export default function Home(_props: HomeProps = {}) {
           onSafeRouteClick={() => setActiveModal('safe_route')}
           onContactsClick={() => setActiveModal('contacts')}
           onGuardianClick={() => setActiveModal('nearby_guardian')}
+          onToolkitClick={() => setActiveModal('toolkit')}
         />
       </div>
 
@@ -238,6 +240,11 @@ export default function Home(_props: HomeProps = {}) {
           onClose={() => setActiveModal(null)}
           onShowToast={showToast}
         />
+      )}
+
+      {/* Safety Toolkit Modal */}
+      {activeModal === 'toolkit' && (
+        <SafetyToolkitModal onClose={() => setActiveModal(null)} />
       )}
 
       {/* SOS Warning Modal when Location is Missing */}
