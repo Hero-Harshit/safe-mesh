@@ -260,7 +260,6 @@ public class LauncherActivity extends Activity {
                 if ("intent".equalsIgnoreCase(scheme)) {
                     try {
                         Intent intent = Intent.parseUri(uri.toString(), Intent.URI_INTENT_SCHEME);
-                        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                         startActivity(intent);
                         return true;
                     } catch (Throwable t) {
@@ -325,7 +324,12 @@ public class LauncherActivity extends Activity {
         super.onNewIntent(intent);
         setIntent(intent);
         if (intent != null && intent.getData() != null && mWebView != null) {
-            mWebView.loadUrl(intent.getData().toString());
+            String intentScheme = intent.getData().getScheme();
+            // Only reload for actual web URLs, NOT for internal safehelp:// or intent:// schemes
+            // which would reset the permission flow and cause an infinite loop
+            if ("https".equalsIgnoreCase(intentScheme) || "http".equalsIgnoreCase(intentScheme)) {
+                mWebView.loadUrl(intent.getData().toString());
+            }
         }
     }
 
