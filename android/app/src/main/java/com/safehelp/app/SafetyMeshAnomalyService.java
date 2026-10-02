@@ -29,7 +29,15 @@ public class SafetyMeshAnomalyService extends Service {
                 .setPriority(NotificationCompat.PRIORITY_LOW)
                 .build();
         
-        startForeground(NOTIFICATION_ID, notification);
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                startForeground(NOTIFICATION_ID, notification, android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION);
+            } else {
+                startForeground(NOTIFICATION_ID, notification);
+            }
+        } catch (Throwable t) {
+            android.util.Log.e("ANOMALY_SERVICE", "Failed to start foreground notification", t);
+        }
         
         // Sensor and audio hooking will go here in Phase 2
         

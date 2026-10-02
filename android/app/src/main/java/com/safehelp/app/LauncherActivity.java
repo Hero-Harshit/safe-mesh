@@ -1,67 +1,87 @@
-/*
- * Copyright 2020 Google Inc.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
 package com.safehelp.app;
 
-import android.content.pm.ActivityInfo;
+import android.app.Activity;
+import android.content.Intent;
 import android.net.Uri;
-import android.os.Build;
 import android.os.Bundle;
+import android.util.Log;
+import androidx.browser.customtabs.CustomTabColorSchemeParams;
+import androidx.browser.customtabs.CustomTabsClient;
+import androidx.browser.customtabs.CustomTabsIntent;
+import androidx.browser.trusted.TrustedWebActivityDisplayMode;
+import androidx.browser.trusted.TrustedWebActivityIntentBuilder;
 
-
-
-public class LauncherActivity
-        extends com.google.androidbrowserhelper.trusted.LauncherActivity {
-    
-
-    
+public class LauncherActivity extends Activity {
+    private static final String TAG = "SAFEHELP_LAUNCHER";
+    private static final String DEFAULT_URL = "https://safety-mesh.vercel.app/";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        try {
-            super.onCreate(savedInstanceState);
-        } catch (Throwable t) {
-            // If restoring saved instance state crashed, retry with clean state
-            try {
-                super.onCreate(null);
-            } catch (Throwable t2) {
-                // Let uncaught exception handler handle it if both fail
-                throw new RuntimeException("LauncherActivity failed to initialize TWA", t);
-            }
-        }
-
-        // Setting an orientation crashes the app due to the transparent background on Android 8.0
-        // Oreo and below, as well as several OEM Android versions (MIUI, OneUI, ColorOS).
-        try {
-            if (Build.VERSION.SDK_INT > Build.VERSION_CODES.O) {
-                setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_USER_PORTRAIT);
-            } else {
-                setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED);
-            }
-        } catch (Throwable t) {
-            // Safely ignored: only impacts splash screen orientation
-        }
+        super.onCreate(savedInstanceState);
+        launchTwa();
     }
 
     @Override
-    protected Uri getLaunchingUrl() {
-        // Get the original launch Url.
-        Uri uri = super.getLaunchingUrl();
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        launchTwa();
+    }
 
-        
+    private void launchTwa() {
+        try {
+            Uri targetUri = Uri.parse(DEFAULT_URL);
+            if (getIntent() != null && getIntent().getData() != null) {
+                targetUri = getIntent().getData();
+            }
 
-        return uri;
+            // Configure Trusted Web Activity Intent
+            TrustedWebActivityIntentBuilder twaBuilder = new TrustedWebActivityIntentBuilder(targetUri);
+            
+            CustomTabColorSchemeParams defaultColorScheme = new CustomTabColorSchemeParams.Builder()
+                    .setToolbarColor(0xFFEF4444)
+                    .setNavigationBarColor(0xFF000000)
+                    .build();
+            CustomTabColorSchemeParams darkModeColorScheme = new CustomTabColorSchemeParams.Builder()
+                    .setToolbarColor(0xFF000000)
+                    .setNavigationBarColor(0xFF000000)
+                    .build();
+
+            twaBuilder.setDefaultColorSchemeParams(defaultColorScheme);
+            twaBuilder.setColorScheme(CustomTabsIntent.COLOR_SCHEME_SYSTEM);
+            twaBuilder.setColorSchemeParams(CustomTabsIntent.COLOR_SCHEME_DARK, darkModeColorScheme);
+            twaBuilder.setDisplayMode(new TrustedWebActivityDisplayMode.DefaultMode());
+
+            CustomTabsIntent customTabsIntent = twaBuilder.buildCustomTabsIntent();
+
+            // Direct intent to preferred Custom Tabs / TWA provider if installed
+            String providerPackage = CustomTabsClient.getPackageName(this, null);
+            if (providerPackage != null) {
+                customTabsIntent.intent.setPackage(providerPackage);
+            }
+
+            customTabsIntent.intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            customTabsIntent.launchUrl(this, targetUri);
+            finish();
+        } catch (Throwable t) {
+            Log.e(TAG, "TWA launch encountered error, falling back to browser VIEW intent", t);
+            try {
+                Intent fallback = new Intent(Intent.ACTION_VIEW, Uri.parse(DEFAULT_URL));
+                fallback.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                startActivity(fallback);
+                finish();
+            } catch (Throwable t2) {
+                Log.e(TAG, "Browser VIEW intent fallback failed, launching WebView fallback", t2);
+                try {
+                    Intent webViewIntent = new Intent(this, com.google.androidbrowserhelper.trusted.WebViewFallbackActivity.class);
+                    webViewIntent.putExtra("android.support.customtabs.trusted.DEFAULT_URL", DEFAULT_URL);
+                    webViewIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                    startActivity(webViewIntent);
+                    finish();
+                } catch (Throwable t3) {
+                    Log.e(TAG, "All fallback strategies failed", t3);
+                }
+            }
+        }
     }
 }

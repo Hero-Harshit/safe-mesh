@@ -22,21 +22,26 @@ import android.util.Log;
 
 public class Application extends android.app.Application {
 
-  @Override
-  public void onCreate() {
-      super.onCreate();
+    private static final String TAG = "SAFEHELP_APP";
 
-      // Install Global Crash Interceptor to display diagnostic screen if any crash occurs
-      Thread.setDefaultUncaughtExceptionHandler((thread, throwable) -> {
-          Log.e("CRASH_HANDLER", "FATAL APPLICATION ERROR", throwable);
-          try {
-              Intent crashIntent = new Intent(this, CrashDisplayActivity.class);
-              crashIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-              crashIntent.putExtra("error", Log.getStackTraceString(throwable));
-              startActivity(crashIntent);
-          } catch (Throwable ignored) {
-          }
-          System.exit(1);
-      });
-  }
+    @Override
+    public void onCreate() {
+        super.onCreate();
+
+        final Thread.UncaughtExceptionHandler defaultHandler = Thread.getDefaultUncaughtExceptionHandler();
+        Thread.setDefaultUncaughtExceptionHandler((thread, throwable) -> {
+            Log.e(TAG, "Uncaught exception in thread " + thread.getName(), throwable);
+            try {
+                Intent crashIntent = new Intent(this, CrashDisplayActivity.class);
+                crashIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                crashIntent.putExtra("error", Log.getStackTraceString(throwable));
+                startActivity(crashIntent);
+            } catch (Throwable t) {
+                Log.e(TAG, "Failed to launch CrashDisplayActivity", t);
+                if (defaultHandler != null) {
+                    defaultHandler.uncaughtException(thread, throwable);
+                }
+            }
+        });
+    }
 }

@@ -55,8 +55,8 @@ android {
         applicationId "com.safehelp.app"
         minSdkVersion 21
         targetSdkVersion 34
-        versionCode 2
-        versionName "1.0.1"
+        versionCode 3
+        versionName "1.0.2"
 
         // The name for the application
         resValue "string", "appName", twaManifest.name
@@ -206,9 +206,7 @@ repositories {
 
 dependencies {
     implementation fileTree(include: ['*.jar'], dir: 'libs')
-    
-        implementation 'com.google.androidbrowserhelper:locationdelegation:1.1.2'
-    
-        implementation 'com.google.androidbrowserhelper:androidbrowserhelper:2.6.2'
-    
+    implementation 'androidx.browser:browser:1.8.0'
+    implementation 'com.google.androidbrowserhelper:locationdelegation:1.1.2'
+    implementation 'com.google.androidbrowserhelper:androidbrowserhelper:2.5.0'
 }
