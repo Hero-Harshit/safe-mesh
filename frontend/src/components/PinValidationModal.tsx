@@ -107,33 +107,65 @@ export const PinValidationModal: React.FC<PinValidationModalProps> = ({
             {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(num => (
               <button
                 key={num}
+                type="button"
                 onClick={() => pin.length < 4 && setPin(p => p + num)}
                 style={{
-                  padding: '16px', fontSize: '1.5rem', background: 'rgba(255,255,255,0.05)',
-                  border: 'none', borderRadius: '12px', color: 'white'
+                  padding: '16px', fontSize: '1.5rem', background: 'rgba(255,255,255,0.08)',
+                  border: 'none', borderRadius: '14px', color: 'white', cursor: 'pointer',
+                  fontWeight: 600, transition: 'all 0.1s ease'
                 }}
               >
                 {num}
               </button>
             ))}
-            <div></div>
+
+            {/* Bottom-left: Backspace button */}
             <button
+              type="button"
+              onClick={() => setPin(p => p.slice(0, -1))}
+              aria-label="Backspace"
+              style={{
+                padding: '16px', fontSize: '1.3rem', background: 'rgba(255,255,255,0.05)',
+                border: 'none', borderRadius: '14px', color: 'var(--text-secondary)',
+                cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center'
+              }}
+            >
+              ⌫
+            </button>
+
+            {/* Bottom-center: 0 button */}
+            <button
+              type="button"
               onClick={() => pin.length < 4 && setPin(p => p + '0')}
               style={{
-                padding: '16px', fontSize: '1.5rem', background: 'rgba(255,255,255,0.05)',
-                border: 'none', borderRadius: '12px', color: 'white'
+                padding: '16px', fontSize: '1.5rem', background: 'rgba(255,255,255,0.08)',
+                border: 'none', borderRadius: '14px', color: 'white', cursor: 'pointer',
+                fontWeight: 600, transition: 'all 0.1s ease'
               }}
             >
               0
             </button>
+
+            {/* Bottom-right: OK button */}
             <button
-              onClick={() => setPin(p => p.slice(0, -1))}
+              type="button"
+              onClick={handlePinSubmit}
+              disabled={pin.length < 4}
+              aria-label="Submit PIN"
               style={{
-                padding: '16px', fontSize: '1.2rem', background: 'transparent',
-                border: 'none', borderRadius: '12px', color: 'var(--text-secondary)'
+                padding: '16px', fontSize: '1.15rem', fontWeight: 800,
+                background: pin.length === 4 
+                  ? 'linear-gradient(135deg, #10B981, #059669)' 
+                  : 'rgba(255,255,255,0.04)',
+                border: 'none', borderRadius: '14px',
+                color: pin.length === 4 ? '#FFFFFF' : 'rgba(255,255,255,0.3)',
+                cursor: pin.length === 4 ? 'pointer' : 'not-allowed',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                boxShadow: pin.length === 4 ? '0 4px 14px rgba(16, 185, 129, 0.4)' : 'none',
+                transition: 'all 0.15s ease'
               }}
             >
-              ⌫
+              OK
             </button>
           </div>
         </div>
