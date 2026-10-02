@@ -3,7 +3,7 @@ import { PhoneCallIcon, LocationPinIcon, UsersIcon, ShieldCheckIcon } from './Ic
 import type { EmergencyContact } from '../services/emergency';
 import { triggerHaptic } from '../services/emergency';
 import type { LocationData } from '../services/location';
-import { sendEmergencySms, startEmergencyBeacon, startEmergencyCall } from '../services/native';
+import { sendEmergencySms, startEmergencyBeacon, startEmergencyCall, cancelEmergencyCall, requestNativeEmergencyPermissions } from '../services/native';
 import { getEscapeRoute } from '../services/safetyRoute';
 import type { EscapeRouteResponse } from '../services/safetyRoute';
 
@@ -44,20 +44,25 @@ export const EmergencyMode: React.FC<EmergencyModeProps> = ({
 
   useEffect(() => {
     if (secondsActive === 0 && !callTriggeredRef.current && emergencyTargetNumber) {
-      // Fire immediately to bypass Chrome intent restrictions, but tell Android to wait 20s
-      startEmergencyCall(emergencyTargetNumber, 20000).catch(console.error);
+      // Fire immediately to prepare bridge, auto-dialing at 10 seconds (reduced from 20s)
+      startEmergencyCall(emergencyTargetNumber, 10000).catch(console.error);
     }
-    if (secondsActive === 10 && !level30Alert) {
+    if (secondsActive === 5 && !level30Alert) {
       setLevel30Alert(true);
       triggerHaptic([50, 50, 50, 50, 50]);
     }
-    if (secondsActive === 20 && !callTriggeredRef.current) {
+    if (secondsActive === 10 && !callTriggeredRef.current) {
       callTriggeredRef.current = true;
 
       triggerHaptic([100, 100, 100, 100, 100]);
-      // Call is already executing on the native side due to the 20s delayed intent
     }
   }, [secondsActive, level30Alert, emergencyTargetNumber]);
+
+  useEffect(() => {
+    return () => {
+      cancelEmergencyCall();
+    };
+  }, []);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -177,7 +182,7 @@ export const EmergencyMode: React.FC<EmergencyModeProps> = ({
 
         {/* Immediate Emergency Action Shortcuts */}
         <div className="emergency-action-stack">
-          {/* Level 3: Auto Emergency Call (T=20s) */}
+          {/* Level 3: Auto Emergency Call (T=10s) */}
           <div className="emergency-hero-btn" style={{ cursor: 'default', backgroundColor: '#FFFFFF', border: '1px solid #E2E8F0', boxShadow: '0 4px 12px rgba(0,0,0,0.03)', color: '#1E293B' }}>
             <div className="btn-icon-box" style={{ backgroundColor: '#F1F5F9' }}>
               <PhoneCallIcon size={22} color="#475569" />
@@ -186,15 +191,13 @@ export const EmergencyMode: React.FC<EmergencyModeProps> = ({
               <span className="btn-headline">{emergencyTargetNumber ? `Auto-Dial ${emergencyTargetName}` : 'Auto-Dial Unavailable'}</span>
               <span className="btn-tagline">
                 {emergencyTargetNumber 
-                  ? (secondsActive < 20 ? `Will auto-dial in ${20 - secondsActive}s...` : 'Auto-dial initiated.') 
+                  ? (secondsActive < 10 ? `Will auto-dial in ${10 - secondsActive}s...` : 'Emergency call active in background.') 
                   : 'Please add a primary contact to enable auto-dial.'}
               </span>
             </div>
           </div>
 
-
-
-          {/* Level 2: Neighborhood Alert (T=10s) */}
+          {/* Level 2: Neighborhood Alert (T=5s) */}
           {level30Alert && (
             <div className="emergency-hero-btn" style={{ cursor: 'default', backgroundColor: '#FFFFFF', border: '1px solid #FECACA', boxShadow: '0 4px 12px rgba(239,68,68,0.06)', color: '#1E293B' }}>
               <div className="btn-icon-box" style={{ backgroundColor: '#FEE2E2' }}>
@@ -207,22 +210,67 @@ export const EmergencyMode: React.FC<EmergencyModeProps> = ({
             </div>
           )}
 
-          {/* SMS Status Indicator */}
-          <div className="emergency-hero-btn" style={{ cursor: 'default', backgroundColor: '#FFFFFF', border: '1px solid #BFDBFE', boxShadow: '0 4px 12px rgba(37,99,235,0.06)', color: '#1E293B' }}>
-            <div className="btn-icon-box" style={{ backgroundColor: '#DBEAFE' }}>
-              <UsersIcon size={22} color="#2563EB" />
+          {/* SMS Status Indicator with Retry & Fallback */}
+          <div className="emergency-hero-btn" style={{ cursor: 'default', backgroundColor: '#FFFFFF', border: '1px solid #BFDBFE', boxShadow: '0 4px 12px rgba(37,99,235,0.06)', color: '#1E293B', display: 'flex', flexDirection: 'column', alignItems: 'stretch' }}>
+            <div style={{ display: 'flex', alignItems: 'center' }}>
+              <div className="btn-icon-box" style={{ backgroundColor: '#DBEAFE', marginRight: '12px' }}>
+                <UsersIcon size={22} color="#2563EB" />
+              </div>
+              <div className="btn-copy">
+                <span className="btn-headline" style={{ color: smsStatus === 'SMS SENT' ? '#16A34A' : smsStatus.includes('FAILED') || smsStatus.includes('REQUIRED') ? '#DC2626' : '#2563EB' }}>{smsStatus}</span>
+                <span className="btn-tagline">
+                  {smsStatus === 'SMS SENT' ? 'Emergency contacts notified silently.' : 
+                   smsStatus === 'SMS PARTIALLY SENT' ? 'Some contacts notified.' :
+                   smsStatus === 'SMS FAILED' ? 'Silent dispatch failed. Check SIM or retry.' :
+                   smsStatus === 'NO EMERGENCY CONTACTS' ? 'No emergency contacts are configured.' :
+                   smsStatus === 'SMS PERMISSION REQUIRED' ? 'Android SMS permission required.' :
+                   'Notifying emergency contacts silently...'}
+                </span>
+              </div>
             </div>
-            <div className="btn-copy">
-              <span className="btn-headline" style={{ color: '#2563EB' }}>{smsStatus}</span>
-              <span className="btn-tagline">
-                {smsStatus === 'SMS SENT' ? 'Emergency contacts notified.' : 
-                 smsStatus === 'SMS PARTIALLY SENT' ? 'Some contacts notified.' :
-                 smsStatus === 'SMS FAILED' ? 'Unable to notify emergency contacts.' :
-                 smsStatus === 'NO EMERGENCY CONTACTS' ? 'No emergency contacts are configured.' :
-                 smsStatus === 'SMS PERMISSION DENIED' ? 'SMS permission is not available.' :
-                 'Notifying emergency contacts...'}
-              </span>
-            </div>
+
+            {(smsStatus === 'SMS FAILED' || smsStatus === 'SMS PERMISSION REQUIRED') && (
+              <div style={{ marginTop: '10px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    requestNativeEmergencyPermissions();
+                    setTimeout(() => triggerAutomaticSms(), 600);
+                  }}
+                  style={{
+                    backgroundColor: '#DC2626',
+                    color: '#FFFFFF',
+                    border: 'none',
+                    borderRadius: '6px',
+                    padding: '8px 12px',
+                    fontSize: '0.82rem',
+                    fontWeight: 600,
+                    cursor: 'pointer'
+                  }}
+                >
+                  Grant Permissions & Retry
+                </button>
+                {primaryContact?.phone && (
+                  <a
+                    href={`sms:${primaryContact.phone.replace(/[^0-9+]/g, '')}?body=${encodeURIComponent(
+                      `🚨 EMERGENCY ALERT - SAFEMESH 🚨\nUrgent SOS activated!\nLive Location: ${location?.mapsUrl || 'Active coordinates'}`
+                    )}`}
+                    style={{
+                      backgroundColor: '#F1F5F9',
+                      color: '#1E293B',
+                      borderRadius: '6px',
+                      padding: '8px 12px',
+                      fontSize: '0.82rem',
+                      fontWeight: 600,
+                      textDecoration: 'none',
+                      display: 'inline-block'
+                    }}
+                  >
+                    Open Device SMS App
+                  </a>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Safe Route Panel */}

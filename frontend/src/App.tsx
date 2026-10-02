@@ -9,7 +9,7 @@ import {
 import type { SafetyMeshPermissionsState } from './services/permissions';
 
 // IMPORT NATIVE BRIDGE
-import { initNativeBridge } from './services/native';
+import { initNativeBridge, getNativeBridge, requestNativeEmergencyPermissions } from './services/native';
 
 export default function App() {
   const [permissions, setPermissions] = useState<SafetyMeshPermissionsState>(getPermissionsState());
@@ -23,6 +23,16 @@ export default function App() {
     });
 
     refreshAllPermissions();
+
+    // Proactively verify and request native permissions for emergency SOS (SMS & Call)
+    const bridge = getNativeBridge();
+    if (bridge) {
+      const hasSms = typeof bridge.hasSmsPermission === 'function' ? bridge.hasSmsPermission() : false;
+      const hasCall = typeof bridge.hasCallPermission === 'function' ? bridge.hasCallPermission() : false;
+      if (!hasSms || !hasCall) {
+        requestNativeEmergencyPermissions();
+      }
+    }
 
     return () => {
       unsubPerms();

@@ -22,7 +22,12 @@ import {
   deleteEmergencyContact,
   triggerHaptic,
 } from '../services/emergency';
-import { syncEmergencyContactsToNative, onNativeThreatEvent } from '../services/native';
+import {
+  syncEmergencyContactsToNative,
+  onNativeThreatEvent,
+  getNativeBridge,
+  requestNativeEmergencyPermissions,
+} from '../services/native';
 
 import type { RealLocationData } from '../services/location';
 import {
@@ -68,6 +73,22 @@ export default function Home(_props: HomeProps = {}) {
   const [sosActive, setSosActive] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [threatReason, setThreatReason] = useState<string | null>(null);
+  const [needsNativePerms, setNeedsNativePerms] = useState(false);
+
+  const checkNativePerms = useCallback(() => {
+    const bridge = getNativeBridge();
+    if (bridge) {
+      const hasSms = typeof bridge.hasSmsPermission === 'function' ? bridge.hasSmsPermission() : true;
+      const hasCall = typeof bridge.hasCallPermission === 'function' ? bridge.hasCallPermission() : true;
+      setNeedsNativePerms(!hasSms || !hasCall);
+    }
+  }, []);
+
+  useEffect(() => {
+    checkNativePerms();
+    const timer = setInterval(checkNativePerms, 2500);
+    return () => clearInterval(timer);
+  }, [checkNativePerms]);
 
   const activeModalRef = useRef(activeModal);
   useEffect(() => {
@@ -316,6 +337,37 @@ export default function Home(_props: HomeProps = {}) {
 
       {/* Central HERO SOS Button (Anchored to the bottom for thumb reachability) */}
       <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', alignItems: 'center', minHeight: 0, width: '100%', marginBottom: '8px' }}>
+        {needsNativePerms && (
+          <div
+            onClick={() => {
+              requestNativeEmergencyPermissions();
+              setTimeout(checkNativePerms, 1000);
+            }}
+            style={{
+              width: 'calc(100% - 16px)',
+              maxWidth: '420px',
+              margin: '0 8px 12px',
+              padding: '10px 14px',
+              backgroundColor: '#FEF2F2',
+              border: '1px solid #FECACA',
+              borderRadius: '10px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              cursor: 'pointer',
+              boxShadow: '0 2px 8px rgba(239,68,68,0.08)'
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ fontSize: '18px' }}>🛡️</span>
+              <div style={{ textAlign: 'left' }}>
+                <div style={{ fontSize: '0.82rem', fontWeight: 700, color: '#991B1B' }}>SMS & Call Permissions Required</div>
+                <div style={{ fontSize: '0.74rem', color: '#B91C1C' }}>Tap to allow background emergency SMS & calling</div>
+              </div>
+            </div>
+            <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#DC2626', textDecoration: 'underline' }}>Allow</span>
+          </div>
+        )}
         <EmergencySOSButton onActivate={handleSosHoldComplete} />
       </div>
 

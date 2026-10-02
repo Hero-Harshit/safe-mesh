@@ -6,7 +6,6 @@ import {
   SosBroadcastIcon,
   UsersIcon,
 } from './Icons';
-import { pickNativeContact } from '../services/native';
 import { saveEmergencyContact } from '../services/emergency';
 import { supabase } from '../services/supabase';
 import {

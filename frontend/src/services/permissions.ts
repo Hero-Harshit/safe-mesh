@@ -246,6 +246,15 @@ export async function requestBluetoothPermission(): Promise<PermissionStatus> {
  * Check SMS Permission
  */
 export async function checkSmsPermission(): Promise<PermissionStatus> {
+  const bridge = typeof window !== 'undefined' ? (window.AndroidSafeMesh || (window as any).Android) : null;
+  if (bridge && typeof bridge.hasSmsPermission === 'function') {
+    const granted = bridge.hasSmsPermission();
+    cachedState.sms = granted ? 'GRANTED' : 'PROMPT';
+    localStorage.setItem('safetymesh_sms_granted', granted ? 'true' : 'false');
+    notifyListeners();
+    return cachedState.sms;
+  }
+
   const isAndroidGranted = localStorage.getItem('safetymesh_sms_granted');
   if (isAndroidGranted === 'true') {
     cachedState.sms = 'GRANTED';
@@ -260,6 +269,20 @@ export async function checkSmsPermission(): Promise<PermissionStatus> {
  * Request SMS Permission via Native Android Bridge
  */
 export async function requestSmsPermission(): Promise<PermissionStatus> {
+  const bridge = typeof window !== 'undefined' ? (window.AndroidSafeMesh || (window as any).Android) : null;
+  if (bridge && typeof bridge.requestEmergencyPermissions === 'function') {
+    bridge.requestEmergencyPermissions();
+    for (let i = 0; i < 8; i++) {
+      await new Promise(r => setTimeout(r, 400));
+      if (typeof bridge.hasSmsPermission === 'function' && bridge.hasSmsPermission()) {
+        cachedState.sms = 'GRANTED';
+        localStorage.setItem('safetymesh_sms_granted', 'true');
+        notifyListeners();
+        return 'GRANTED';
+      }
+    }
+  }
+
   if (window.location.protocol.startsWith('http')) {
     try {
       window.location.href = 'intent://sms#Intent;scheme=safehelp;package=com.safehelp.app;end';
@@ -268,7 +291,6 @@ export async function requestSmsPermission(): Promise<PermissionStatus> {
     }
   }
   
-  // Assume PROMPT if we can't trigger it (e.g. not in TWA)
   cachedState.sms = 'PROMPT';
   notifyListeners();
   return 'PROMPT';

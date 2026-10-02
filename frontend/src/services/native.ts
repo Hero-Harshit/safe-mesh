@@ -225,66 +225,161 @@ export async function syncEmergencyContactsToNative(contacts: {name: string, pho
   });
 }
 
+export interface NativeSafeMeshBridge {
+  sendSilentSMS: (phone: string, message: string) => boolean;
+  makeEmergencyCall: (phone: string) => boolean;
+  requestEmergencyPermissions: () => void;
+  requestAllPermissions?: () => void;
+  hasSmsPermission: () => boolean;
+  hasCallPermission: () => boolean;
+  vibrate: (ms: number) => void;
+  stopVibrate: () => void;
+  setFlashlight: (enable: boolean) => void;
+  showToast: (msg: string) => void;
+  shareText: (title: string, msg: string) => void;
+  isNativeApp: () => boolean;
+  getAppVersion?: () => string;
+}
+
 declare global {
   interface Window {
-    AndroidSafeMesh?: {
-      sendSilentSMS: (phone: string, message: string) => boolean;
-      makeEmergencyCall: (phone: string) => boolean;
-      requestEmergencyPermissions: () => void;
-      hasSmsPermission: () => boolean;
-      hasCallPermission: () => boolean;
-      vibrate: (ms: number) => void;
-      stopVibrate: () => void;
-      setFlashlight: (enable: boolean) => void;
-      showToast: (msg: string) => void;
-      shareText: (title: string, msg: string) => void;
-      isNativeApp: () => boolean;
-    };
+    AndroidSafeMesh?: NativeSafeMeshBridge;
+    Android?: NativeSafeMeshBridge;
   }
 }
 
-export async function sendEmergencySms(contacts: {name: string, phone: string}[], locationUrl: string | null): Promise<SmsSendResult> {
-  return new Promise((resolve) => {
-    if (!isAndroid()) {
-      return resolve({ status: 'FAILED', error: 'NATIVE_SMS_UNAVAILABLE' });
-    }
+export function getNativeBridge(): NativeSafeMeshBridge | null {
+  if (typeof window === 'undefined') return null;
+  return window.AndroidSafeMesh || window.Android || null;
+}
 
-    if (window.AndroidSafeMesh && typeof window.AndroidSafeMesh.sendSilentSMS === 'function') {
-      try {
-        let userName = "A SafetyMesh user";
-        try {
-          const profileStr = localStorage.getItem('safetymesh_profile');
-          if (profileStr) {
-            const profile = JSON.parse(profileStr);
-            if (profile.fullName) userName = profile.fullName;
+export function isNativeSafeMesh(): boolean {
+  const bridge = getNativeBridge();
+  return !!(bridge && typeof bridge.isNativeApp === 'function' && bridge.isNativeApp());
+}
+
+export function hasNativeSmsPermission(): boolean {
+  const bridge = getNativeBridge();
+  if (bridge && typeof bridge.hasSmsPermission === 'function') {
+    return bridge.hasSmsPermission();
+  }
+  return false;
+}
+
+export function hasNativeCallPermission(): boolean {
+  const bridge = getNativeBridge();
+  if (bridge && typeof bridge.hasCallPermission === 'function') {
+    return bridge.hasCallPermission();
+  }
+  return false;
+}
+
+export function requestNativeEmergencyPermissions(): void {
+  const bridge = getNativeBridge();
+  if (bridge) {
+    if (typeof bridge.requestEmergencyPermissions === 'function') {
+      bridge.requestEmergencyPermissions();
+    } else if (typeof bridge.requestAllPermissions === 'function') {
+      bridge.requestAllPermissions();
+    }
+  }
+}
+
+export async function sendEmergencySms(
+  contacts: { name: string; phone: string }[],
+  locationUrl: string | null
+): Promise<SmsSendResult> {
+  const bridge = getNativeBridge();
+
+  if (!isAndroid() && !bridge) {
+    return { status: 'FAILED', error: 'NATIVE_SMS_UNAVAILABLE' };
+  }
+
+  if (bridge && typeof bridge.sendSilentSMS === 'function') {
+    try {
+      // 1. Proactively check if SMS permission is granted; if not, request it and wait for user approval
+      if (typeof bridge.hasSmsPermission === 'function' && !bridge.hasSmsPermission()) {
+        console.warn('SMS permission not yet granted. Triggering native emergency permissions dialog...');
+        requestNativeEmergencyPermissions();
+
+        // Wait and poll for user action (up to 4 seconds, checking every 400ms)
+        for (let i = 0; i < 10; i++) {
+          await new Promise((r) => setTimeout(r, 400));
+          if (bridge.hasSmsPermission()) {
+            break;
           }
-        } catch(e) {}
-
-        const message = `🚨 EMERGENCY ALERT 🚨\n${userName} is in danger and has activated their SOS alarm.\n\nLive Location:\n${locationUrl || "Location unavailable"}\n\nPlease help immediately.`;
-        
-        let allSuccess = true;
-        let anySuccess = false;
-        const results = [];
-
-        for (const contact of contacts) {
-          const success = window.AndroidSafeMesh.sendSilentSMS(contact.phone, message);
-          results.push({ name: contact.name, phone: contact.phone, success });
-          if (success) anySuccess = true;
-          else allSuccess = false;
         }
-
-        if (allSuccess) {
-          return resolve({ status: 'SUCCESS', results });
-        } else if (anySuccess) {
-          return resolve({ status: 'PARTIAL_SUCCESS', results });
-        } else {
-          return resolve({ status: 'FAILED', results });
-        }
-      } catch(e) {
-        return resolve({ status: 'ERROR', error: 'BRIDGE_CALL_FAILED' });
       }
-    }
 
+      let userName = "A SafetyMesh user";
+      try {
+        const profileStr = localStorage.getItem('safetymesh_profile');
+        if (profileStr) {
+          const profile = JSON.parse(profileStr);
+          if (profile.fullName) userName = profile.fullName;
+        }
+      } catch (e) {}
+
+      const message = `🚨 EMERGENCY ALERT - SAFEMESH 🚨\n${userName} is in danger and has activated their SOS alarm.\n\n📍 Live Location:\n${locationUrl || "Location tracking active - coordinates pending"}\n\nPlease take immediate emergency action.`;
+
+      let allSuccess = true;
+      let anySuccess = false;
+      const results: Array<{ name: string; phone: string; success: boolean }> = [];
+
+      for (const contact of contacts) {
+        // Sanitize phone number (strip whitespace, hyphens, parentheses; keep digits and +)
+        const cleanPhone = (contact.phone || '').replace(/[^0-9+]/g, '').trim();
+        if (!cleanPhone) {
+          results.push({ name: contact.name, phone: contact.phone, success: false });
+          allSuccess = false;
+          continue;
+        }
+
+        // Send silent SMS via native bridge with retry
+        let success = false;
+        for (let attempt = 1; attempt <= 2; attempt++) {
+          try {
+            success = bridge.sendSilentSMS(cleanPhone, message);
+          } catch (err) {
+            console.error(`Attempt ${attempt} sendSilentSMS failed for ${cleanPhone}:`, err);
+            success = false;
+          }
+          if (success) break;
+          // Short pause before retrying in case Android permission just synced
+          await new Promise((r) => setTimeout(r, 400));
+        }
+
+        results.push({ name: contact.name, phone: cleanPhone, success });
+        if (success) {
+          anySuccess = true;
+        } else {
+          allSuccess = false;
+        }
+      }
+
+      if (allSuccess && results.length > 0) {
+        if (typeof bridge.showToast === 'function') {
+          bridge.showToast('🚨 Emergency SMS dispatched successfully');
+        }
+        return { status: 'SUCCESS', results };
+      } else if (anySuccess) {
+        return { status: 'PARTIAL_SUCCESS', results };
+      } else {
+        const hasPerm = typeof bridge.hasSmsPermission === 'function' ? bridge.hasSmsPermission() : false;
+        return {
+          status: 'FAILED',
+          error: hasPerm ? 'SEND_SMS_REJECTED' : 'SMS_PERMISSION_DENIED',
+          results,
+        };
+      }
+    } catch (e) {
+      console.error('sendEmergencySms error:', e);
+      return { status: 'ERROR', error: 'BRIDGE_CALL_FAILED' };
+    }
+  }
+
+  // Fallback for non-bridge environments
+  return new Promise((resolve) => {
     const timer = setTimeout(() => resolve({ status: 'ERROR', error: 'TIMEOUT' }), 5000);
     smsActionResolvers.push((res) => {
       clearTimeout(timer);
@@ -381,28 +476,61 @@ export function onEmergencyBeaconDetected(callback: (event: BleScanEvent) => voi
   bleScanEventCallbacks.push(callback);
 }
 
+let scheduledCallTimeout: any = null;
+
+export function cancelEmergencyCall(): void {
+  if (scheduledCallTimeout) {
+    clearTimeout(scheduledCallTimeout);
+    scheduledCallTimeout = null;
+  }
+}
+
 export async function startEmergencyCall(phoneNumber: string = '112', delayMs: number = 0): Promise<void> {
+  const bridge = getNativeBridge();
+  const cleanPhone = (phoneNumber || '112').replace(/[^0-9+]/g, '').trim() || '112';
+
+  // Request call permission upfront if missing to prevent fallback to dialer keypad
+  if (bridge && typeof bridge.hasCallPermission === 'function' && !bridge.hasCallPermission()) {
+    console.warn('CALL_PHONE permission not yet granted. Requesting emergency permissions...');
+    requestNativeEmergencyPermissions();
+  }
+
+  cancelEmergencyCall();
+
   return new Promise((resolve) => {
-    const targetNumber = phoneNumber || '112';
-    if (!isAndroid()) {
-      window.location.href = `tel:${targetNumber}`;
+    if (!isAndroid() && !bridge) {
+      window.location.href = `tel:${cleanPhone}`;
       return resolve();
     }
-    
-    if (window.AndroidSafeMesh && typeof window.AndroidSafeMesh.makeEmergencyCall === 'function') {
-      setTimeout(() => {
-        window.AndroidSafeMesh!.makeEmergencyCall(targetNumber);
+
+    if (bridge && typeof bridge.makeEmergencyCall === 'function') {
+      scheduledCallTimeout = setTimeout(() => {
+        try {
+          bridge.makeEmergencyCall(cleanPhone);
+          // Keep SafeMesh active in the foreground
+          if (typeof window !== 'undefined' && window.focus) {
+            setTimeout(() => {
+              try { window.focus(); } catch (e) {}
+            }, 600);
+          }
+        } catch (e) {
+          console.error('makeEmergencyCall error:', e);
+        }
+        scheduledCallTimeout = null;
         resolve();
       }, delayMs);
       return;
     }
 
-    try {
-      window.location.href = `intent://call?number=${encodeURIComponent(targetNumber)}&delay=${delayMs}#Intent;scheme=safehelp;package=com.safehelp.app;end`;
-    } catch {
-      window.location.href = `tel:${targetNumber}`;
-    }
-    setTimeout(resolve, 500);
+    scheduledCallTimeout = setTimeout(() => {
+      try {
+        window.location.href = `intent://call?number=${encodeURIComponent(cleanPhone)}&delay=0#Intent;scheme=safehelp;package=com.safehelp.app;end`;
+      } catch {
+        window.location.href = `tel:${cleanPhone}`;
+      }
+      scheduledCallTimeout = null;
+      resolve();
+    }, delayMs);
   });
 }
 
