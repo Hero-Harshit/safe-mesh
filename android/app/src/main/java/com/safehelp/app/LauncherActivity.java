@@ -42,10 +42,11 @@ import org.json.JSONObject;
 import java.util.ArrayList;
 
 /**
- * High-performance fullscreen native WebView launcher for SafeMesh v2.1.
+ * High-performance fullscreen native WebView launcher for SafeMesh v3.0.
  * Completely replaces external Chrome Custom Tabs with an isolated, native app sandbox.
- * Zero browser URL bars, zero share buttons, native Android permission handling.
+ * Zero browser URL bars, zero share buttons, zero status bar, native Android permission handling.
  * Includes complete Native JavaScript Bridge for silent SMS, automatic calling, and hardware integration.
+ * v3.0: Added immersive fullscreen mode + fixed intent:// URI parsing for siren/strobe.
  */
 public class LauncherActivity extends Activity {
     private static final String TAG = "SAFEMESH_VIEW";
@@ -68,16 +69,34 @@ public class LauncherActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        // Configure edge-to-edge dark theme status and navigation bar
+        // ── v3.0: Immersive fullscreen — hide status bar and navigation bar ──
         try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                Window window = getWindow();
-                window.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
-                window.setStatusBarColor(0xFF0F172A); // SafeMesh dark slate background
-                window.setNavigationBarColor(0xFF0B1120);
+            Window window = getWindow();
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                // Android 11+ API
+                window.setDecorFitsSystemWindows(false);
+                android.view.WindowInsetsController controller = window.getInsetsController();
+                if (controller != null) {
+                    controller.hide(android.view.WindowInsets.Type.statusBars()
+                            | android.view.WindowInsets.Type.navigationBars());
+                    controller.setSystemBarsBehavior(
+                            android.view.WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
+                }
+            } else {
+                // Android 10 and below
+                window.addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
+                View decorView = window.getDecorView();
+                //noinspection deprecation
+                decorView.setSystemUiVisibility(
+                        View.SYSTEM_UI_FLAG_FULLSCREEN
+                                | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                                | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+                                | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                                | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+                                | View.SYSTEM_UI_FLAG_LAYOUT_STABLE);
             }
         } catch (Throwable t) {
-            Log.w(TAG, "Could not set status bar styling", t);
+            Log.w(TAG, "Could not apply fullscreen mode", t);
         }
 
         // Programmatic full-screen layout
@@ -234,8 +253,24 @@ public class LauncherActivity extends Activity {
                     }
                 }
 
-                // WhatsApp, Telegram, or custom system intents
-                if ("whatsapp".equalsIgnoreCase(scheme) || "intent".equalsIgnoreCase(scheme)) {
+                // WhatsApp, Telegram, or custom system intents (intent:// scheme)
+                // IMPORTANT: intent:// URIs MUST be parsed via Intent.parseUri so Android
+                // correctly resolves the target activity (e.g. SirenActionActivity).
+                // Using new Intent(ACTION_VIEW, uri) on an intent:// URL does NOT work.
+                if ("intent".equalsIgnoreCase(scheme)) {
+                    try {
+                        Intent intent = Intent.parseUri(uri.toString(), Intent.URI_INTENT_SCHEME);
+                        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                        startActivity(intent);
+                        return true;
+                    } catch (Throwable t) {
+                        Log.e(TAG, "Could not launch intent:// for " + uri, t);
+                        return true;
+                    }
+                }
+
+                // WhatsApp or other custom app schemes
+                if ("whatsapp".equalsIgnoreCase(scheme)) {
                     try {
                         Intent intent = new Intent(Intent.ACTION_VIEW, uri);
                         startActivity(intent);
