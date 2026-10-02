@@ -27,6 +27,9 @@ import {
   onNativeThreatEvent,
   getNativeBridge,
   requestNativeEmergencyPermissions,
+  sendEmergencySms,
+  startEmergencyBeacon,
+  fetchNativeLocation,
 } from '../services/native';
 
 import type { RealLocationData } from '../services/location';
@@ -68,7 +71,6 @@ export default function Home(_props: HomeProps = {}) {
   const [showSosWarning, setShowSosWarning] = useState(false);
 
   const [safeTimerActive, setSafeTimerActive] = useState(false);
-  const [safeTimerDuration, setSafeTimerDuration] = useState<number | null>(null);
   const [safeTimerDueTime, setSafeTimerDueTime] = useState<number | null>(null);
   const [sosActive, setSosActive] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
@@ -263,14 +265,12 @@ export default function Home(_props: HomeProps = {}) {
 
   const handleStartSafeTimer = (minutes: number) => {
     setSafeTimerActive(true);
-    setSafeTimerDuration(minutes);
     setSafeTimerDueTime(Date.now() + minutes * 60 * 1000);
     showToast(`Safe Timer active for ${minutes} min(s)`);
   };
 
   const handleStopSafeTimer = () => {
     setSafeTimerActive(false);
-    setSafeTimerDuration(null);
     setSafeTimerDueTime(null);
     showToast('Safe Timer stopped');
   };
@@ -445,16 +445,41 @@ export default function Home(_props: HomeProps = {}) {
         <PinValidationModal
           onSuccess={() => {
             closeModal();
-            if (safeTimerDuration) {
-              setSafeTimerDueTime(Date.now() + safeTimerDuration * 60 * 1000);
-              showToast('Safe Timer extended');
-            }
+            setSafeTimerActive(false);
+            setSafeTimerDueTime(null);
+            setSosActive(false);
+            setThreatReason(null);
+            triggerHaptic(100);
+            showToast('Safety verified: Safe Timer stopped');
           }}
           onDuress={() => {
             closeModal();
             setSafeTimerActive(false);
-            showToast('Timer Stopped');
-            activateEmergencyWorkflow();
+            setSafeTimerDueTime(null);
+            setSosActive(false);
+            setThreatReason(null);
+            showToast('Safe Timer stopped');
+
+            // Secretly broadcast duress SOS SMS & beacon in background
+            try {
+              let finalMapsUrl: string | null = null;
+              if (location && location.latitude && location.longitude) {
+                finalMapsUrl = location.mapsUrl || `https://maps.google.com/?q=${Number(location.latitude).toFixed(6)},${Number(location.longitude).toFixed(6)}`;
+              } else {
+                const nativeLoc = fetchNativeLocation();
+                if (nativeLoc && nativeLoc.latitude && nativeLoc.longitude) {
+                  finalMapsUrl = `https://maps.google.com/?q=${Number(nativeLoc.latitude).toFixed(6)},${Number(nativeLoc.longitude).toFixed(6)}`;
+                }
+              }
+
+              const contactList = contacts.map(c => ({ name: c.name, phone: c.phone }));
+              sendEmergencySms(contactList, finalMapsUrl).catch((err) => {
+                console.warn('[Duress] Emergency SMS send error:', err);
+              });
+              startEmergencyBeacon().catch(() => {});
+            } catch (e) {
+              console.warn('[Duress] Error triggering silent emergency SOS:', e);
+            }
           }}
           onTimeout={() => {
             closeModal();

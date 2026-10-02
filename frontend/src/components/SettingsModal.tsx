@@ -383,7 +383,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             <div className="about-safetymesh-card">
               <div className="about-header">
                 <ShieldCheckIcon size={18} color="#10B981" />
-                <span className="about-title">SafetyMesh Core v1.0.0</span>
+                <span className="about-title">SafetyMesh Core v4.0.0</span>
               </div>
               <p className="about-desc">
                 SafetyMesh is a distributed, privacy-first personal safety network engineered with zero-knowledge encryption and offline peer mesh failover.

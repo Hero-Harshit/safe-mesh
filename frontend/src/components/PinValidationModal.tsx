@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-
+import { validatePin } from '../services/pinManager';
 
 interface PinValidationModalProps {
   onSuccess: () => void;
@@ -15,6 +15,7 @@ export const PinValidationModal: React.FC<PinValidationModalProps> = ({
   const [pin, setPin] = useState('');
   const [timeLeft, setTimeLeft] = useState(30);
   const [error, setError] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -37,40 +38,57 @@ export const PinValidationModal: React.FC<PinValidationModalProps> = ({
     }
   }, []);
 
-  const handlePinSubmit = () => {
-    const saved = localStorage.getItem('safetymesh_pins');
-    let realPin = '';
-    let duressPin = '';
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        realPin = parsed.realPin;
-        duressPin = parsed.duressPin;
-      } catch (e) {}
+  const handleDigitClick = (num: number) => {
+    if (errorMessage) {
+      setErrorMessage(null);
+      setError(false);
     }
-
-    if (pin === realPin) {
-      onSuccess();
-    } else if (pin === duressPin) {
-      onDuress();
-    } else {
-      setError(true);
-      setPin('');
-      if (navigator.vibrate) navigator.vibrate(200);
-      setTimeout(() => setError(false), 500);
+    if (pin.length < 4) {
+      setPin(prev => prev + num.toString());
     }
   };
 
-  useEffect(() => {
-    if (pin.length === 4) {
-      handlePinSubmit();
+  const handleBackspace = () => {
+    if (errorMessage) {
+      setErrorMessage(null);
+      setError(false);
     }
-  }, [pin]);
+    setPin(prev => prev.slice(0, -1));
+  };
+
+  const handlePinSubmit = () => {
+    if (pin.length < 4) {
+      setError(true);
+      setErrorMessage('Please enter 4 digits');
+      setTimeout(() => setError(false), 1000);
+      return;
+    }
+
+    const validationResult = validatePin(pin);
+
+    if (validationResult === 'REAL') {
+      setErrorMessage(null);
+      setError(false);
+      onSuccess();
+    } else if (validationResult === 'DURESS') {
+      setErrorMessage(null);
+      setError(false);
+      onDuress();
+    } else {
+      setError(true);
+      setErrorMessage('Wrong PIN entered');
+      setPin('');
+      if (navigator.vibrate) {
+        navigator.vibrate([150, 75, 150]);
+      }
+      setTimeout(() => setError(false), 1200);
+    }
+  };
 
   return (
     <div className="safetymesh-modal-backdrop" style={{ zIndex: 9999, background: 'rgba(0,0,0,0.9)' }}>
       <div className="safetymesh-modal-sheet" style={{ background: '#1e1e1e' }} onClick={(e) => e.stopPropagation()}>
-        <div style={{ textAlign: 'center', padding: '2rem 1rem' }}>
+        <div style={{ textAlign: 'center', padding: '1.8rem 1rem' }}>
           <div style={{ 
             width: '80px', height: '80px', borderRadius: '50%', 
             background: timeLeft <= 10 ? 'rgba(239, 68, 68, 0.2)' : 'rgba(59, 130, 246, 0.2)', 
@@ -82,20 +100,22 @@ export const PinValidationModal: React.FC<PinValidationModalProps> = ({
             </h1>
           </div>
           
-          <h2 style={{ color: 'white', marginBottom: '8px' }}>Are you safe?</h2>
-          <p style={{ color: 'var(--text-secondary)', marginBottom: '24px' }}>
+          <h2 style={{ color: 'white', marginBottom: '8px', fontSize: '1.35rem' }}>Are you safe?</h2>
+          <p style={{ color: 'var(--text-secondary)', marginBottom: '18px', fontSize: '0.9rem' }}>
             Enter your PIN to verify your safety.
           </p>
 
-          <div style={{ display: 'flex', justifyContent: 'center', gap: '12px', marginBottom: '24px' }}>
+          {/* PIN Digits Display */}
+          <div style={{ display: 'flex', justifyContent: 'center', gap: '14px', marginBottom: '14px' }}>
             {[0, 1, 2, 3].map(i => (
               <div 
                 key={i} 
                 style={{ 
-                  width: '50px', height: '60px', 
-                  borderBottom: `2px solid ${error ? '#EF4444' : (pin.length > i ? '#3B82F6' : 'var(--border-color)')}`,
+                  width: '52px', height: '56px', 
+                  borderBottom: `3px solid ${error ? '#EF4444' : (pin.length > i ? '#3B82F6' : 'var(--border-color)')}`,
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: '2rem', color: 'white'
+                  fontSize: '2rem', color: 'white',
+                  transition: 'border-color 0.2s ease'
                 }}
               >
                 {pin.length > i ? '•' : ''}
@@ -103,12 +123,39 @@ export const PinValidationModal: React.FC<PinValidationModalProps> = ({
             ))}
           </div>
 
+          {/* Error / Status Indicator */}
+          <div style={{ minHeight: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '16px' }}>
+            {errorMessage ? (
+              <div 
+                style={{ 
+                  color: '#EF4444', 
+                  fontSize: '0.88rem', 
+                  fontWeight: 700,
+                  background: 'rgba(239, 68, 68, 0.15)',
+                  border: '1px solid rgba(239, 68, 68, 0.35)',
+                  padding: '5px 14px',
+                  borderRadius: '8px',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}
+              >
+                <span>⚠️</span> {errorMessage}
+              </div>
+            ) : (
+              <span style={{ color: 'var(--text-tertiary)', fontSize: '0.8rem' }}>
+                Enter PIN and tap OK
+              </span>
+            )}
+          </div>
+
+          {/* Keypad */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', maxWidth: '300px', margin: '0 auto' }}>
             {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(num => (
               <button
                 key={num}
                 type="button"
-                onClick={() => pin.length < 4 && setPin(p => p + num)}
+                onClick={() => handleDigitClick(num)}
                 style={{
                   padding: '16px', fontSize: '1.5rem', background: 'rgba(255,255,255,0.08)',
                   border: 'none', borderRadius: '14px', color: 'white', cursor: 'pointer',
@@ -122,7 +169,7 @@ export const PinValidationModal: React.FC<PinValidationModalProps> = ({
             {/* Bottom-left: Backspace button */}
             <button
               type="button"
-              onClick={() => setPin(p => p.slice(0, -1))}
+              onClick={handleBackspace}
               aria-label="Backspace"
               style={{
                 padding: '16px', fontSize: '1.3rem', background: 'rgba(255,255,255,0.05)',
@@ -136,7 +183,7 @@ export const PinValidationModal: React.FC<PinValidationModalProps> = ({
             {/* Bottom-center: 0 button */}
             <button
               type="button"
-              onClick={() => pin.length < 4 && setPin(p => p + '0')}
+              onClick={() => handleDigitClick(0)}
               style={{
                 padding: '16px', fontSize: '1.5rem', background: 'rgba(255,255,255,0.08)',
                 border: 'none', borderRadius: '14px', color: 'white', cursor: 'pointer',

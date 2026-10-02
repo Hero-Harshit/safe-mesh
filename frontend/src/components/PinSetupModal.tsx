@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { LockIcon } from './Icons';
+import { getSecurityPins, saveSecurityPins } from '../services/pinManager';
 
 interface PinSetupModalProps {
   onClose: () => void;
@@ -11,27 +12,18 @@ export const PinSetupModal: React.FC<PinSetupModalProps> = ({ onClose, onShowToa
   const [duressPin, setDuressPin] = useState('');
 
   useEffect(() => {
-    const saved = localStorage.getItem('safetymesh_pins');
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        if (parsed.realPin) setRealPin(parsed.realPin);
-        if (parsed.duressPin) setDuressPin(parsed.duressPin);
-      } catch (e) {}
-    }
+    const pins = getSecurityPins();
+    setRealPin(pins.realPin);
+    setDuressPin(pins.duressPin);
   }, []);
 
   const handleSave = () => {
-    if (realPin.length !== 4 || duressPin.length !== 4) {
-      onShowToast('Both PINs must be exactly 4 digits');
-      return;
-    }
-    if (realPin === duressPin) {
-      onShowToast('Real PIN and Duress PIN must be different');
+    const result = saveSecurityPins(realPin, duressPin);
+    if (!result.success) {
+      onShowToast(result.error || 'Failed to save PINs');
       return;
     }
 
-    localStorage.setItem('safetymesh_pins', JSON.stringify({ realPin, duressPin }));
     onShowToast('Security PINs saved successfully');
     onClose();
   };
@@ -78,7 +70,7 @@ export const PinSetupModal: React.FC<PinSetupModalProps> = ({ onClose, onShowToa
               <label style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', fontWeight: 600 }}>
                 Actual PIN (4 Digits)
               </label>
-              <span style={{ fontSize: '0.72rem', color: 'var(--text-tertiary)' }}>Normal safe stop</span>
+              <span style={{ fontSize: '0.72rem', color: 'var(--text-tertiary)' }}>Normal safe stop (Default: 1234)</span>
             </div>
             <input
               type="password"
@@ -86,7 +78,7 @@ export const PinSetupModal: React.FC<PinSetupModalProps> = ({ onClose, onShowToa
               maxLength={4}
               value={realPin}
               onChange={(e) => setRealPin(e.target.value.replace(/\D/g, ''))}
-              placeholder="••••"
+              placeholder="1234"
               style={{
                 width: '100%', padding: '8px 12px', borderRadius: '10px', 
                 background: 'rgba(0, 0, 0, 0.05)', border: '1.5px solid var(--border-color)',
@@ -101,7 +93,7 @@ export const PinSetupModal: React.FC<PinSetupModalProps> = ({ onClose, onShowToa
               <label style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', fontWeight: 600 }}>
                 Duress PIN (4 Digits)
               </label>
-              <span style={{ fontSize: '0.72rem', color: '#EF4444', fontWeight: 600 }}>Silent SOS</span>
+              <span style={{ fontSize: '0.72rem', color: '#EF4444', fontWeight: 600 }}>Silent SOS (Default: 9999)</span>
             </div>
             <input
               type="password"
@@ -109,7 +101,7 @@ export const PinSetupModal: React.FC<PinSetupModalProps> = ({ onClose, onShowToa
               maxLength={4}
               value={duressPin}
               onChange={(e) => setDuressPin(e.target.value.replace(/\D/g, ''))}
-              placeholder="••••"
+              placeholder="9999"
               style={{
                 width: '100%', padding: '8px 12px', borderRadius: '10px', 
                 background: 'rgba(0, 0, 0, 0.05)', border: '1.5px solid rgba(239, 68, 68, 0.35)',
@@ -118,7 +110,7 @@ export const PinSetupModal: React.FC<PinSetupModalProps> = ({ onClose, onShowToa
               }}
             />
             <p style={{ fontSize: '0.72rem', color: '#EF4444', marginTop: '4px', lineHeight: 1.25 }}>
-              If forced to stop timer, enter this to secretly broadcast an SOS.
+              If coerced to cancel the timer, enter this PIN. The timer will visually appear stopped, but a silent SOS broadcast is dispatched immediately.
             </p>
           </div>
 

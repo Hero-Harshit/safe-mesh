@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { TimerIcon, ShieldCheckIcon, LockIcon } from './Icons';
+import { TimerIcon, ShieldCheckIcon } from './Icons';
+import { getSecurityPins } from '../services/pinManager';
 
 interface SafetyTimerModalProps {
   onClose: () => void;
@@ -14,19 +15,11 @@ export const SafetyTimerModal: React.FC<SafetyTimerModalProps> = ({
   isActive,
   onStopTimer
 }) => {
-  const [hasPins, setHasPins] = useState(false);
   const [selectedMinutes, setSelectedMinutes] = useState(15);
 
   useEffect(() => {
-    const saved = localStorage.getItem('safetymesh_pins');
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        if (parsed.realPin && parsed.duressPin) {
-          setHasPins(true);
-        }
-      } catch (e) {}
-    }
+    // Ensures default pins exist in storage if not set yet
+    getSecurityPins();
   }, []);
 
   return (
@@ -58,15 +51,7 @@ export const SafetyTimerModal: React.FC<SafetyTimerModalProps> = ({
         </div>
 
         <div className="modal-sheet-content" style={{ padding: '0 20px 20px' }}>
-          {!hasPins ? (
-            <div style={{ textAlign: 'center', padding: '2rem 1rem', background: 'rgba(245, 158, 11, 0.1)', borderRadius: '12px', border: '1px solid rgba(245, 158, 11, 0.2)' }}>
-              <LockIcon size={32} color="#F59E0B" style={{ margin: '0 auto 12px' }} />
-              <h3 style={{ color: '#F59E0B', marginBottom: '8px', fontSize: '1.1rem' }}>Setup Required</h3>
-              <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', lineHeight: 1.5 }}>
-                Please set up your Actual PIN and Duress PIN in <b>Settings</b> before using the Safe Timer.
-              </p>
-            </div>
-          ) : isActive ? (
+          {isActive ? (
             <div style={{ textAlign: 'center', padding: '2rem 1rem' }}>
               <ShieldCheckIcon size={48} color="#10B981" style={{ margin: '0 auto 16px' }} />
               <h3 style={{ color: 'white', marginBottom: '8px', fontSize: '1.2rem' }}>Timer is Active</h3>
