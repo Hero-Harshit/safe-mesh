@@ -355,8 +355,8 @@ export async function sendEmergencySms(
       let finalLocationUrl = locationUrl;
       if (!finalLocationUrl) {
         const nativeLoc = fetchNativeLocation();
-        if (nativeLoc) {
-          finalLocationUrl = `https://www.google.com/maps?q=${nativeLoc.latitude.toFixed(6)},${nativeLoc.longitude.toFixed(6)}`;
+        if (nativeLoc && nativeLoc.latitude && nativeLoc.longitude) {
+          finalLocationUrl = `https://maps.google.com/?q=${nativeLoc.latitude.toFixed(6)},${nativeLoc.longitude.toFixed(6)}`;
         } else {
           try {
             const cached = localStorage.getItem('safetymesh_last_location');
@@ -364,14 +364,22 @@ export async function sendEmergencySms(
               const p = JSON.parse(cached);
               if (p.mapsUrl) finalLocationUrl = p.mapsUrl;
               else if (p.latitude && p.longitude) {
-                finalLocationUrl = `https://www.google.com/maps?q=${Number(p.latitude).toFixed(6)},${Number(p.longitude).toFixed(6)}`;
+                finalLocationUrl = `https://maps.google.com/?q=${Number(p.latitude).toFixed(6)},${Number(p.longitude).toFixed(6)}`;
               }
             }
           } catch {}
         }
       }
 
-      const message = `🚨 EMERGENCY ALERT - SAFEMESH 🚨\n${userName} is in danger and triggered the SOS alarm.\n\n📍 Live Location:\n${finalLocationUrl || "Location tracking active - coordinates pending"}${listenUrl ? `\n\n🎙️ Listen Live & Police Evidence:\n${listenUrl}` : ''}\n\nPlease take immediate emergency action.`;
+      const locationSection = finalLocationUrl
+        ? `Live Location:\n${finalLocationUrl}`
+        : `Live Location:\nLocation tracking active - searching GPS`;
+
+      const listenSection = listenUrl
+        ? `\n\nListen Live & Police Evidence:\n${listenUrl}`
+        : '';
+
+      const message = `EMERGENCY ALERT - SAFEMESH\n${userName} is in danger and triggered the SOS alarm.\n\n${locationSection}${listenSection}\n\nPlease take immediate emergency action.`;
 
       let allSuccess = true;
       let anySuccess = false;
@@ -410,7 +418,7 @@ export async function sendEmergencySms(
 
       if (allSuccess && results.length > 0) {
         if (typeof bridge.showToast === 'function') {
-          bridge.showToast('🚨 Emergency SMS dispatched successfully');
+          bridge.showToast('Emergency SMS dispatched successfully');
         }
         return { status: 'SUCCESS', results };
       } else if (anySuccess) {

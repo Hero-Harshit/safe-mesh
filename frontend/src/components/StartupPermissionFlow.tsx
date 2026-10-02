@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import {
   ShieldLogoIcon,
   LocationPinIcon,
@@ -83,11 +83,11 @@ export const StartupPermissionFlow: React.FC<StartupPermissionFlowProps> = ({
        alert("Please enter your name and phone number.");
        return;
     }
-    setCurrentStep('profile_2');
+    advanceToStep('profile_2');
   };
 
   const saveProfile2 = () => {
-    setCurrentStep('profile_3');
+    advanceToStep('profile_3');
   };
 
   const saveProfile3 = async () => {
@@ -126,7 +126,7 @@ export const StartupPermissionFlow: React.FC<StartupPermissionFlowProps> = ({
       advanceToStep(isLocationDone ? 'background_location' : 'location');
     } catch (err: any) {
       console.error('Supabase Error:', err);
-      // Fallback local save even if Supabase is offline
+      // Fallback local persistence so user is never blocked
       localStorage.setItem('safetymesh_profile', JSON.stringify(profileData));
       saveEmergencyContact({
          name: profileData.contactName,
@@ -273,7 +273,11 @@ export const StartupPermissionFlow: React.FC<StartupPermissionFlowProps> = ({
 
               <div
                 className={`step-pill ${
-                  permissions.notifications === 'GRANTED' ? 'completed' : currentStep === 'notifications' ? 'active' : ''
+                  permissions.notifications === 'GRANTED'
+                    ? 'completed'
+                    : currentStep === 'notifications'
+                    ? 'active'
+                    : ''
                 }`}
               >
                 <span className="step-pill-indicator">
@@ -296,129 +300,84 @@ export const StartupPermissionFlow: React.FC<StartupPermissionFlowProps> = ({
           </>
         )}
 
-        {/* Profile Step 1: Personal Details */}
+        {/* Step 0.1: Profile Creation - Basic Info */}
         {currentStep === 'profile_1' && (
           <div className="step-detail-card">
             <div className="step-icon-bubble bg-blue-tint">
               <UsersIcon size={26} color="#3B82F6" />
             </div>
-            <h3 className="step-title">Personal Profile</h3>
-            <p className="step-explanation">
-              Enter your basic details so first responders and contacts can identify you.
+            <h3 className="step-title">Who are you?</h3>
+            <p className="step-explanation" style={{marginBottom: '16px'}}>
+              Basic details to identify you during an emergency.
             </p>
 
-            <div className="profile-input-group" style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '15px' }}>
-              <input 
-                type="text" 
-                placeholder="Full Legal Name *" 
-                className="profile-input" 
-                value={profileData.fullName}
-                onChange={e => setProfileData({...profileData, fullName: e.target.value})}
-                style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid #334155', background: '#0F172A', color: 'white' }}
-              />
-              <input 
-                type="tel" 
-                placeholder="Phone Number *" 
-                className="profile-input" 
-                value={profileData.phone}
-                onChange={e => setProfileData({...profileData, phone: e.target.value})}
-                style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid #334155', background: '#0F172A', color: 'white' }}
-              />
+            <div className="profile-form-grid">
+              <input type="text" className="profile-input" placeholder="Full Name *" value={profileData.fullName} onChange={e => setProfileData({...profileData, fullName: e.target.value})} />
+              <input type="tel" className="profile-input" placeholder="Phone Number *" value={profileData.phone} onChange={e => setProfileData({...profileData, phone: e.target.value})} />
             </div>
 
-            <div className="step-actions" style={{ marginTop: '20px' }}>
+            <div className="step-actions">
               <button className="btn-enable-permission" onClick={saveProfile1}>
-                Next: Health Info
+                Next
               </button>
             </div>
           </div>
         )}
 
-        {/* Profile Step 2: Health Info */}
+        {/* Step 0.2: Profile Creation - Medical Info */}
         {currentStep === 'profile_2' && (
           <div className="step-detail-card">
-            <div className="step-icon-bubble bg-red-tint">
-              <ShieldLogoIcon size={26} color="#EF4444" />
+            <div className="step-icon-bubble bg-blue-tint">
+              <ShieldLogoIcon size={26} color="#3B82F6" />
             </div>
-            <h3 className="step-title">Medical ID (Optional)</h3>
-            <p className="step-explanation">
-              Critical medical context shown during severe emergencies.
+            <h3 className="step-title">Medical Info</h3>
+            <p className="step-explanation" style={{marginBottom: '16px'}}>
+              Crucial information for first responders. (Optional)
             </p>
 
-            <div className="profile-input-group" style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '15px' }}>
-              <div style={{ display: 'flex', gap: '10px' }}>
-                <input 
-                  type="number" 
-                  placeholder="Age" 
-                  className="profile-input" 
-                  value={profileData.age}
-                  onChange={e => setProfileData({...profileData, age: e.target.value})}
-                  style={{ width: '40%', padding: '12px', borderRadius: '8px', border: '1px solid #334155', background: '#0F172A', color: 'white' }}
-                />
-                <input 
-                  type="text" 
-                  placeholder="Blood Group (e.g. O+)" 
-                  className="profile-input" 
-                  value={profileData.bloodGroup}
-                  onChange={e => setProfileData({...profileData, bloodGroup: e.target.value})}
-                  style={{ width: '60%', padding: '12px', borderRadius: '8px', border: '1px solid #334155', background: '#0F172A', color: 'white' }}
-                />
+            <div className="profile-form-grid">
+              <div style={{display: 'flex', gap: '8px', width: '100%'}}>
+                <input type="number" className="profile-input" placeholder="Age" style={{flex: 1}} value={profileData.age} onChange={e => setProfileData({...profileData, age: e.target.value})} />
+                <input type="text" className="profile-input" placeholder="Blood Group (e.g. O+)" style={{flex: 1}} value={profileData.bloodGroup} onChange={e => setProfileData({...profileData, bloodGroup: e.target.value})} />
               </div>
-              <textarea 
-                placeholder="Known Allergies / Medical Conditions..." 
-                className="profile-input" 
-                value={profileData.medical}
-                onChange={e => setProfileData({...profileData, medical: e.target.value})}
-                style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid #334155', background: '#0F172A', color: 'white', minHeight: '60px' }}
-              />
+              <textarea className="profile-input" placeholder="Medical Conditions / Allergies" rows={3} style={{resize: 'none', padding: '12px'}} value={profileData.medical} onChange={e => setProfileData({...profileData, medical: e.target.value})} />
             </div>
 
-            <div className="step-actions" style={{ marginTop: '20px' }}>
+            <div className="step-actions">
               <button className="btn-enable-permission" onClick={saveProfile2}>
-                Next: Emergency Contact
+                Next
               </button>
-              <button className="btn-skip-permission" onClick={() => setCurrentStep('profile_1')}>
+              <button className="btn-skip-permission" onClick={() => advanceToStep('profile_1')}>
                 Back
               </button>
             </div>
           </div>
         )}
 
-        {/* Profile Step 3: Emergency Contacts */}
+        {/* Step 0.3: Profile Creation - Emergency Contact */}
         {currentStep === 'profile_3' && (
           <div className="step-detail-card">
-            <div className="step-icon-bubble bg-purple-tint">
-              <SosBroadcastIcon size={26} color="#A855F7" />
+            <div className="step-icon-bubble bg-blue-tint">
+              <GuardianMeshIcon size={26} color="#3B82F6" />
             </div>
             <h3 className="step-title">Emergency Contact</h3>
-            <p className="step-explanation">
-              The primary person to receive emergency alerts and SMS notifications.
+            <p className="step-explanation" style={{marginBottom: '16px'}}>
+              Who should we notify if you are in danger?
             </p>
 
-            <div className="profile-input-group" style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '15px' }}>
-              <input 
-                type="text" 
-                placeholder="Contact Name *" 
-                className="profile-input" 
-                value={profileData.contactName}
-                onChange={e => setProfileData({...profileData, contactName: e.target.value})}
-                style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid #334155', background: '#0F172A', color: 'white' }}
-              />
-              <input 
-                type="tel" 
-                placeholder="Contact Phone Number *" 
-                className="profile-input" 
-                value={profileData.contactPhone}
-                onChange={e => setProfileData({...profileData, contactPhone: e.target.value})}
-                style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid #334155', background: '#0F172A', color: 'white' }}
-              />
+            <div className="profile-form-grid">
+              <div className="contact-picker-header">
+                <span className="profile-input-label">Primary Contact</span>
+              </div>
+              <input type="text" className="profile-input" placeholder="Contact Name *" value={profileData.contactName} onChange={e => setProfileData({...profileData, contactName: e.target.value})} />
+              <input type="tel" className="profile-input" placeholder="Contact Phone *" value={profileData.contactPhone} onChange={e => setProfileData({...profileData, contactPhone: e.target.value})} />
             </div>
 
             <div className="step-actions">
               <button className="btn-enable-permission" onClick={saveProfile3} disabled={isRequesting}>
                 {isRequesting ? 'Saving Profile...' : 'Save Profile'}
               </button>
-              <button className="btn-skip-permission" onClick={() => setCurrentStep('profile_2')}>
+              <button className="btn-skip-permission" onClick={() => advanceToStep('profile_2')}>
                 Back
               </button>
             </div>
@@ -463,7 +422,7 @@ export const StartupPermissionFlow: React.FC<StartupPermissionFlowProps> = ({
             </div>
             <h3 className="step-title">Background Location</h3>
             <p className="step-explanation">
-              Required for the AI Threat Detector to track your GPS velocity and trigger alerts if you are suddenly pulled into a moving vehicle.
+              Required for the Voice Activity Detector to track your GPS velocity and trigger alerts if you are suddenly pulled into a moving vehicle.
             </p>
 
             <div className="step-actions">
@@ -614,7 +573,7 @@ export const StartupPermissionFlow: React.FC<StartupPermissionFlowProps> = ({
         )}
 
         <div className="onboarding-privacy-note">
-          <span>SafetyMesh adheres to strict zero-knowledge privacy. No fake data is ever shared.</span>
+          <span>🔒 SafetyMesh adheres to strict zero-knowledge privacy. No fake data is ever shared.</span>
         </div>
       </div>
     </div>

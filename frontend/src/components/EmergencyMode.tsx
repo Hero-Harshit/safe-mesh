@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { PhoneCallIcon, LocationPinIcon, UsersIcon, ShieldCheckIcon } from './Icons';
 import type { EmergencyContact } from '../services/emergency';
 import { triggerHaptic } from '../services/emergency';
 import type { LocationData } from '../services/location';
 import { fetchRealDeviceLocation } from '../services/location';
-import { sendEmergencySms, startEmergencyBeacon, cancelEmergencyCall, requestNativeEmergencyPermissions } from '../services/native';
+import { sendEmergencySms, startEmergencyBeacon, cancelEmergencyCall, requestNativeEmergencyPermissions, fetchNativeLocation } from '../services/native';
 import { getEscapeRoute } from '../services/safetyRoute';
 import type { EscapeRouteResponse } from '../services/safetyRoute';
 import { startLiveAudioBroadcast } from '../services/evidenceAudio';
@@ -51,6 +51,7 @@ export const EmergencyMode: React.FC<EmergencyModeProps> = ({
   };
 
   const smsTriggeredRef = React.useRef(false);
+  const smsHasLocationRef = React.useRef(false);
   const routeTriggeredRef = React.useRef(false);
   const beaconTriggeredRef = React.useRef(false);
 
@@ -106,6 +107,16 @@ export const EmergencyMode: React.FC<EmergencyModeProps> = ({
       startEmergencyBeacon().catch(console.error);
     }
 
+    if (smsTriggeredRef.current && !smsHasLocationRef.current && location && location.latitude && location.longitude) {
+      smsHasLocationRef.current = true;
+      const followUpMapsUrl = location.mapsUrl || https://maps.google.com/?q=${Number(location.latitude).toFixed(6)},${Number(location.longitude).toFixed(6)};
+      const followUpListenUrl = https://safety-mesh.vercel.app/?room=${roomIdRef.current};
+      sendEmergencySms(
+        contacts.map(c => ({ name: c.name, phone: c.phone })),
+        followUpMapsUrl,
+        followUpListenUrl
+      ).catch(() => {});
+    }
     if (!routeTriggeredRef.current && location) {
       routeTriggeredRef.current = true;
       triggerSafeRoute(location.latitude, location.longitude);
@@ -140,33 +151,52 @@ export const EmergencyMode: React.FC<EmergencyModeProps> = ({
 
     setSmsStatus('Sending...');
     try {
-      let finalMapsUrl = location?.mapsUrl || null;
+      let finalMapsUrl: string | null = null;
 
-      // If location is pending, attempt a quick 1.5s race to fetch native or cached location
-      if (!finalMapsUrl) {
-        try {
-          const freshLoc = await Promise.race([
-            fetchRealDeviceLocation(),
-            new Promise<null>((r) => setTimeout(() => r(null), 1500))
-          ]);
-          if (freshLoc && freshLoc.mapsUrl) {
-            finalMapsUrl = freshLoc.mapsUrl;
-          }
-        } catch {}
+      // 1. Check passed location prop
+      if (location && location.latitude && location.longitude) {
+        finalMapsUrl = location.mapsUrl || `https://maps.google.com/?q=${Number(location.latitude).toFixed(6)},${Number(location.longitude).toFixed(6)}`;
       }
 
-      // If still missing, check localStorage cache
+      // 2. Check native device location directly from hardware bridge
+      if (!finalMapsUrl) {
+        const nativeLoc = fetchNativeLocation();
+        if (nativeLoc && nativeLoc.latitude && nativeLoc.longitude) {
+          finalMapsUrl = `https://maps.google.com/?q=${Number(nativeLoc.latitude).toFixed(6)},${Number(nativeLoc.longitude).toFixed(6)}`;
+        }
+      }
+
+      // 3. Check persistent localStorage cache
       if (!finalMapsUrl) {
         try {
           const cached = localStorage.getItem('safetymesh_last_location');
           if (cached) {
             const p = JSON.parse(cached);
-            if (p.mapsUrl) finalMapsUrl = p.mapsUrl;
-            else if (p.latitude && p.longitude) {
-              finalMapsUrl = `https://www.google.com/maps?q=${Number(p.latitude).toFixed(6)},${Number(p.longitude).toFixed(6)}`;
+            if (p.mapsUrl) {
+              finalMapsUrl = p.mapsUrl;
+            } else if (p.latitude && p.longitude) {
+              finalMapsUrl = `https://maps.google.com/?q=${Number(p.latitude).toFixed(6)},${Number(p.longitude).toFixed(6)}`;
             }
           }
         } catch {}
+      }
+
+      // 4. If still missing, actively query real device location with a solid 4.5s race timeout
+      if (!finalMapsUrl) {
+        setSmsStatus('Acquiring GPS location...');
+        try {
+          const freshLoc = await Promise.race([
+            fetchRealDeviceLocation(),
+            new Promise<null>((r) => setTimeout(() => r(null), 4500))
+          ]);
+          if (freshLoc && freshLoc.latitude && freshLoc.longitude) {
+            finalMapsUrl = freshLoc.mapsUrl || `https://maps.google.com/?q=${Number(freshLoc.latitude).toFixed(6)},${Number(freshLoc.longitude).toFixed(6)}`;
+          }
+        } catch {}
+      }
+
+      if (finalMapsUrl) {
+        smsHasLocationRef.current = true;
       }
 
       const listenUrl = `https://safety-mesh.vercel.app/?room=${roomIdRef.current}`;
@@ -201,6 +231,8 @@ export const EmergencyMode: React.FC<EmergencyModeProps> = ({
 
   const displayAddress = location?.addressName || 'Live GPS Coordinates Broadcasted';
   const displayCoords = location
+    ? `${location.latitude.toFixed(5)}Â° N, ${location.longitude.toFixed(5)}Â° E (Â±${Math.round(location.accuracy)}m)`
+    : 'Acquiring high-precision lock...';
     ? `${location.latitude.toFixed(5)}° N, ${location.longitude.toFixed(5)}° E (±${Math.round(location.accuracy)}m)`
     : 'Acquiring high-precision lock...';
 

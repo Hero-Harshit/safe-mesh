@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+﻿import React, { useState, useEffect, useRef } from 'react';
 import * as tf from '@tensorflow/tfjs';
 import * as speechCommands from '@tensorflow-models/speech-commands';
 import { MicIcon } from './Icons';
@@ -488,7 +488,7 @@ export const AmbientGuardCard: React.FC<AmbientGuardCardProps> = ({
                   lineHeight: 1.2,
                 }}
               >
-                AI Threat Detector
+                Voice Activity Detector
               </h3>
               <span
                 style={{
@@ -497,7 +497,7 @@ export const AmbientGuardCard: React.FC<AmbientGuardCardProps> = ({
                   fontWeight: 600,
                 }}
               >
-                Kinematic & Acoustic AI
+                Acoustic & Voice Sentinel
               </span>
             </div>
           </div>
@@ -569,8 +569,6 @@ export const AmbientGuardCard: React.FC<AmbientGuardCardProps> = ({
                 ? `Spike (${decibels} dB)`
                 : status === 'elevated'
                 ? `Loud (${decibels} dB)`
-                : hasMicPermission === false
-                ? `Motion Guard Active`
                 : `Safe (${decibels} dB)`}
             </div>
           </div>
@@ -587,7 +585,7 @@ export const AmbientGuardCard: React.FC<AmbientGuardCardProps> = ({
             }}
           >
             <span style={{ fontSize: '0.78rem', color: 'var(--text-tertiary)', fontWeight: 600 }}>
-              Guard is inactive • Enable in Settings
+              Guard is inactive - Enable in Settings
             </span>
           </div>
         )}
