@@ -422,7 +422,7 @@ export const StartupPermissionFlow: React.FC<StartupPermissionFlowProps> = ({
             </div>
             <h3 className="step-title">Background Location</h3>
             <p className="step-explanation">
-              Required for the Voice Activity Detector to track your GPS velocity and trigger alerts if you are suddenly pulled into a moving vehicle.
+              Required for the AI Threat Detector to track your GPS velocity and trigger alerts if you are suddenly pulled into a moving vehicle.
             </p>
 
             <div className="step-actions">

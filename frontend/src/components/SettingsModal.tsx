@@ -83,7 +83,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const toggleSetting = (setter: React.Dispatch<React.SetStateAction<boolean>>, current: boolean, label: string) => {
     const nextState = !current;
     setter(nextState);
-    if (label === 'Voice Activity Detector' || label === 'AI Threat Detector') {
+    if (label === 'AI Threat Detector' || label === 'AI Threat Detector') {
       localStorage.setItem('safetymesh_ambient_guard', nextState ? 'true' : 'false');
       window.dispatchEvent(new Event('ambient_guard_changed'));
     }
@@ -314,14 +314,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
               <div className="setting-toggle-row">
                 <div className="setting-text">
-                  <span className="setting-label">Voice Activity Detector</span>
+                  <span className="setting-label">AI Threat Detector</span>
                   <span className="setting-desc">Continuous background analysis of acoustics and voice spikes</span>
                 </div>
                 <label className="switch">
                   <input
                     type="checkbox"
                     checked={aiAnomalyEnabled}
-                    onChange={() => toggleSetting(setAiAnomalyEnabled, aiAnomalyEnabled, 'Voice Activity Detector')}
+                    onChange={() => toggleSetting(setAiAnomalyEnabled, aiAnomalyEnabled, 'AI Threat Detector')}
                   />
                   <span className="slider round"></span>
                 </label>

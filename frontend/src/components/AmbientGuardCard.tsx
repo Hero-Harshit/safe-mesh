@@ -17,6 +17,8 @@ export const AmbientGuardCard: React.FC<AmbientGuardCardProps> = ({
 
   const [decibels, setDecibels] = useState<number>(38);
   const [status, setStatus] = useState<'quiet' | 'elevated' | 'spike'>('quiet');
+  const [velocity, setVelocity] = useState<number>(0);
+  const [gForce, setGForce] = useState<number>(1.0);
   const [, setHasMicPermission] = useState<boolean | null>(null);
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -315,6 +317,8 @@ export const AmbientGuardCard: React.FC<AmbientGuardCardProps> = ({
 
       // Calculate acceleration magnitude
       const totalAcc = Math.sqrt(x * x + y * y + z * z);
+      const currentG = totalAcc > 0 ? totalAcc / 9.80665 : 1.0;
+      setGForce(Math.round(currentG * 100) / 100);
       const now = Date.now();
 
       // Sharp jerk / phone snatch threshold (> 28 m/s²)
@@ -329,6 +333,8 @@ export const AmbientGuardCard: React.FC<AmbientGuardCardProps> = ({
       const customEvent = e as CustomEvent<{ x: number; y: number; z: number }>;
       const { x = 20, y = 22, z = 12 } = customEvent.detail || {};
       const totalAcc = Math.sqrt(x * x + y * y + z * z);
+      const currentG = totalAcc / 9.80665;
+      setGForce(Math.round(currentG * 100) / 100);
       const now = Date.now();
       if (totalAcc > 28) {
         lastThreatTimeRef.current = now;
@@ -339,6 +345,7 @@ export const AmbientGuardCard: React.FC<AmbientGuardCardProps> = ({
     const handleSimulatedSpeed = (e: Event) => {
       const customEvent = e as CustomEvent<{ speed: number }>;
       const speed = customEvent.detail?.speed ?? 14.5;
+      setVelocity(Math.round(speed * 3.6));
       const now = Date.now();
       speedHistory.length = 0;
       speedHistory.push({ time: now - 3000, speed: 1.4 });
@@ -398,6 +405,9 @@ export const AmbientGuardCard: React.FC<AmbientGuardCardProps> = ({
       watchId = navigator.geolocation.watchPosition(
         (position) => {
           const speed = position.coords.speed;
+          if (speed !== null && !isNaN(speed)) {
+            setVelocity(Math.max(0, Math.round(speed * 3.6)));
+          }
           if (speed !== null) {
             const now = Date.now();
             speedHistory.push({ time: now, speed });
@@ -488,7 +498,7 @@ export const AmbientGuardCard: React.FC<AmbientGuardCardProps> = ({
                   lineHeight: 1.2,
                 }}
               >
-                Voice Activity Detector
+                AI Threat Detector
               </h3>
               <span
                 style={{
@@ -508,68 +518,202 @@ export const AmbientGuardCard: React.FC<AmbientGuardCardProps> = ({
         {isEnabled ? (
           <div
             style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              gap: '12px',
-              background: 'rgba(241, 245, 249, 0.6)',
-              borderRadius: '12px',
-              padding: '8px 12px',
+              display: 'grid',
+              gridTemplateColumns: 'repeat(3, 1fr)',
+              gap: '8px',
+              width: '100%',
             }}
           >
-            {/* Real-time wave canvas */}
-            <canvas
-              ref={canvasRef}
-              width={180}
-              height={28}
-              style={{
-                flex: 1,
-                height: '28px',
-                display: 'block',
-                minWidth: 0,
-              }}
-            />
-
-            {/* Status Pill */}
+            {/* Velocity Pill */}
             <div
               style={{
-                fontSize: '0.75rem',
-                fontWeight: 700,
-                padding: '4px 10px',
-                borderRadius: '20px',
-                background:
-                  status === 'spike'
-                    ? 'rgba(239, 68, 68, 0.15)'
-                    : status === 'elevated'
-                    ? 'rgba(245, 158, 11, 0.15)'
-                    : 'rgba(16, 185, 129, 0.15)',
-                color:
-                  status === 'spike'
-                    ? '#EF4444'
-                    : status === 'elevated'
-                    ? '#F59E0B'
-                    : '#10B981',
-                whiteSpace: 'nowrap',
                 display: 'flex',
+                flexDirection: 'column',
                 alignItems: 'center',
-                gap: '4px',
-                flexShrink: 0,
+                justifyContent: 'center',
+                padding: '8px 6px',
+                borderRadius: '12px',
+                background:
+                  velocity > 30
+                    ? 'rgba(239, 68, 68, 0.12)'
+                    : velocity > 10
+                    ? 'rgba(245, 158, 11, 0.12)'
+                    : 'rgba(241, 245, 249, 0.8)',
+                border:
+                  velocity > 30
+                    ? '1px solid rgba(239, 68, 68, 0.3)'
+                    : velocity > 10
+                    ? '1px solid rgba(245, 158, 11, 0.3)'
+                    : '1px solid rgba(226, 232, 240, 0.9)',
+                transition: 'all 0.2s ease',
               }}
             >
               <span
                 style={{
-                  width: '6px',
-                  height: '6px',
-                  borderRadius: '50%',
-                  background: 'currentColor',
-                  display: 'inline-block',
+                  fontSize: '0.65rem',
+                  fontWeight: 700,
+                  letterSpacing: '0.04em',
+                  color: 'var(--text-tertiary, #64748B)',
+                  marginBottom: '2px',
+                  textTransform: 'uppercase',
                 }}
-              />
-              {status === 'spike'
-                ? `Spike (${decibels} dB)`
-                : status === 'elevated'
-                ? `Loud (${decibels} dB)`
-                : `Safe (${decibels} dB)`}
+              >
+                Velocity
+              </span>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  fontSize: '0.82rem',
+                  fontWeight: 800,
+                  color:
+                    velocity > 30
+                      ? '#DC2626'
+                      : velocity > 10
+                      ? '#D97706'
+                      : 'var(--text-primary, #0F172A)',
+                }}
+              >
+                <span
+                  style={{
+                    width: '5px',
+                    height: '5px',
+                    borderRadius: '50%',
+                    background: velocity > 30 ? '#DC2626' : velocity > 10 ? '#D97706' : '#10B981',
+                    display: 'inline-block',
+                  }}
+                />
+                <span>{velocity} km/h</span>
+              </div>
+            </div>
+
+            {/* Sound Level Pill */}
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '8px 6px',
+                borderRadius: '12px',
+                background:
+                  status === 'spike'
+                    ? 'rgba(239, 68, 68, 0.12)'
+                    : status === 'elevated'
+                    ? 'rgba(245, 158, 11, 0.12)'
+                    : 'rgba(241, 245, 249, 0.8)',
+                border:
+                  status === 'spike'
+                    ? '1px solid rgba(239, 68, 68, 0.3)'
+                    : status === 'elevated'
+                    ? '1px solid rgba(245, 158, 11, 0.3)'
+                    : '1px solid rgba(226, 232, 240, 0.9)',
+                transition: 'all 0.2s ease',
+              }}
+            >
+              <span
+                style={{
+                  fontSize: '0.65rem',
+                  fontWeight: 700,
+                  letterSpacing: '0.04em',
+                  color: 'var(--text-tertiary, #64748B)',
+                  marginBottom: '2px',
+                  textTransform: 'uppercase',
+                }}
+              >
+                Sound
+              </span>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  fontSize: '0.82rem',
+                  fontWeight: 800,
+                  color:
+                    status === 'spike'
+                      ? '#DC2626'
+                      : status === 'elevated'
+                      ? '#D97706'
+                      : 'var(--text-primary, #0F172A)',
+                }}
+              >
+                <span
+                  style={{
+                    width: '5px',
+                    height: '5px',
+                    borderRadius: '50%',
+                    background: status === 'spike' ? '#DC2626' : status === 'elevated' ? '#D97706' : '#10B981',
+                    display: 'inline-block',
+                  }}
+                />
+                <span>{decibels} dB</span>
+              </div>
+            </div>
+
+            {/* G-Force Pill */}
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '8px 6px',
+                borderRadius: '12px',
+                background:
+                  gForce > 2.8
+                    ? 'rgba(239, 68, 68, 0.12)'
+                    : gForce > 1.8
+                    ? 'rgba(245, 158, 11, 0.12)'
+                    : 'rgba(241, 245, 249, 0.8)',
+                border:
+                  gForce > 2.8
+                    ? '1px solid rgba(239, 68, 68, 0.3)'
+                    : gForce > 1.8
+                    ? '1px solid rgba(245, 158, 11, 0.3)'
+                    : '1px solid rgba(226, 232, 240, 0.9)',
+                transition: 'all 0.2s ease',
+              }}
+            >
+              <span
+                style={{
+                  fontSize: '0.65rem',
+                  fontWeight: 700,
+                  letterSpacing: '0.04em',
+                  color: 'var(--text-tertiary, #64748B)',
+                  marginBottom: '2px',
+                  textTransform: 'uppercase',
+                }}
+              >
+                G-Force
+              </span>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  fontSize: '0.82rem',
+                  fontWeight: 800,
+                  color:
+                    gForce > 2.8
+                      ? '#DC2626'
+                      : gForce > 1.8
+                      ? '#D97706'
+                      : 'var(--text-primary, #0F172A)',
+                }}
+              >
+                <span
+                  style={{
+                    width: '5px',
+                    height: '5px',
+                    borderRadius: '50%',
+                    background: gForce > 2.8 ? '#DC2626' : gForce > 1.8 ? '#D97706' : '#10B981',
+                    display: 'inline-block',
+                  }}
+                />
+                <span>{gForce.toFixed(2)} G</span>
+              </div>
             </div>
           </div>
         ) : (
