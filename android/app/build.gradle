@@ -49,7 +49,7 @@ def twaManifest = [
 ]
 
 android {
-    compileSdkVersion 34
+    compileSdkVersion 36
     namespace "com.safehelp.app"
     defaultConfig {
         applicationId "com.safehelp.app"
@@ -151,7 +151,6 @@ android {
     buildTypes {
         release {
             minifyEnabled false
-            shrinkResources false
         }
     }
     compileOptions {
