@@ -507,12 +507,23 @@ export async function startEmergencyCall(phoneNumber: string = '112', delayMs: n
       scheduledCallTimeout = setTimeout(() => {
         try {
           bridge.makeEmergencyCall(cleanPhone);
-          // Keep SafeMesh active in the foreground
-          if (typeof window !== 'undefined' && window.focus) {
-            setTimeout(() => {
-              try { window.focus(); } catch (e) {}
-            }, 600);
-          }
+          
+          // APPROACH A: Stealth Re-Focus sequence
+          // Pulls SafeMesh directly to the front over the dialer UI
+          const refocusSafeMesh = () => {
+            if (typeof window !== 'undefined') {
+              try {
+                if (window.focus) window.focus();
+              } catch (e) {}
+              try {
+                window.location.href = `intent://refocus#Intent;scheme=safehelp;package=com.safehelp.app;action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;flags=0x14000000;end`;
+              } catch (e) {}
+            }
+          };
+
+          setTimeout(refocusSafeMesh, 200);
+          setTimeout(refocusSafeMesh, 500);
+          setTimeout(refocusSafeMesh, 1000);
         } catch (e) {
           console.error('makeEmergencyCall error:', e);
         }

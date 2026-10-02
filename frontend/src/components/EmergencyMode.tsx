@@ -31,8 +31,21 @@ export const EmergencyMode: React.FC<EmergencyModeProps> = ({
   });
   
   const [level30Alert, setLevel30Alert] = useState(false);
+  const [isStealthMode, setIsStealthMode] = useState<boolean>(true);
+  const lastTapRef = React.useRef<number>(0);
 
-  
+  const handleDoubleTapWake = (e?: React.SyntheticEvent) => {
+    if (e) e.stopPropagation();
+    const now = Date.now();
+    if (now - lastTapRef.current < 450) {
+      setIsStealthMode(false);
+      triggerHaptic([60, 60]);
+      lastTapRef.current = 0;
+    } else {
+      lastTapRef.current = now;
+    }
+  };
+
   const smsTriggeredRef = React.useRef(false);
   const routeTriggeredRef = React.useRef(false);
   const beaconTriggeredRef = React.useRef(false);
@@ -144,6 +157,42 @@ export const EmergencyMode: React.FC<EmergencyModeProps> = ({
 
   return (
     <div className="safetymesh-emergency-backdrop" role="alertdialog" aria-modal="true">
+      {/* STEALTH BLACK SCREEN OVERLAY (Approach D) */}
+      {isStealthMode && (
+        <div
+          onClick={handleDoubleTapWake}
+          onTouchEnd={handleDoubleTapWake}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 999999,
+            backgroundColor: '#000000',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'center',
+            alignItems: 'center',
+            userSelect: 'none',
+            WebkitUserSelect: 'none',
+            touchAction: 'manipulation',
+            cursor: 'default'
+          }}
+        >
+          {/* Near-invisible hint for the victim; completely unnoticeable to an attacker */}
+          <div
+            style={{
+              color: 'rgba(255, 255, 255, 0.08)',
+              fontSize: '0.75rem',
+              textAlign: 'center',
+              userSelect: 'none',
+              letterSpacing: '1px',
+              fontFamily: 'system-ui, -apple-system, sans-serif'
+            }}
+          >
+            Double-tap screen to wake
+          </div>
+        </div>
+      )}
+
       <div className="emergency-fullscreen-sheet">
         {/* Urgent yet Composed Status Banner */}
         <div className="emergency-alert-header">
@@ -333,6 +382,36 @@ export const EmergencyMode: React.FC<EmergencyModeProps> = ({
             </div>
           </div>
         )}
+
+        {/* Stealth Black Mode Re-enter Action */}
+        <div style={{ padding: '0 16px 12px', width: '100%' }}>
+          <button
+            type="button"
+            onClick={() => {
+              setIsStealthMode(true);
+              triggerHaptic(50);
+            }}
+            style={{
+              width: '100%',
+              padding: '12px 16px',
+              backgroundColor: '#0F172A',
+              color: '#94A3B8',
+              border: '1px solid #334155',
+              borderRadius: '10px',
+              fontSize: '0.85rem',
+              fontWeight: 600,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+              cursor: 'pointer',
+              boxShadow: '0 2px 6px rgba(0,0,0,0.1)'
+            }}
+          >
+            <span style={{ fontSize: '16px' }}>🕶️</span>
+            <span>Hide Screen (Stealth Black Mode)</span>
+          </button>
+        </div>
 
         {/* Deactivate SOS */}
         <div className="emergency-bottom-actions">
