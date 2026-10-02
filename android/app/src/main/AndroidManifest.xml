@@ -50,7 +50,7 @@
 
 
     <application
-        android:name="Application"
+        android:name=".Application"
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/appName"
@@ -59,6 +59,12 @@
         
         android:supportsRtl="true"
         android:theme="@android:style/Theme.Translucent.NoTitleBar">
+
+        <activity
+            android:name=".CrashDisplayActivity"
+            android:theme="@android:style/Theme.DeviceDefault.NoActionBar.Fullscreen"
+            android:exported="false"
+            android:process=":crash" />
 
         <meta-data
             android:name="asset_statements"
@@ -93,7 +99,7 @@
             </activity>
         
 
-        <activity android:name="LauncherActivity"
+        <activity android:name=".LauncherActivity"
             android:alwaysRetainTaskState="true"
             android:label="@string/launcherName"
             android:exported="true">

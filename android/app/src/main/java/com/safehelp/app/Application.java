@@ -26,22 +26,17 @@ public class Application extends android.app.Application {
   public void onCreate() {
       super.onCreate();
 
-      // Initialize Native Accelerometer Snatch Detection
-      try {
-          SafeHelpSnatchDetector.getInstance().start(this);
-          SafeHelpSnatchDetector.getInstance().setListener(magnitude -> {
-              try {
-                  Log.w("APPLICATION", "Phone snatch detected in background! Triggering emergency activity...");
-                  Intent intent = new Intent(this, SafeHelpEmergencyActivity.class);
-                  intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
-                  intent.putExtra("threat_type", "PHONE_SNATCH");
-                  startActivity(intent);
-              } catch (Throwable t) {
-                  Log.e("APPLICATION", "Failed to start emergency activity from snatch listener", t);
-              }
-          });
-      } catch (Throwable t) {
-          Log.e("APPLICATION", "Failed to start SnatchDetector in Application.onCreate", t);
-      }
+      // Install Global Crash Interceptor to display diagnostic screen if any crash occurs
+      Thread.setDefaultUncaughtExceptionHandler((thread, throwable) -> {
+          Log.e("CRASH_HANDLER", "FATAL APPLICATION ERROR", throwable);
+          try {
+              Intent crashIntent = new Intent(this, CrashDisplayActivity.class);
+              crashIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+              crashIntent.putExtra("error", Log.getStackTraceString(throwable));
+              startActivity(crashIntent);
+          } catch (Throwable ignored) {
+          }
+          System.exit(1);
+      });
   }
 }

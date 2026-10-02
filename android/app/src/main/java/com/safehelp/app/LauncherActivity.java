@@ -30,7 +30,18 @@ public class LauncherActivity
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
+        try {
+            super.onCreate(savedInstanceState);
+        } catch (Throwable t) {
+            // If restoring saved instance state crashed, retry with clean state
+            try {
+                super.onCreate(null);
+            } catch (Throwable t2) {
+                // Let uncaught exception handler handle it if both fail
+                throw new RuntimeException("LauncherActivity failed to initialize TWA", t);
+            }
+        }
+
         // Setting an orientation crashes the app due to the transparent background on Android 8.0
         // Oreo and below, as well as several OEM Android versions (MIUI, OneUI, ColorOS).
         try {
