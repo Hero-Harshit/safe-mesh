@@ -64,14 +64,14 @@ export const StartupPermissionFlow: React.FC<StartupPermissionFlowProps> = ({
     contactPhone: ''
   });
 
-  const handlePickContact = async () => {
-    const c = await pickNativeContact();
-    if (c) {
-      setProfileData(prev => ({ ...prev, contactName: c.name, contactPhone: c.phone }));
-    } else {
-      alert('Native contact picker unavailable in browser preview. Please type manually.');
-    }
-  };
+  // const handlePickContact = async () => {
+  //   const c = await pickNativeContact();
+  //   if (c) {
+  //     setProfileData(prev => ({ ...prev, contactName: c.name, contactPhone: c.phone }));
+  //   } else {
+  //     alert('Native contact picker unavailable in browser preview. Please type manually.');
+  //   }
+  // };
 
   const saveProfile1 = () => {
     if (!profileData.fullName || !profileData.phone) {

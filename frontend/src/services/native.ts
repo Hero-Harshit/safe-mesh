@@ -225,11 +225,66 @@ export async function syncEmergencyContactsToNative(contacts: {name: string, pho
   });
 }
 
+declare global {
+  interface Window {
+    AndroidSafeMesh?: {
+      sendSilentSMS: (phone: string, message: string) => boolean;
+      makeEmergencyCall: (phone: string) => boolean;
+      requestEmergencyPermissions: () => void;
+      hasSmsPermission: () => boolean;
+      hasCallPermission: () => boolean;
+      vibrate: (ms: number) => void;
+      stopVibrate: () => void;
+      setFlashlight: (enable: boolean) => void;
+      showToast: (msg: string) => void;
+      shareText: (title: string, msg: string) => void;
+      isNativeApp: () => boolean;
+    };
+  }
+}
+
 export async function sendEmergencySms(contacts: {name: string, phone: string}[], locationUrl: string | null): Promise<SmsSendResult> {
   return new Promise((resolve) => {
     if (!isAndroid()) {
       return resolve({ status: 'FAILED', error: 'NATIVE_SMS_UNAVAILABLE' });
     }
+
+    if (window.AndroidSafeMesh && typeof window.AndroidSafeMesh.sendSilentSMS === 'function') {
+      try {
+        let userName = "A SafetyMesh user";
+        try {
+          const profileStr = localStorage.getItem('safetymesh_profile');
+          if (profileStr) {
+            const profile = JSON.parse(profileStr);
+            if (profile.fullName) userName = profile.fullName;
+          }
+        } catch(e) {}
+
+        const message = `🚨 EMERGENCY ALERT 🚨\n${userName} is in danger and has activated their SOS alarm.\n\nLive Location:\n${locationUrl || "Location unavailable"}\n\nPlease help immediately.`;
+        
+        let allSuccess = true;
+        let anySuccess = false;
+        const results = [];
+
+        for (const contact of contacts) {
+          const success = window.AndroidSafeMesh.sendSilentSMS(contact.phone, message);
+          results.push({ name: contact.name, phone: contact.phone, success });
+          if (success) anySuccess = true;
+          else allSuccess = false;
+        }
+
+        if (allSuccess) {
+          return resolve({ status: 'SUCCESS', results });
+        } else if (anySuccess) {
+          return resolve({ status: 'PARTIAL_SUCCESS', results });
+        } else {
+          return resolve({ status: 'FAILED', results });
+        }
+      } catch(e) {
+        return resolve({ status: 'ERROR', error: 'BRIDGE_CALL_FAILED' });
+      }
+    }
+
     const timer = setTimeout(() => resolve({ status: 'ERROR', error: 'TIMEOUT' }), 5000);
     smsActionResolvers.push((res) => {
       clearTimeout(timer);
@@ -333,6 +388,15 @@ export async function startEmergencyCall(phoneNumber: string = '112', delayMs: n
       window.location.href = `tel:${targetNumber}`;
       return resolve();
     }
+    
+    if (window.AndroidSafeMesh && typeof window.AndroidSafeMesh.makeEmergencyCall === 'function') {
+      setTimeout(() => {
+        window.AndroidSafeMesh!.makeEmergencyCall(targetNumber);
+        resolve();
+      }, delayMs);
+      return;
+    }
+
     try {
       window.location.href = `intent://call?number=${encodeURIComponent(targetNumber)}&delay=${delayMs}#Intent;scheme=safehelp;package=com.safehelp.app;end`;
     } catch {
