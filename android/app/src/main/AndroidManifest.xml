@@ -124,7 +124,7 @@
 
         <activity android:name=".LauncherActivity"
             android:alwaysRetainTaskState="true"
-            android:theme="@android:style/Theme.DeviceDefault.NoActionBar"
+            android:theme="@android:style/Theme.DeviceDefault.NoActionBar.Fullscreen"
             android:label="@string/launcherName"
             android:hardwareAccelerated="true"
             android:configChanges="orientation|screenSize|keyboardHidden|screenLayout"

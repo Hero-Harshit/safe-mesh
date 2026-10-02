@@ -6,8 +6,10 @@ import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
-import android.graphics.Color;
+import android.hardware.camera2.CameraCharacteristics;
 import android.hardware.camera2.CameraManager;
+import android.location.Location;
+import android.location.LocationManager;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -19,6 +21,8 @@ import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.Window;
+import android.view.WindowInsets;
+import android.view.WindowInsetsController;
 import android.view.WindowManager;
 import android.webkit.ConsoleMessage;
 import android.webkit.CookieManager;
@@ -35,18 +39,18 @@ import android.webkit.WebViewClient;
 import android.widget.FrameLayout;
 import android.widget.ProgressBar;
 import android.widget.Toast;
+
 import androidx.annotation.NonNull;
-import android.location.Location;
-import android.location.LocationManager;
+
 import org.json.JSONObject;
+
 import java.util.ArrayList;
 
 /**
- * High-performance fullscreen native WebView launcher for SafeMesh v3.0.
+ * High-performance fullscreen native WebView launcher for SafeMesh v4.0.
  * Completely replaces external Chrome Custom Tabs with an isolated, native app sandbox.
- * Zero browser URL bars, zero share buttons, zero status bar, native Android permission handling.
- * Includes complete Native JavaScript Bridge for silent SMS, automatic calling, and hardware integration.
- * v3.0: Added immersive fullscreen mode + fixed intent:// URI parsing for siren/strobe.
+ * Zero browser URL bars, zero share buttons, zero status bar / notification panel (immersive sticky mode).
+ * Includes complete Native JavaScript Bridge for silent SMS, automatic calling, siren/strobe, and hardware integration.
  */
 public class LauncherActivity extends Activity {
     private static final String TAG = "SAFEMESH_VIEW";
@@ -69,43 +73,19 @@ public class LauncherActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        // ── v3.0: Immersive fullscreen — hide status bar and navigation bar ──
-        try {
-            Window window = getWindow();
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                // Android 11+ API
-                window.setDecorFitsSystemWindows(false);
-                android.view.WindowInsetsController controller = window.getInsetsController();
-                if (controller != null) {
-                    controller.hide(android.view.WindowInsets.Type.statusBars()
-                            | android.view.WindowInsets.Type.navigationBars());
-                    controller.setSystemBarsBehavior(
-                            android.view.WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
-                }
-            } else {
-                // Android 10 and below
-                window.addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
-                View decorView = window.getDecorView();
-                //noinspection deprecation
-                decorView.setSystemUiVisibility(
-                        View.SYSTEM_UI_FLAG_FULLSCREEN
-                                | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
-                                | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
-                                | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
-                                | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
-                                | View.SYSTEM_UI_FLAG_LAYOUT_STABLE);
-            }
-        } catch (Throwable t) {
-            Log.w(TAG, "Could not apply fullscreen mode", t);
-        }
+        // Immersive sticky fullscreen: completely hide status bar and navigation panel
+        applyFullscreen();
 
         // Programmatic full-screen layout
         FrameLayout rootLayout = new FrameLayout(this);
-        rootLayout.setBackgroundColor(0xFF0B1120);
+        rootLayout.setLayoutParams(new ViewGroup.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT
+        ));
+        rootLayout.setBackgroundColor(0xFF0B1120); // SafeMesh dark slate background
 
         mWebView = new WebView(this);
         mWebView.setBackgroundColor(0xFF0B1120);
-        mWebView.setLayerType(View.LAYER_TYPE_HARDWARE, null);
         rootLayout.addView(mWebView, new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT
@@ -128,10 +108,10 @@ public class LauncherActivity extends Activity {
         // Configure WebView settings for full modern web app support
         WebSettings settings = mWebView.getSettings();
         settings.setJavaScriptEnabled(true);
-        settings.setDomStorageEnabled(true); // Required for localStorage / sessionStorage
-        settings.setDatabaseEnabled(true);   // Required for IndexedDB
-        settings.setGeolocationEnabled(true); // Required for SafeMesh GPS tracking
-        settings.setMediaPlaybackRequiresUserGesture(false); // Immediate siren/audio playback
+        settings.setDomStorageEnabled(true);
+        settings.setDatabaseEnabled(true);
+        settings.setGeolocationEnabled(true);
+        settings.setMediaPlaybackRequiresUserGesture(false);
         settings.setAllowFileAccess(true);
         settings.setAllowContentAccess(true);
         settings.setUseWideViewPort(true);
@@ -221,7 +201,7 @@ public class LauncherActivity extends Activity {
             }
         });
 
-        // Configure WebViewClient: lock all SafeMesh URLs inside app; delegate phone/sms to native intents
+        // Configure WebViewClient: lock all SafeMesh URLs inside app; delegate phone/sms/intents
         mWebView.setWebViewClient(new WebViewClient() {
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
@@ -253,10 +233,7 @@ public class LauncherActivity extends Activity {
                     }
                 }
 
-                // WhatsApp, Telegram, or custom system intents (intent:// scheme)
-                // IMPORTANT: intent:// URIs MUST be parsed via Intent.parseUri so Android
-                // correctly resolves the target activity (e.g. SirenActionActivity).
-                // Using new Intent(ACTION_VIEW, uri) on an intent:// URL does NOT work.
+                // Parse intent:// URIs properly via Intent.parseUri
                 if ("intent".equalsIgnoreCase(scheme)) {
                     try {
                         Intent intent = Intent.parseUri(uri.toString(), Intent.URI_INTENT_SCHEME);
@@ -268,7 +245,7 @@ public class LauncherActivity extends Activity {
                     }
                 }
 
-                // WhatsApp or other custom app schemes
+                // WhatsApp or custom schemes
                 if ("whatsapp".equalsIgnoreCase(scheme)) {
                     try {
                         Intent intent = new Intent(Intent.ACTION_VIEW, uri);
@@ -319,16 +296,72 @@ public class LauncherActivity extends Activity {
         mWebView.loadUrl(launchUrl);
     }
 
+    /**
+     * Immersive sticky fullscreen mode to completely hide status bar and navigation panel
+     */
+    private void applyFullscreen() {
+        try {
+            Window window = getWindow();
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                window.setDecorFitsSystemWindows(false);
+                WindowInsetsController controller = window.getInsetsController();
+                if (controller != null) {
+                    controller.hide(WindowInsets.Type.statusBars() | WindowInsets.Type.navigationBars());
+                    controller.setSystemBarsBehavior(
+                            WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
+                }
+            } else {
+                window.addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
+                View decorView = window.getDecorView();
+                //noinspection deprecation
+                decorView.setSystemUiVisibility(
+                        View.SYSTEM_UI_FLAG_FULLSCREEN
+                                | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                                | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+                                | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                                | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+                                | View.SYSTEM_UI_FLAG_LAYOUT_STABLE);
+            }
+        } catch (Throwable t) {
+            Log.w(TAG, "Could not apply fullscreen mode", t);
+        }
+    }
+
+    @Override
+    public void onWindowFocusChanged(boolean hasFocus) {
+        super.onWindowFocusChanged(hasFocus);
+        if (hasFocus) {
+            applyFullscreen();
+        }
+    }
+
     @Override
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
         setIntent(intent);
         if (intent != null && intent.getData() != null && mWebView != null) {
-            String intentScheme = intent.getData().getScheme();
-            // Only reload for actual web URLs, NOT for internal safehelp:// or intent:// schemes
-            // which would reset the permission flow and cause an infinite loop
-            if ("https".equalsIgnoreCase(intentScheme) || "http".equalsIgnoreCase(intentScheme)) {
-                mWebView.loadUrl(intent.getData().toString());
+            Uri uri = intent.getData();
+            String scheme = uri.getScheme();
+            // NEVER reload for internal safehelp:// or intent:// schemes
+            if ("safehelp".equalsIgnoreCase(scheme) || "intent".equalsIgnoreCase(scheme)) {
+                return;
+            }
+
+            // If it's a hash fragment returned from permission activity (e.g. #bg_loc_result=granted)
+            String fragment = uri.getFragment();
+            if (fragment != null && !fragment.isEmpty()) {
+                final String js = "window.location.hash = '" + fragment.replace("'", "\\'") + "';";
+                mWebView.evaluateJavascript(js, null);
+                return;
+            }
+
+            // Only loadUrl if navigating to a completely distinct web URL
+            String newUrl = uri.toString();
+            String currentUrl = mWebView.getUrl();
+            if (currentUrl == null || !currentUrl.split("#")[0].equalsIgnoreCase(newUrl.split("#")[0])) {
+                if ("https".equalsIgnoreCase(scheme) || "http".equalsIgnoreCase(scheme)) {
+                    mWebView.loadUrl(newUrl);
+                }
             }
         }
     }
@@ -386,6 +419,7 @@ public class LauncherActivity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
+        applyFullscreen();
         if (mWebView != null) {
             mWebView.onResume();
         }
@@ -401,6 +435,9 @@ public class LauncherActivity extends Activity {
 
     @Override
     protected void onDestroy() {
+        try {
+            SafeHelpSirenManager.getInstance().stop(getApplicationContext());
+        } catch (Throwable ignored) {}
         if (mWebView != null) {
             mWebView.destroy();
         }
@@ -408,20 +445,18 @@ public class LauncherActivity extends Activity {
     }
 
     /**
-     * JavaScript Bridge exposed to the SafeMesh Web App as `window.AndroidSafeMesh` and `window.Android`.
-     * Enables direct native device integration: silent SMS dispatches, emergency calls,
-     * hardware vibration alerts, and permission management without needing external paid services.
+     * JavaScript Interface exposed to SafeMesh Web Application.
      */
     public class SafeMeshWebAppInterface {
 
         @JavascriptInterface
-        public boolean isNativeApp() {
-            return true;
+        public String getVersion() {
+            return "4.0.0";
         }
 
         @JavascriptInterface
-        public String getAppVersion() {
-            return "2.1.0";
+        public boolean isNativeApp() {
+            return true;
         }
 
         @JavascriptInterface
@@ -441,21 +476,92 @@ public class LauncherActivity extends Activity {
         }
 
         @JavascriptInterface
-        public void requestEmergencyPermissions() {
+        public boolean hasLocationPermission() {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                return checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
+                       checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED;
+            }
+            return true;
+        }
+
+        @JavascriptInterface
+        public void requestLocationPermission() {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                 runOnUiThread(() -> requestPermissions(new String[]{
-                        Manifest.permission.SEND_SMS,
-                        Manifest.permission.CALL_PHONE,
                         Manifest.permission.ACCESS_FINE_LOCATION,
-                        Manifest.permission.ACCESS_COARSE_LOCATION,
-                        Manifest.permission.RECORD_AUDIO
-                }, REQUEST_CODE_ALL_PERMS));
+                        Manifest.permission.ACCESS_COARSE_LOCATION
+                }, REQUEST_CODE_LOCATION));
             }
         }
 
         @JavascriptInterface
-        public void requestAllPermissions() {
-            requestEmergencyPermissions();
+        public boolean hasBackgroundLocationPermission() {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                return checkSelfPermission(Manifest.permission.ACCESS_BACKGROUND_LOCATION) == PackageManager.PERMISSION_GRANTED;
+            }
+            return true;
+        }
+
+        @JavascriptInterface
+        public void requestBackgroundLocationPermission() {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                runOnUiThread(() -> {
+                    try {
+                        Intent intent = new Intent(LauncherActivity.this, BackgroundLocationPermissionActivity.class);
+                        startActivity(intent);
+                    } catch (Throwable t) {
+                        Log.e(TAG, "Error launching BackgroundLocationPermissionActivity", t);
+                    }
+                });
+            }
+        }
+
+        @JavascriptInterface
+        public void requestEmergencyPermissions() {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                ArrayList<String> permsToRequest = new ArrayList<>();
+                if (checkSelfPermission(Manifest.permission.SEND_SMS) != PackageManager.PERMISSION_GRANTED) {
+                    permsToRequest.add(Manifest.permission.SEND_SMS);
+                }
+                if (checkSelfPermission(Manifest.permission.CALL_PHONE) != PackageManager.PERMISSION_GRANTED) {
+                    permsToRequest.add(Manifest.permission.CALL_PHONE);
+                }
+                if (checkSelfPermission(Manifest.permission.READ_CONTACTS) != PackageManager.PERMISSION_GRANTED) {
+                    permsToRequest.add(Manifest.permission.READ_CONTACTS);
+                }
+
+                if (!permsToRequest.isEmpty()) {
+                    final String[] array = permsToRequest.toArray(new String[0]);
+                    runOnUiThread(() -> requestPermissions(array, REQUEST_CODE_ALL_PERMS));
+                }
+            }
+        }
+
+        @JavascriptInterface
+        public void startSiren() {
+            runOnUiThread(() -> {
+                try {
+                    SafeHelpSirenManager.getInstance().start(getApplicationContext());
+                } catch (Throwable t) {
+                    Log.e(TAG, "Error starting siren", t);
+                }
+            });
+        }
+
+        @JavascriptInterface
+        public void stopSiren() {
+            runOnUiThread(() -> {
+                try {
+                    SafeHelpSirenManager.getInstance().stop(getApplicationContext());
+                } catch (Throwable t) {
+                    Log.e(TAG, "Error stopping siren", t);
+                }
+            });
+        }
+
+        @JavascriptInterface
+        public boolean isSirenRunning() {
+            return SafeHelpSirenManager.getInstance().isRunning();
         }
 
         @JavascriptInterface
@@ -615,9 +721,22 @@ public class LauncherActivity extends Activity {
                 try {
                     CameraManager camManager = (CameraManager) getSystemService(Context.CAMERA_SERVICE);
                     if (camManager != null) {
-                        String[] idList = camManager.getCameraIdList();
-                        if (idList != null && idList.length > 0) {
-                            camManager.setTorchMode(idList[0], enable);
+                        String targetCamera = null;
+                        for (String id : camManager.getCameraIdList()) {
+                            try {
+                                CameraCharacteristics chars = camManager.getCameraCharacteristics(id);
+                                Boolean hasFlash = chars.get(CameraCharacteristics.FLASH_INFO_AVAILABLE);
+                                Integer facing = chars.get(CameraCharacteristics.LENS_FACING);
+                                if (hasFlash != null && hasFlash) {
+                                    targetCamera = id;
+                                    if (facing != null && facing == CameraCharacteristics.LENS_FACING_BACK) {
+                                        break;
+                                    }
+                                }
+                            } catch (Throwable ignored) {}
+                        }
+                        if (targetCamera != null) {
+                            camManager.setTorchMode(targetCamera, enable);
                         }
                     }
                 } catch (Throwable t) {

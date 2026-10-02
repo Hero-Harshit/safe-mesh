@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { ToolkitIcon } from './Icons';
-import { startSiren, stopSiren } from '../services/native';
+import { startSiren, stopSiren, isSirenRunning } from '../services/native';
 
 interface SafetyToolkitModalProps {
   onClose: () => void;
@@ -9,7 +9,7 @@ interface SafetyToolkitModalProps {
 export const SafetyToolkitModal: React.FC<SafetyToolkitModalProps> = ({
   onClose,
 }) => {
-  const [isSirenActive, setIsSirenActive] = useState(false);
+  const [isSirenActive, setIsSirenActive] = useState(() => isSirenRunning());
 
   return (
     <div 

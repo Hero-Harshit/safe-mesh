@@ -31,25 +31,25 @@ export const StartupPermissionFlow: React.FC<StartupPermissionFlowProps> = ({
   onComplete,
 }) => {
   const isProfileDone = !!localStorage.getItem('safetymesh_profile');
+  const isLocationDone = localStorage.getItem('safetymesh_location_granted') === 'true' || initialState.location === 'GRANTED';
+  const savedStep = (typeof localStorage !== 'undefined' ? localStorage.getItem('safetymesh_onboarding_step') : null) as StepKey | null;
 
-  const [currentStep, setCurrentStep] = useState<StepKey>(
-    !isProfileDone
-      ? 'profile_1'
-      : initialState.location === 'GRANTED'
-      ? initialState.background_location === 'GRANTED'
-        ? initialState.battery === 'GRANTED'
-          ? initialState.bluetooth === 'GRANTED'
-            ? initialState.notifications === 'GRANTED'
-              ? initialState.sms === 'GRANTED'
-                ? 'loading'
-                : 'sms'
-              : 'notifications'
-            : 'bluetooth'
-          : 'battery'
-        : 'background_location'
-      : 'location'
-  );
+  const determineInitialStep = (): StepKey => {
+    if (!isProfileDone) return 'profile_1';
+    if (savedStep && savedStep !== 'loading') {
+      if (savedStep === 'location' && isLocationDone) return 'background_location';
+      return savedStep;
+    }
+    if (!isLocationDone) return 'location';
+    if (initialState.background_location !== 'GRANTED' && localStorage.getItem('safetymesh_bg_loc_granted') !== 'true') return 'background_location';
+    if (initialState.battery !== 'GRANTED' && localStorage.getItem('safetymesh_battery_granted') !== 'true') return 'battery';
+    if (initialState.bluetooth !== 'GRANTED' && localStorage.getItem('safetymesh_bt_granted') !== 'true') return 'bluetooth';
+    if (initialState.notifications !== 'GRANTED') return 'notifications';
+    if (initialState.sms !== 'GRANTED' && localStorage.getItem('safetymesh_sms_granted') !== 'true') return 'sms';
+    return 'loading';
+  };
 
+  const [currentStep, setCurrentStep] = useState<StepKey>(determineInitialStep);
   const [permissions, setPermissions] = useState<SafetyMeshPermissionsState>(initialState);
   const [isRequesting, setIsRequesting] = useState(false);
 
@@ -63,14 +63,20 @@ export const StartupPermissionFlow: React.FC<StartupPermissionFlowProps> = ({
     contactPhone: ''
   });
 
-  // const handlePickContact = async () => {
-  //   const c = await pickNativeContact();
-  //   if (c) {
-  //     setProfileData(prev => ({ ...prev, contactName: c.name, contactPhone: c.phone }));
-  //   } else {
-  //     alert('Native contact picker unavailable in browser preview. Please type manually.');
-  //   }
-  // };
+  const advanceToStep = (next: StepKey) => {
+    if (next === 'loading') {
+      setCurrentStep('loading');
+      localStorage.removeItem('safetymesh_onboarding_step');
+      localStorage.setItem('safetymesh_permission_flow_completed', 'true');
+      setInitialFlowCompleted(true);
+      setTimeout(() => {
+        onComplete();
+      }, 800);
+    } else {
+      localStorage.setItem('safetymesh_onboarding_step', next);
+      setCurrentStep(next);
+    }
+  };
 
   const saveProfile1 = () => {
     if (!profileData.fullName || !profileData.phone) {
@@ -117,10 +123,18 @@ export const StartupPermissionFlow: React.FC<StartupPermissionFlowProps> = ({
          relation: 'Family',
          isPrimary: true
       });
-      setCurrentStep('location');
+      advanceToStep(isLocationDone ? 'background_location' : 'location');
     } catch (err: any) {
       console.error('Supabase Error:', err);
-      alert('Failed to save profile. Make sure you added your VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to .env');
+      // Fallback local save even if Supabase is offline
+      localStorage.setItem('safetymesh_profile', JSON.stringify(profileData));
+      saveEmergencyContact({
+         name: profileData.contactName,
+         phone: profileData.contactPhone,
+         relation: 'Family',
+         isPrimary: true
+      });
+      advanceToStep(isLocationDone ? 'background_location' : 'location');
     } finally {
       setIsRequesting(false);
     }
@@ -128,68 +142,85 @@ export const StartupPermissionFlow: React.FC<StartupPermissionFlowProps> = ({
 
   const handleEnableLocation = async () => {
     setIsRequesting(true);
-    const status = await requestLocationPermission();
-    setPermissions((prev) => ({ ...prev, location: status }));
-    setIsRequesting(false);
-    setCurrentStep('background_location');
+    try {
+      const status = await requestLocationPermission();
+      setPermissions((prev) => ({ ...prev, location: status }));
+      localStorage.setItem('safetymesh_location_granted', 'true');
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsRequesting(false);
+      advanceToStep('background_location');
+    }
   };
 
   const handleEnableBackgroundLocation = async () => {
     setIsRequesting(true);
-    const status = await requestBackgroundLocationPermission();
-    setPermissions((prev) => ({ ...prev, background_location: status }));
-    setIsRequesting(false);
-    setCurrentStep('battery');
+    try {
+      const status = await requestBackgroundLocationPermission();
+      setPermissions((prev) => ({ ...prev, background_location: status }));
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsRequesting(false);
+      advanceToStep('battery');
+    }
   };
 
   const handleEnableBattery = async () => {
     setIsRequesting(true);
-    const status = await requestBatteryOptimizationPermission();
-    setPermissions((prev) => ({ ...prev, battery: status }));
-    setIsRequesting(false);
-    setCurrentStep('bluetooth');
+    try {
+      const status = await requestBatteryOptimizationPermission();
+      setPermissions((prev) => ({ ...prev, battery: status }));
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsRequesting(false);
+      advanceToStep('bluetooth');
+    }
   };
 
   const handleEnableBluetooth = async () => {
     setIsRequesting(true);
-    const status = await requestBluetoothPermission();
-    setPermissions((prev) => ({ ...prev, bluetooth: status }));
-    setIsRequesting(false);
-    setCurrentStep('notifications');
+    try {
+      const status = await requestBluetoothPermission();
+      setPermissions((prev) => ({ ...prev, bluetooth: status }));
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsRequesting(false);
+      advanceToStep('notifications');
+    }
   };
 
   const handleEnableNotifications = async () => {
     setIsRequesting(true);
-    const status = await requestNotificationPermission();
-    setPermissions((prev) => ({ ...prev, notifications: status }));
-    setIsRequesting(false);
-    setCurrentStep('sms');
+    try {
+      const status = await requestNotificationPermission();
+      setPermissions((prev) => ({ ...prev, notifications: status }));
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsRequesting(false);
+      advanceToStep('sms');
+    }
   };
 
   const handleEnableSms = async () => {
     setIsRequesting(true);
-    const status = await requestSmsPermission();
-    setPermissions((prev) => ({ ...prev, sms: status }));
-    setIsRequesting(false);
-    setCurrentStep('loading');
-
-    // Smooth transition into dashboard
-    setTimeout(() => {
-      setInitialFlowCompleted(true);
-      onComplete();
-    }, 1200);
+    try {
+      const status = await requestSmsPermission();
+      setPermissions((prev) => ({ ...prev, sms: status }));
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsRequesting(false);
+      advanceToStep('loading');
+    }
   };
 
   const handleSkipStep = (next: StepKey) => {
-    if (next === 'loading') {
-      setCurrentStep('loading');
-      setTimeout(() => {
-        setInitialFlowCompleted(true);
-        onComplete();
-      }, 1000);
-    } else {
-      setCurrentStep(next);
-    }
+    advanceToStep(next);
   };
 
   return (
@@ -220,33 +251,29 @@ export const StartupPermissionFlow: React.FC<StartupPermissionFlowProps> = ({
             <div className="onboarding-steps-pills">
               <div
                 className={`step-pill ${
-                  permissions.location === 'GRANTED' ? 'completed' : currentStep === 'location' ? 'active' : ''
+                  permissions.location === 'GRANTED' || localStorage.getItem('safetymesh_location_granted') === 'true' ? 'completed' : currentStep === 'location' ? 'active' : ''
                 }`}
               >
                 <span className="step-pill-indicator">
-                  {permissions.location === 'GRANTED' ? '✓' : '1'}
+                  {permissions.location === 'GRANTED' || localStorage.getItem('safetymesh_location_granted') === 'true' ? '✓' : '1'}
                 </span>
                 <span>Location</span>
               </div>
 
               <div
                 className={`step-pill ${
-                  permissions.bluetooth === 'GRANTED' ? 'completed' : currentStep === 'bluetooth' ? 'active' : ''
+                  permissions.bluetooth === 'GRANTED' || localStorage.getItem('safetymesh_bt_granted') === 'true' ? 'completed' : currentStep === 'bluetooth' ? 'active' : ''
                 }`}
               >
                 <span className="step-pill-indicator">
-                  {permissions.bluetooth === 'GRANTED' ? '✓' : '2'}
+                  {permissions.bluetooth === 'GRANTED' || localStorage.getItem('safetymesh_bt_granted') === 'true' ? '✓' : '2'}
                 </span>
                 <span>Bluetooth</span>
               </div>
 
               <div
                 className={`step-pill ${
-                  permissions.notifications === 'GRANTED'
-                    ? 'completed'
-                    : currentStep === 'notifications'
-                    ? 'active'
-                    : ''
+                  permissions.notifications === 'GRANTED' ? 'completed' : currentStep === 'notifications' ? 'active' : ''
                 }`}
               >
                 <span className="step-pill-indicator">
@@ -257,11 +284,11 @@ export const StartupPermissionFlow: React.FC<StartupPermissionFlowProps> = ({
 
               <div
                 className={`step-pill ${
-                  permissions.sms === 'GRANTED' ? 'completed' : currentStep === 'sms' ? 'active' : ''
+                  permissions.sms === 'GRANTED' || localStorage.getItem('safetymesh_sms_granted') === 'true' ? 'completed' : currentStep === 'sms' ? 'active' : ''
                 }`}
               >
                 <span className="step-pill-indicator">
-                  {permissions.sms === 'GRANTED' ? '✓' : '4'}
+                  {permissions.sms === 'GRANTED' || localStorage.getItem('safetymesh_sms_granted') === 'true' ? '✓' : '4'}
                 </span>
                 <span>SMS</span>
               </div>
@@ -269,52 +296,86 @@ export const StartupPermissionFlow: React.FC<StartupPermissionFlowProps> = ({
           </>
         )}
 
-        {/* Step 0.1: Profile Creation - Basic Info */}
+        {/* Profile Step 1: Personal Details */}
         {currentStep === 'profile_1' && (
           <div className="step-detail-card">
             <div className="step-icon-bubble bg-blue-tint">
               <UsersIcon size={26} color="#3B82F6" />
             </div>
-            <h3 className="step-title">Who are you?</h3>
-            <p className="step-explanation" style={{marginBottom: '16px'}}>
-              Basic details to identify you during an emergency.
+            <h3 className="step-title">Personal Profile</h3>
+            <p className="step-explanation">
+              Enter your basic details so first responders and contacts can identify you.
             </p>
 
-            <div className="profile-form-grid">
-              <input type="text" className="profile-input" placeholder="Full Name *" value={profileData.fullName} onChange={e => setProfileData({...profileData, fullName: e.target.value})} />
-              <input type="tel" className="profile-input" placeholder="Phone Number *" value={profileData.phone} onChange={e => setProfileData({...profileData, phone: e.target.value})} />
+            <div className="profile-input-group" style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '15px' }}>
+              <input 
+                type="text" 
+                placeholder="Full Legal Name *" 
+                className="profile-input" 
+                value={profileData.fullName}
+                onChange={e => setProfileData({...profileData, fullName: e.target.value})}
+                style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid #334155', background: '#0F172A', color: 'white' }}
+              />
+              <input 
+                type="tel" 
+                placeholder="Phone Number *" 
+                className="profile-input" 
+                value={profileData.phone}
+                onChange={e => setProfileData({...profileData, phone: e.target.value})}
+                style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid #334155', background: '#0F172A', color: 'white' }}
+              />
             </div>
 
-            <div className="step-actions">
+            <div className="step-actions" style={{ marginTop: '20px' }}>
               <button className="btn-enable-permission" onClick={saveProfile1}>
-                Next
+                Next: Health Info
               </button>
             </div>
           </div>
         )}
 
-        {/* Step 0.2: Profile Creation - Medical Info */}
+        {/* Profile Step 2: Health Info */}
         {currentStep === 'profile_2' && (
           <div className="step-detail-card">
-            <div className="step-icon-bubble bg-blue-tint">
-              <ShieldLogoIcon size={26} color="#3B82F6" />
+            <div className="step-icon-bubble bg-red-tint">
+              <ShieldLogoIcon size={26} color="#EF4444" />
             </div>
-            <h3 className="step-title">Medical Info</h3>
-            <p className="step-explanation" style={{marginBottom: '16px'}}>
-              Crucial information for first responders. (Optional)
+            <h3 className="step-title">Medical ID (Optional)</h3>
+            <p className="step-explanation">
+              Critical medical context shown during severe emergencies.
             </p>
 
-            <div className="profile-form-grid">
-              <div style={{display: 'flex', gap: '8px', width: '100%'}}>
-                <input type="number" className="profile-input" placeholder="Age" style={{flex: 1}} value={profileData.age} onChange={e => setProfileData({...profileData, age: e.target.value})} />
-                <input type="text" className="profile-input" placeholder="Blood Group (e.g. O+)" style={{flex: 1}} value={profileData.bloodGroup} onChange={e => setProfileData({...profileData, bloodGroup: e.target.value})} />
+            <div className="profile-input-group" style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '15px' }}>
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <input 
+                  type="number" 
+                  placeholder="Age" 
+                  className="profile-input" 
+                  value={profileData.age}
+                  onChange={e => setProfileData({...profileData, age: e.target.value})}
+                  style={{ width: '40%', padding: '12px', borderRadius: '8px', border: '1px solid #334155', background: '#0F172A', color: 'white' }}
+                />
+                <input 
+                  type="text" 
+                  placeholder="Blood Group (e.g. O+)" 
+                  className="profile-input" 
+                  value={profileData.bloodGroup}
+                  onChange={e => setProfileData({...profileData, bloodGroup: e.target.value})}
+                  style={{ width: '60%', padding: '12px', borderRadius: '8px', border: '1px solid #334155', background: '#0F172A', color: 'white' }}
+                />
               </div>
-              <textarea className="profile-input" placeholder="Medical Conditions / Allergies" rows={3} style={{resize: 'none', padding: '12px'}} value={profileData.medical} onChange={e => setProfileData({...profileData, medical: e.target.value})} />
+              <textarea 
+                placeholder="Known Allergies / Medical Conditions..." 
+                className="profile-input" 
+                value={profileData.medical}
+                onChange={e => setProfileData({...profileData, medical: e.target.value})}
+                style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid #334155', background: '#0F172A', color: 'white', minHeight: '60px' }}
+              />
             </div>
 
-            <div className="step-actions">
+            <div className="step-actions" style={{ marginTop: '20px' }}>
               <button className="btn-enable-permission" onClick={saveProfile2}>
-                Next
+                Next: Emergency Contact
               </button>
               <button className="btn-skip-permission" onClick={() => setCurrentStep('profile_1')}>
                 Back
@@ -323,28 +384,39 @@ export const StartupPermissionFlow: React.FC<StartupPermissionFlowProps> = ({
           </div>
         )}
 
-        {/* Step 0.3: Profile Creation - Emergency Contact */}
+        {/* Profile Step 3: Emergency Contacts */}
         {currentStep === 'profile_3' && (
           <div className="step-detail-card">
-            <div className="step-icon-bubble bg-blue-tint">
-              <GuardianMeshIcon size={26} color="#3B82F6" />
+            <div className="step-icon-bubble bg-purple-tint">
+              <SosBroadcastIcon size={26} color="#A855F7" />
             </div>
             <h3 className="step-title">Emergency Contact</h3>
-            <p className="step-explanation" style={{marginBottom: '16px'}}>
-              Who should we notify if you are in danger?
+            <p className="step-explanation">
+              The primary person to receive emergency alerts and SMS notifications.
             </p>
 
-            <div className="profile-form-grid">
-              <div className="contact-picker-header">
-                <span className="profile-input-label">Primary Contact</span>
-              </div>
-              <input type="text" className="profile-input" placeholder="Contact Name *" value={profileData.contactName} onChange={e => setProfileData({...profileData, contactName: e.target.value})} />
-              <input type="tel" className="profile-input" placeholder="Contact Phone *" value={profileData.contactPhone} onChange={e => setProfileData({...profileData, contactPhone: e.target.value})} />
+            <div className="profile-input-group" style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '15px' }}>
+              <input 
+                type="text" 
+                placeholder="Contact Name *" 
+                className="profile-input" 
+                value={profileData.contactName}
+                onChange={e => setProfileData({...profileData, contactName: e.target.value})}
+                style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid #334155', background: '#0F172A', color: 'white' }}
+              />
+              <input 
+                type="tel" 
+                placeholder="Contact Phone Number *" 
+                className="profile-input" 
+                value={profileData.contactPhone}
+                onChange={e => setProfileData({...profileData, contactPhone: e.target.value})}
+                style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid #334155', background: '#0F172A', color: 'white' }}
+              />
             </div>
 
             <div className="step-actions">
-              <button className="btn-enable-permission" onClick={saveProfile3}>
-                Save Profile
+              <button className="btn-enable-permission" onClick={saveProfile3} disabled={isRequesting}>
+                {isRequesting ? 'Saving Profile...' : 'Save Profile'}
               </button>
               <button className="btn-skip-permission" onClick={() => setCurrentStep('profile_2')}>
                 Back
@@ -542,7 +614,7 @@ export const StartupPermissionFlow: React.FC<StartupPermissionFlowProps> = ({
         )}
 
         <div className="onboarding-privacy-note">
-          <span>🔒 SafetyMesh adheres to strict zero-knowledge privacy. No fake data is ever shared.</span>
+          <span>SafetyMesh adheres to strict zero-knowledge privacy. No fake data is ever shared.</span>
         </div>
       </div>
     </div>

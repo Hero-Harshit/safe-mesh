@@ -232,12 +232,20 @@ export interface NativeSafeMeshBridge {
   requestAllPermissions?: () => void;
   hasSmsPermission: () => boolean;
   hasCallPermission: () => boolean;
+  hasLocationPermission?: () => boolean;
+  requestLocationPermission?: () => void;
+  hasBackgroundLocationPermission?: () => boolean;
+  requestBackgroundLocationPermission?: () => void;
   vibrate: (ms: number) => void;
   stopVibrate: () => void;
   setFlashlight: (enable: boolean) => void;
+  startSiren?: () => void;
+  stopSiren?: () => void;
+  isSirenRunning?: () => boolean;
   showToast: (msg: string) => void;
   shareText: (title: string, msg: string) => void;
   isNativeApp: () => boolean;
+  getVersion?: () => string;
   getAppVersion?: () => string;
   getNativeLocation?: () => string | null;
 }
@@ -589,6 +597,11 @@ export async function startEmergencyCall(phoneNumber: string = '112', delayMs: n
 }
 
 export function startSiren() {
+  const bridge = getNativeBridge();
+  if (bridge && typeof bridge.startSiren === 'function') {
+    bridge.startSiren();
+    return;
+  }
   if (!isAndroid()) return;
   try {
     window.location.href = "intent://siren_start#Intent;scheme=safehelp;package=com.safehelp.app;end";
@@ -598,10 +611,23 @@ export function startSiren() {
 }
 
 export function stopSiren() {
+  const bridge = getNativeBridge();
+  if (bridge && typeof bridge.stopSiren === 'function') {
+    bridge.stopSiren();
+    return;
+  }
   if (!isAndroid()) return;
   try {
     window.location.href = "intent://siren_stop#Intent;scheme=safehelp;package=com.safehelp.app;end";
   } catch (e) {
     console.warn("Failed to stop siren natively");
   }
+}
+
+export function isSirenRunning(): boolean {
+  const bridge = getNativeBridge();
+  if (bridge && typeof bridge.isSirenRunning === 'function') {
+    return bridge.isSirenRunning();
+  }
+  return false;
 }

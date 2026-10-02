@@ -1,7 +1,7 @@
 /**
  * permissions.ts
- * Centralized Permission Manager for SafetyMesh
- * Handles Location, Bluetooth, and Notifications with reactive state and foreground re-checks.
+ * Centralized Permission Manager for SafetyMesh v4.0
+ * Handles Location, Bluetooth, Notifications, SMS, and Background Location with reactive state and persistent caching.
  */
 
 export type PermissionStatus = 'GRANTED' | 'DENIED' | 'BLOCKED' | 'UNKNOWN' | 'PROMPT';
@@ -17,15 +17,27 @@ export interface SafetyMeshPermissionsState {
 }
 
 const STORAGE_KEY_ONBOARDING = 'safetymesh_permission_flow_completed';
+const STORAGE_KEY_LOCATION = 'safetymesh_location_granted';
+const STORAGE_KEY_BG_LOC = 'safetymesh_bg_loc_granted';
+const STORAGE_KEY_BT = 'safetymesh_bt_granted';
+const STORAGE_KEY_SMS = 'safetymesh_sms_granted';
+const STORAGE_KEY_BATTERY = 'safetymesh_battery_granted';
+
+function getInitialLocationStatus(): PermissionStatus {
+  if (typeof window !== 'undefined' && localStorage.getItem(STORAGE_KEY_LOCATION) === 'true') {
+    return 'GRANTED';
+  }
+  return 'UNKNOWN';
+}
 
 let cachedState: SafetyMeshPermissionsState = {
-  location: 'UNKNOWN',
-  background_location: 'UNKNOWN',
-  bluetooth: 'UNKNOWN',
+  location: getInitialLocationStatus(),
+  background_location: typeof window !== 'undefined' && localStorage.getItem(STORAGE_KEY_BG_LOC) === 'true' ? 'GRANTED' : 'UNKNOWN',
+  bluetooth: typeof window !== 'undefined' && localStorage.getItem(STORAGE_KEY_BT) === 'true' ? 'GRANTED' : 'UNKNOWN',
   notifications: 'UNKNOWN',
-  sms: 'UNKNOWN',
-  battery: 'UNKNOWN',
-  isInitialFlowCompleted: localStorage.getItem(STORAGE_KEY_ONBOARDING) === 'true',
+  sms: typeof window !== 'undefined' && localStorage.getItem(STORAGE_KEY_SMS) === 'true' ? 'GRANTED' : 'UNKNOWN',
+  battery: typeof window !== 'undefined' && localStorage.getItem(STORAGE_KEY_BATTERY) === 'true' ? 'GRANTED' : 'UNKNOWN',
+  isInitialFlowCompleted: typeof window !== 'undefined' && localStorage.getItem(STORAGE_KEY_ONBOARDING) === 'true',
 };
 
 const listeners = new Set<(state: SafetyMeshPermissionsState) => void>();
@@ -56,6 +68,22 @@ export function setInitialFlowCompleted(completed: boolean): void {
  * Check Location Permission state
  */
 export async function checkLocationPermission(): Promise<PermissionStatus> {
+  const bridge = typeof window !== 'undefined' ? ((window as any).AndroidSafeMesh || (window as any).Android) : null;
+  if (bridge && typeof bridge.hasLocationPermission === 'function') {
+    if (bridge.hasLocationPermission()) {
+      cachedState.location = 'GRANTED';
+      localStorage.setItem(STORAGE_KEY_LOCATION, 'true');
+      notifyListeners();
+      return 'GRANTED';
+    }
+  }
+
+  if (typeof window !== 'undefined' && localStorage.getItem(STORAGE_KEY_LOCATION) === 'true') {
+    cachedState.location = 'GRANTED';
+    notifyListeners();
+    return 'GRANTED';
+  }
+
   if (!navigator.geolocation) {
     cachedState.location = 'DENIED';
     notifyListeners();
@@ -65,23 +93,22 @@ export async function checkLocationPermission(): Promise<PermissionStatus> {
   if (navigator.permissions && navigator.permissions.query) {
     try {
       const result = await navigator.permissions.query({ name: 'geolocation' as PermissionName });
-      const status: PermissionStatus =
-        result.state === 'granted'
-          ? 'GRANTED'
-          : result.state === 'denied'
-          ? 'DENIED'
-          : 'PROMPT';
-
-      cachedState.location = status;
-
-      result.onchange = () => {
-        checkLocationPermission();
-      };
-
-      notifyListeners();
-      return status;
+      if (result.state === 'granted') {
+        cachedState.location = 'GRANTED';
+        localStorage.setItem(STORAGE_KEY_LOCATION, 'true');
+        notifyListeners();
+        return 'GRANTED';
+      } else if (result.state === 'denied') {
+        cachedState.location = 'DENIED';
+        notifyListeners();
+        return 'DENIED';
+      } else {
+        cachedState.location = 'PROMPT';
+        notifyListeners();
+        return 'PROMPT';
+      }
     } catch {
-      // Some browsers error on permissions.query({ name: 'geolocation' })
+      // Ignore query errors in mobile webviews
     }
   }
 
@@ -89,9 +116,14 @@ export async function checkLocationPermission(): Promise<PermissionStatus> {
 }
 
 /**
- * Request Location Permission directly by triggering geolocation
+ * Request Location Permission directly
  */
 export async function requestLocationPermission(): Promise<PermissionStatus> {
+  const bridge = typeof window !== 'undefined' ? ((window as any).AndroidSafeMesh || (window as any).Android) : null;
+  if (bridge && typeof bridge.requestLocationPermission === 'function') {
+    bridge.requestLocationPermission();
+  }
+
   return new Promise((resolve) => {
     if (!navigator.geolocation) {
       cachedState.location = 'DENIED';
@@ -103,10 +135,19 @@ export async function requestLocationPermission(): Promise<PermissionStatus> {
     navigator.geolocation.getCurrentPosition(
       () => {
         cachedState.location = 'GRANTED';
+        localStorage.setItem(STORAGE_KEY_LOCATION, 'true');
         notifyListeners();
         resolve('GRANTED');
       },
       (err) => {
+        // If bridge already granted it, prioritize that over webview GPS timeout
+        if (bridge && typeof bridge.hasLocationPermission === 'function' && bridge.hasLocationPermission()) {
+          cachedState.location = 'GRANTED';
+          localStorage.setItem(STORAGE_KEY_LOCATION, 'true');
+          notifyListeners();
+          resolve('GRANTED');
+          return;
+        }
         const status: PermissionStatus = err.code === 1 ? 'DENIED' : 'BLOCKED';
         cachedState.location = status;
         notifyListeners();
@@ -115,7 +156,7 @@ export async function requestLocationPermission(): Promise<PermissionStatus> {
       {
         enableHighAccuracy: true,
         timeout: 10000,
-        maximumAge: 0,
+        maximumAge: 30000,
       }
     );
   });
@@ -169,24 +210,20 @@ export async function requestNotificationPermission(): Promise<PermissionStatus>
  * Check Bluetooth Permission / Availability
  */
 export async function checkBluetoothPermission(): Promise<PermissionStatus> {
-  // Check local cache if granted via Android bridge
-  const isAndroidGranted = localStorage.getItem('safetymesh_bt_granted');
+  const isAndroidGranted = localStorage.getItem(STORAGE_KEY_BT);
   if (isAndroidGranted === 'true') {
     cachedState.bluetooth = 'GRANTED';
     notifyListeners();
     return 'GRANTED';
   }
 
-  // Check Web Bluetooth availability if available
   if ('bluetooth' in navigator && (navigator as any).bluetooth?.getAvailability) {
     try {
       const available = await (navigator as any).bluetooth.getAvailability();
       if (available) {
         cachedState.bluetooth = 'PROMPT';
       }
-    } catch {
-      // Ignore
-    }
+    } catch {}
   }
 
   if (cachedState.bluetooth === 'UNKNOWN') {
@@ -198,34 +235,27 @@ export async function checkBluetoothPermission(): Promise<PermissionStatus> {
 }
 
 /**
- * Request Bluetooth Permission via Native Android Bridge or Web Bluetooth
+ * Request Bluetooth Permission
  */
 export async function requestBluetoothPermission(): Promise<PermissionStatus> {
-  // Check if running on Android with custom bridge scheme
   if (window.location.protocol.startsWith('http')) {
-    // Attempt deep link trigger for Android
     try {
       window.location.href =
         'intent://bluetooth#Intent;scheme=safehelp;package=com.safehelp.app;end';
-    } catch {
-      // fallback
-    }
+    } catch {}
   }
 
-  // Web Bluetooth fallback
   if ('bluetooth' in navigator && (navigator as any).bluetooth?.requestDevice) {
     try {
-      // Prompt user
       await (navigator as any).bluetooth.requestDevice({
         acceptAllDevices: true,
       });
       cachedState.bluetooth = 'GRANTED';
-      localStorage.setItem('safetymesh_bt_granted', 'true');
+      localStorage.setItem(STORAGE_KEY_BT, 'true');
       notifyListeners();
       return 'GRANTED';
     } catch (e: any) {
       if (e.name === 'NotFoundError') {
-        // User cancelled picker
         cachedState.bluetooth = 'PROMPT';
       } else {
         cachedState.bluetooth = 'DENIED';
@@ -235,9 +265,8 @@ export async function requestBluetoothPermission(): Promise<PermissionStatus> {
     }
   }
 
-  // If in web simulation or user allows
   cachedState.bluetooth = 'GRANTED';
-  localStorage.setItem('safetymesh_bt_granted', 'true');
+  localStorage.setItem(STORAGE_KEY_BT, 'true');
   notifyListeners();
   return 'GRANTED';
 }
@@ -246,16 +275,16 @@ export async function requestBluetoothPermission(): Promise<PermissionStatus> {
  * Check SMS Permission
  */
 export async function checkSmsPermission(): Promise<PermissionStatus> {
-  const bridge = typeof window !== 'undefined' ? (window.AndroidSafeMesh || (window as any).Android) : null;
+  const bridge = typeof window !== 'undefined' ? ((window as any).AndroidSafeMesh || (window as any).Android) : null;
   if (bridge && typeof bridge.hasSmsPermission === 'function') {
     const granted = bridge.hasSmsPermission();
     cachedState.sms = granted ? 'GRANTED' : 'PROMPT';
-    localStorage.setItem('safetymesh_sms_granted', granted ? 'true' : 'false');
+    localStorage.setItem(STORAGE_KEY_SMS, granted ? 'true' : 'false');
     notifyListeners();
     return cachedState.sms;
   }
 
-  const isAndroidGranted = localStorage.getItem('safetymesh_sms_granted');
+  const isAndroidGranted = localStorage.getItem(STORAGE_KEY_SMS);
   if (isAndroidGranted === 'true') {
     cachedState.sms = 'GRANTED';
   } else {
@@ -269,14 +298,14 @@ export async function checkSmsPermission(): Promise<PermissionStatus> {
  * Request SMS Permission via Native Android Bridge
  */
 export async function requestSmsPermission(): Promise<PermissionStatus> {
-  const bridge = typeof window !== 'undefined' ? (window.AndroidSafeMesh || (window as any).Android) : null;
+  const bridge = typeof window !== 'undefined' ? ((window as any).AndroidSafeMesh || (window as any).Android) : null;
   if (bridge && typeof bridge.requestEmergencyPermissions === 'function') {
     bridge.requestEmergencyPermissions();
     for (let i = 0; i < 8; i++) {
       await new Promise(r => setTimeout(r, 400));
       if (typeof bridge.hasSmsPermission === 'function' && bridge.hasSmsPermission()) {
         cachedState.sms = 'GRANTED';
-        localStorage.setItem('safetymesh_sms_granted', 'true');
+        localStorage.setItem(STORAGE_KEY_SMS, 'true');
         notifyListeners();
         return 'GRANTED';
       }
@@ -286,18 +315,26 @@ export async function requestSmsPermission(): Promise<PermissionStatus> {
   if (window.location.protocol.startsWith('http')) {
     try {
       window.location.href = 'intent://sms#Intent;scheme=safehelp;package=com.safehelp.app;end';
-    } catch {
-      // fallback
-    }
+    } catch {}
   }
-  
+
   cachedState.sms = 'PROMPT';
   notifyListeners();
   return 'PROMPT';
 }
 
 export async function checkBackgroundLocationPermission(): Promise<PermissionStatus> {
-  const isAndroidGranted = localStorage.getItem('safetymesh_bg_loc_granted');
+  const bridge = typeof window !== 'undefined' ? ((window as any).AndroidSafeMesh || (window as any).Android) : null;
+  if (bridge && typeof bridge.hasBackgroundLocationPermission === 'function') {
+    if (bridge.hasBackgroundLocationPermission()) {
+      cachedState.background_location = 'GRANTED';
+      localStorage.setItem(STORAGE_KEY_BG_LOC, 'true');
+      notifyListeners();
+      return 'GRANTED';
+    }
+  }
+
+  const isAndroidGranted = localStorage.getItem(STORAGE_KEY_BG_LOC);
   if (isAndroidGranted === 'true') {
     cachedState.background_location = 'GRANTED';
   } else {
@@ -308,11 +345,13 @@ export async function checkBackgroundLocationPermission(): Promise<PermissionSta
 }
 
 export async function requestBackgroundLocationPermission(): Promise<PermissionStatus> {
-  if (window.location.protocol.startsWith('http')) {
+  const bridge = typeof window !== 'undefined' ? ((window as any).AndroidSafeMesh || (window as any).Android) : null;
+  if (bridge && typeof bridge.requestBackgroundLocationPermission === 'function') {
+    bridge.requestBackgroundLocationPermission();
+  } else if (window.location.protocol.startsWith('http')) {
     try {
       window.location.href = 'intent://background_location#Intent;scheme=safehelp;package=com.safehelp.app;end';
-    } catch {
-    }
+    } catch {}
   }
   cachedState.background_location = 'PROMPT';
   notifyListeners();
@@ -320,7 +359,7 @@ export async function requestBackgroundLocationPermission(): Promise<PermissionS
 }
 
 export async function checkBatteryOptimizationPermission(): Promise<PermissionStatus> {
-  const isAndroidGranted = localStorage.getItem('safetymesh_battery_granted');
+  const isAndroidGranted = localStorage.getItem(STORAGE_KEY_BATTERY);
   if (isAndroidGranted === 'true') {
     cachedState.battery = 'GRANTED';
   } else {
@@ -334,8 +373,7 @@ export async function requestBatteryOptimizationPermission(): Promise<Permission
   if (window.location.protocol.startsWith('http')) {
     try {
       window.location.href = 'intent://battery_optimization#Intent;scheme=safehelp;package=com.safehelp.app;end';
-    } catch {
-    }
+    } catch {}
   }
   cachedState.battery = 'PROMPT';
   notifyListeners();
@@ -369,39 +407,39 @@ if (typeof window !== 'undefined') {
     }
   });
 
-  // Listen for hashchange returned by Android Bluetooth Permission Activity
+  // Listen for hashchange returned by Android Permission Activities
   window.addEventListener('hashchange', () => {
     if (window.location.hash.includes('bt_result=granted')) {
       cachedState.bluetooth = 'GRANTED';
-      localStorage.setItem('safetymesh_bt_granted', 'true');
+      localStorage.setItem(STORAGE_KEY_BT, 'true');
       notifyListeners();
     } else if (window.location.hash.includes('bt_result=denied')) {
       cachedState.bluetooth = 'DENIED';
-      localStorage.setItem('safetymesh_bt_granted', 'false');
+      localStorage.setItem(STORAGE_KEY_BT, 'false');
       notifyListeners();
     } else if (window.location.hash.includes('sms_result=granted')) {
       cachedState.sms = 'GRANTED';
-      localStorage.setItem('safetymesh_sms_granted', 'true');
+      localStorage.setItem(STORAGE_KEY_SMS, 'true');
       notifyListeners();
     } else if (window.location.hash.includes('sms_result=denied')) {
       cachedState.sms = 'DENIED';
-      localStorage.setItem('safetymesh_sms_granted', 'false');
+      localStorage.setItem(STORAGE_KEY_SMS, 'false');
       notifyListeners();
     } else if (window.location.hash.includes('bg_loc_result=granted')) {
       cachedState.background_location = 'GRANTED';
-      localStorage.setItem('safetymesh_bg_loc_granted', 'true');
+      localStorage.setItem(STORAGE_KEY_BG_LOC, 'true');
       notifyListeners();
     } else if (window.location.hash.includes('bg_loc_result=denied')) {
       cachedState.background_location = 'DENIED';
-      localStorage.setItem('safetymesh_bg_loc_granted', 'false');
+      localStorage.setItem(STORAGE_KEY_BG_LOC, 'false');
       notifyListeners();
     } else if (window.location.hash.includes('battery_result=granted')) {
       cachedState.battery = 'GRANTED';
-      localStorage.setItem('safetymesh_battery_granted', 'true');
+      localStorage.setItem(STORAGE_KEY_BATTERY, 'true');
       notifyListeners();
     } else if (window.location.hash.includes('battery_result=denied')) {
       cachedState.battery = 'DENIED';
-      localStorage.setItem('safetymesh_battery_granted', 'false');
+      localStorage.setItem(STORAGE_KEY_BATTERY, 'false');
       notifyListeners();
     }
   });
