@@ -34,7 +34,8 @@ jobs:
       - name: Sign APK
         run: |
           BUILD_TOOLS_DIR=$(ls -d $ANDROID_HOME/build-tools/* | tail -1)
-          $BUILD_TOOLS_DIR/apksigner sign --ks android/android.keystore --ks-pass pass:android --ks-key-alias android --key-pass pass:android --out android/Safety-Mesh.apk android/app/build/outputs/apk/release/app-release-unsigned.apk
+          $BUILD_TOOLS_DIR/zipalign -v -p 4 android/app/build/outputs/apk/release/app-release-unsigned.apk android/app-release-aligned.apk
+          $BUILD_TOOLS_DIR/apksigner sign --ks android/android.keystore --ks-pass pass:android --ks-key-alias android --key-pass pass:android --out android/Safety-Mesh.apk android/app-release-aligned.apk
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
