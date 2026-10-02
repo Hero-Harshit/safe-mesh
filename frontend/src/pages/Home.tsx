@@ -424,7 +424,7 @@ export default function Home(_props: HomeProps = {}) {
 
       {/* Safety Toolkit Modal */}
       {activeModal === 'toolkit' && (
-        <SafetyToolkitModal onClose={closeModal} />
+        <SafetyToolkitModal onClose={closeModal} onShowToast={showToast} />
       )}
 
       {/* Safety Timer Modal */}

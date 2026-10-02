@@ -35,6 +35,11 @@ app.get('/health', (req, res) => {
 const incidentRoutes = require('./routes/incidents');
 app.use('/api/incidents', incidentRoutes);
 
+// Mount satellite communication routes
+const satelliteRoutes = require('./routes/satellite');
+app.use('/api/satellite', satelliteRoutes);
+
+
 // Category priority mapping
 const CATEGORY_PRIORITY = {
   7392: 100, // Police Station

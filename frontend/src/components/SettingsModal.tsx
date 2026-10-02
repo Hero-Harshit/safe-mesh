@@ -327,32 +327,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 </label>
               </div>
 
-              {aiAnomalyEnabled && (
-                <div className="setting-toggle-row" style={{ marginTop: '-8px', paddingTop: 0, borderTop: 'none' }}>
-                  <div className="setting-text">
-                  </div>
-                  <button
-                    onClick={() => setShowSimulator(true)}
-                    style={{
-                      background: 'rgba(59, 130, 246, 0.08)',
-                      border: '1px solid rgba(59, 130, 246, 0.22)',
-                      borderRadius: '10px',
-                      padding: '6px 12px',
-                      color: '#2563EB',
-                      fontSize: '0.8rem',
-                      fontWeight: 700,
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '6px',
-                      transition: 'all 0.15s ease',
-                    }}
-                    title="Simulate hardware & AI anomalies"
-                  >
-                    ⚡ Simulate AI
-                  </button>
-                </div>
-              )}
             </div>
 
             {/* System Permissions list */}
