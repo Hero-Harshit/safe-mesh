@@ -17,13 +17,23 @@ package com.safehelp.app;
 
 
 
-public class Application extends android.app.Application {
+import android.content.Intent;
+import android.util.Log;
 
-  
+public class Application extends android.app.Application {
 
   @Override
   public void onCreate() {
       super.onCreate();
-      
+
+      // Initialize Native Accelerometer Snatch Detection
+      SafeHelpSnatchDetector.getInstance().start(this);
+      SafeHelpSnatchDetector.getInstance().setListener(magnitude -> {
+          Log.w("APPLICATION", "Phone snatch detected in background! Triggering emergency activity...");
+          Intent intent = new Intent(this, SafeHelpEmergencyActivity.class);
+          intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+          intent.putExtra("threat_type", "PHONE_SNATCH");
+          startActivity(intent);
+      });
   }
 }

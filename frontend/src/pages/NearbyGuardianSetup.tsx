@@ -194,7 +194,14 @@ export const NearbyGuardianSetup: React.FC<NearbyGuardianSetupProps> = ({
   };
 
   return (
-    <div className="safetymesh-modal-backdrop" onClick={handleClose}>
+    <div 
+      className="safetymesh-modal-backdrop" 
+      onClick={(e) => {
+        if (e.target === e.currentTarget) {
+          handleClose();
+        }
+      }}
+    >
       <div className="safetymesh-modal-sheet" onClick={(e) => e.stopPropagation()}>
         <div className="modal-pill-indicator"></div>
 

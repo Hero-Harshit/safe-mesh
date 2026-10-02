@@ -70,7 +70,7 @@ export const SafetyShortcuts: React.FC<SafetyShortcutsProps> = ({
             <TimerIcon size={20} color="#3B82F6" />
           </div>
           <div className="shortcut-text-block">
-            <span className="shortcut-title">Safety Timer</span>
+            <span className="shortcut-title">Safe Timer</span>
             <span className="shortcut-subtitle">Dead man's switch</span>
           </div>
           <div className="shortcut-arrow">

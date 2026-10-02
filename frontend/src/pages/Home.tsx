@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import SafetyMeshHeader from '../components/SafetyMeshHeader';
 import EmergencySOSButton from '../components/EmergencySOSButton';
 import SafetyShortcuts from '../components/SafetyShortcuts';
@@ -10,6 +10,9 @@ import EmergencyMode from '../components/EmergencyMode';
 import SosPermissionWarningModal from '../components/SosPermissionWarningModal';
 import SafetyToolkitModal from '../components/SafetyToolkitModal';
 import SafetyTimerModal from '../components/SafetyTimerModal';
+import PinValidationModal from '../components/PinValidationModal';
+import AmbientGuardCard from '../components/AmbientGuardCard';
+import ThreatCountdownModal from '../components/ThreatCountdownModal';
 import StatusMessage from '../components/StatusMessage';
 import NearbyGuardianSetup from './NearbyGuardianSetup';
 
@@ -20,7 +23,7 @@ import {
   deleteEmergencyContact,
   triggerHaptic,
 } from '../services/emergency';
-import { syncEmergencyContactsToNative } from '../services/native';
+import { syncEmergencyContactsToNative, onNativeThreatEvent } from '../services/native';
 
 import type { RealLocationData } from '../services/location';
 import {
@@ -55,10 +58,95 @@ export default function Home(_props: HomeProps = {}) {
 
   // Contacts and UI state
   const [contacts, setContacts] = useState<EmergencyContact[]>([]);
-  const [activeModal, setActiveModal] = useState<'safe_route' | 'contacts' | 'call_112' | 'settings' | 'nearby_guardian' | 'toolkit' | 'timer' | null>(null);
+  const [activeModal, setActiveModal] = useState<'safe_route' | 'contacts' | 'call_112' | 'settings' | 'nearby_guardian' | 'toolkit' | 'timer' | 'pin_validation' | null>(null);
   const [showSosWarning, setShowSosWarning] = useState(false);
+
+  const [safeTimerActive, setSafeTimerActive] = useState(false);
+  const [safeTimerDuration, setSafeTimerDuration] = useState<number | null>(null);
+  const [safeTimerDueTime, setSafeTimerDueTime] = useState<number | null>(null);
   const [sosActive, setSosActive] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  const [threatReason, setThreatReason] = useState<string | null>(null);
+
+  const activeModalRef = useRef(activeModal);
+  useEffect(() => {
+    activeModalRef.current = activeModal;
+  }, [activeModal]);
+
+  const handleThreatDetected = useCallback((reason: string) => {
+    if (!sosActive && !threatReason) {
+      setThreatReason(reason);
+    }
+  }, [sosActive, threatReason]);
+
+  const handleCancelThreat = useCallback(() => {
+    setThreatReason(null);
+    setToast('Threat alert cancelled. You are safe.');
+  }, []);
+
+  useEffect(() => {
+    const unsubThreat = onNativeThreatEvent((reason) => {
+      handleThreatDetected(reason === 'snatch' ? 'Violent Phone Snatch Detected (Native Sensor)' : reason);
+    });
+    return () => unsubThreat();
+  }, [handleThreatDetected]);
+
+  const openModal = useCallback((modal: 'safe_route' | 'contacts' | 'call_112' | 'settings' | 'nearby_guardian' | 'toolkit' | 'timer' | 'pin_validation') => {
+    if (window.history.state?.safetymesh_modal !== modal) {
+      window.history.pushState({ safetymesh_modal: modal }, '');
+    }
+    setActiveModal(modal);
+  }, []);
+
+  const closeModal = useCallback(() => {
+    if (window.history.state && window.history.state.safetymesh_modal) {
+      window.history.back();
+    } else {
+      setActiveModal(null);
+    }
+  }, []);
+
+  const handleOpenSosWarning = useCallback(() => {
+    window.history.pushState({ safetymesh_modal: 'sos_warning' }, '');
+    setShowSosWarning(true);
+  }, []);
+
+  const handleCloseSosWarning = useCallback(() => {
+    if (window.history.state?.safetymesh_modal === 'sos_warning') {
+      window.history.back();
+    } else {
+      setShowSosWarning(false);
+    }
+  }, []);
+
+  // Listen to Android hardware back button & swipe back gestures via popstate
+  useEffect(() => {
+    const handlePopState = (e: PopStateEvent) => {
+      // Do not allow bypassing the dead man's switch countdown via swipe/back
+      if (activeModalRef.current === 'pin_validation') {
+        window.history.pushState({ safetymesh_modal: 'pin_validation' }, '');
+        return;
+      }
+
+      if (e.state && e.state.safetymesh_modal) {
+        if (e.state.safetymesh_modal === 'sos_warning') {
+          setShowSosWarning(true);
+          setActiveModal(null);
+        } else {
+          setActiveModal(e.state.safetymesh_modal);
+          setShowSosWarning(false);
+        }
+      } else {
+        setActiveModal(null);
+        setShowSosWarning(false);
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, []);
 
   // 1. Subscribe to permissions
   useEffect(() => {
@@ -100,6 +188,20 @@ export default function Home(_props: HomeProps = {}) {
     syncEmergencyContactsToNative(loaded.map(c => ({ name: c.name, phone: c.phone }))).catch(() => { });
   }, []);
 
+  useEffect(() => {
+    let interval: ReturnType<typeof setInterval>;
+    if (safeTimerActive && safeTimerDueTime) {
+      interval = setInterval(() => {
+        if (Date.now() >= safeTimerDueTime) {
+          if (activeModal !== 'pin_validation') {
+            openModal('pin_validation');
+          }
+        }
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [safeTimerActive, safeTimerDueTime, activeModal, openModal]);
+
   const showToast = useCallback((msg: string) => {
     setToast(msg);
   }, []);
@@ -125,18 +227,37 @@ export default function Home(_props: HomeProps = {}) {
   const handleSosHoldComplete = () => {
     // Check if location is missing
     if (permissions.location !== 'GRANTED' || !location || location.status !== 'LIVE') {
-      setShowSosWarning(true);
+      handleOpenSosWarning();
     } else {
       activateEmergencyWorkflow();
     }
   };
 
+  const handleStartSafeTimer = (minutes: number) => {
+    setSafeTimerActive(true);
+    setSafeTimerDuration(minutes);
+    setSafeTimerDueTime(Date.now() + minutes * 60 * 1000);
+    showToast(`Safe Timer active for ${minutes} min(s)`);
+  };
+
+  const handleStopSafeTimer = () => {
+    setSafeTimerActive(false);
+    setSafeTimerDuration(null);
+    setSafeTimerDueTime(null);
+    showToast('Safe Timer stopped');
+  };
+
   const activateEmergencyWorkflow = useCallback(() => {
-    setShowSosWarning(false);
+    handleCloseSosWarning();
     setSosActive(true);
     triggerHaptic([300, 100, 300, 100, 500]);
     showToast('🚨 SafetyMesh Emergency SOS Broadcast Active');
-  }, [showToast]);
+  }, [showToast, handleCloseSosWarning]);
+
+  const handleConfirmThreat = useCallback(() => {
+    setThreatReason(null);
+    activateEmergencyWorkflow();
+  }, [activateEmergencyWorkflow]);
 
   // 1.5 Check for Voice Auto-SOS
   useEffect(() => {
@@ -171,22 +292,30 @@ export default function Home(_props: HomeProps = {}) {
     <div className="safetymesh-dashboard-shell">
       {/* 1. Header with dynamic safety status based on real device state */}
       <SafetyMeshHeader
-        onProfileClick={() => setActiveModal('settings')}
+        onProfileClick={() => openModal('settings')}
       />
 
 
       {/* Secondary Action Shortcuts (Moved to Top) */}
-      <div style={{ flexShrink: 0, marginTop: '20px' }}>
+      <div style={{ flexShrink: 0, width: '100%' }}>
         <SafetyShortcuts
-          onSafeRouteClick={() => setActiveModal('safe_route')}
-          onGuardianClick={() => setActiveModal('nearby_guardian')}
-          onTimerClick={() => setActiveModal('timer')}
-          onToolkitClick={() => setActiveModal('toolkit')}
+          onSafeRouteClick={() => openModal('safe_route')}
+          onGuardianClick={() => openModal('nearby_guardian')}
+          onTimerClick={() => openModal('timer')}
+          onToolkitClick={() => openModal('toolkit')}
+        />
+      </div>
+
+      {/* Ambient Threat Guard (Acoustic & Snatch Sentinel) */}
+      <div style={{ flexShrink: 0, padding: '0 4px', width: '100%' }}>
+        <AmbientGuardCard
+          onThreatDetected={handleThreatDetected}
+          onShowToast={showToast}
         />
       </div>
 
       {/* Central HERO SOS Button (Anchored to the bottom for thumb reachability) */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', alignItems: 'center', minHeight: 0, paddingBottom: '4px', marginBottom: '-10px' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', alignItems: 'center', minHeight: 0, width: '100%', marginBottom: '8px' }}>
         <EmergencySOSButton onActivate={handleSosHoldComplete} />
       </div>
 
@@ -197,7 +326,7 @@ export default function Home(_props: HomeProps = {}) {
           location={location}
           locationPermission={permissions.location}
           onRequestLocationPermission={handleRequestLocation}
-          onClose={() => setActiveModal(null)}
+          onClose={closeModal}
           onShowToast={showToast}
         />
       )}
@@ -209,7 +338,7 @@ export default function Home(_props: HomeProps = {}) {
           onAddContact={handleAddContact}
           onDeleteContact={handleDeleteContact}
           currentMapsUrl={location?.mapsUrl}
-          onClose={() => setActiveModal(null)}
+          onClose={closeModal}
           onShowToast={showToast}
         />
       )}
@@ -218,16 +347,16 @@ export default function Home(_props: HomeProps = {}) {
       {activeModal === 'call_112' && (
         <Call112Modal
           location={location}
-          onClose={() => setActiveModal(null)}
+          onClose={closeModal}
         />
       )}
 
       {/* Settings Modal */}
       {activeModal === 'settings' && (
         <SettingsModal
-          onClose={() => setActiveModal(null)}
+          onClose={closeModal}
           onShowToast={showToast}
-          onOpenContacts={() => setActiveModal('contacts')}
+          onOpenContacts={() => openModal('contacts')}
         />
       )}
 
@@ -238,27 +367,68 @@ export default function Home(_props: HomeProps = {}) {
           locationPermission={permissions.location}
           bluetoothPermission={permissions.bluetooth}
           onRefreshPermissions={refreshAllPermissions}
-          onBack={() => setActiveModal(null)}
-          onClose={() => setActiveModal(null)}
+          onBack={closeModal}
+          onClose={closeModal}
           onShowToast={showToast}
         />
       )}
 
       {/* Safety Toolkit Modal */}
       {activeModal === 'toolkit' && (
-        <SafetyToolkitModal onClose={() => setActiveModal(null)} />
+        <SafetyToolkitModal onClose={closeModal} />
       )}
 
       {/* Safety Timer Modal */}
       {activeModal === 'timer' && (
-        <SafetyTimerModal onClose={() => setActiveModal(null)} />
+        <SafetyTimerModal 
+          onClose={closeModal}
+          isActive={safeTimerActive}
+          onStartTimer={handleStartSafeTimer}
+          onStopTimer={() => {
+            handleStopSafeTimer();
+            closeModal();
+          }}
+        />
+      )}
+
+      {/* Pin Validation Modal */}
+      {activeModal === 'pin_validation' && (
+        <PinValidationModal
+          onSuccess={() => {
+            closeModal();
+            if (safeTimerDuration) {
+              setSafeTimerDueTime(Date.now() + safeTimerDuration * 60 * 1000);
+              showToast('Safe Timer extended');
+            }
+          }}
+          onDuress={() => {
+            closeModal();
+            setSafeTimerActive(false);
+            showToast('Timer Stopped');
+            activateEmergencyWorkflow();
+          }}
+          onTimeout={() => {
+            closeModal();
+            setSafeTimerActive(false);
+            activateEmergencyWorkflow();
+          }}
+        />
+      )}
+
+      {/* Threat Anomaly Countdown Overlay */}
+      {threatReason && (
+        <ThreatCountdownModal
+          reason={threatReason}
+          onCancel={handleCancelThreat}
+          onConfirmThreat={handleConfirmThreat}
+        />
       )}
 
       {/* SOS Warning Modal when Location is Missing */}
       {showSosWarning && (
         <SosPermissionWarningModal
           onEnableLocation={async () => {
-            setShowSosWarning(false);
+            handleCloseSosWarning();
             const status = await requestLocationPermission();
             if (status === 'GRANTED') {
               loadLocation();
@@ -271,9 +441,7 @@ export default function Home(_props: HomeProps = {}) {
           onContinueWithoutLocation={() => {
             activateEmergencyWorkflow();
           }}
-          onCancel={() => {
-            setShowSosWarning(false);
-          }}
+          onCancel={handleCloseSosWarning}
         />
       )}
 

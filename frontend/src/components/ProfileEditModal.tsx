@@ -35,7 +35,15 @@ export const ProfileEditModal: React.FC<ProfileEditModalProps> = ({ initialData,
   };
 
   return (
-    <div className="safetymesh-modal-backdrop" onClick={onClose} style={{ zIndex: 300 }}>
+    <div 
+      className="safetymesh-modal-backdrop" 
+      onClick={(e) => {
+        if (e.target === e.currentTarget) {
+          onClose();
+        }
+      }} 
+      style={{ zIndex: 300 }}
+    >
       <div className="safetymesh-modal-sheet" onClick={(e) => e.stopPropagation()}>
         <div className="modal-pill-indicator"></div>
 

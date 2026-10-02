@@ -13,7 +13,15 @@ export const SosPermissionWarningModal: React.FC<SosPermissionWarningModalProps>
   onCancel,
 }) => {
   return (
-    <div className="safetymesh-modal-backdrop" onClick={onCancel} role="alertdialog">
+    <div 
+      className="safetymesh-modal-backdrop" 
+      onClick={(e) => {
+        if (e.target === e.currentTarget) {
+          onCancel();
+        }
+      }} 
+      role="alertdialog"
+    >
       <div className="safetymesh-modal-sheet alert-sheet" onClick={(e) => e.stopPropagation()}>
         <div className="modal-pill-indicator"></div>
 

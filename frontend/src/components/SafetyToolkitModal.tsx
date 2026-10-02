@@ -9,7 +9,14 @@ export const SafetyToolkitModal: React.FC<SafetyToolkitModalProps> = ({
   onClose,
 }) => {
   return (
-    <div className="safetymesh-modal-backdrop" onClick={onClose}>
+    <div 
+      className="safetymesh-modal-backdrop" 
+      onClick={(e) => {
+        if (e.target === e.currentTarget) {
+          onClose();
+        }
+      }}
+    >
       <div className="safetymesh-modal-sheet" onClick={(e) => e.stopPropagation()}>
         <div className="modal-pill-indicator"></div>
 
@@ -23,6 +30,9 @@ export const SafetyToolkitModal: React.FC<SafetyToolkitModalProps> = ({
               <span className="modal-sheet-subtitle">More features coming soon</span>
             </div>
           </div>
+          <button className="modal-close-icon-btn" onClick={onClose} aria-label="Close">
+            ✕
+          </button>
         </div>
 
         <div className="modal-sheet-content">

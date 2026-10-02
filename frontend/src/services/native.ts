@@ -42,6 +42,14 @@ export interface SmsSendResult {
 }
 
 let smsActionResolvers: ((result: SmsSendResult) => void)[] = [];
+let threatEventCallbacks: ((reason: string) => void)[] = [];
+
+export function onNativeThreatEvent(callback: (reason: string) => void): () => void {
+  threatEventCallbacks.push(callback);
+  return () => {
+    threatEventCallbacks = threatEventCallbacks.filter((cb) => cb !== callback);
+  };
+}
 
 // Initialize listener for hash-based bridge
 export function initNativeBridge() {
@@ -116,6 +124,15 @@ export function initNativeBridge() {
         }
       } catch (e) {
         console.error("Failed to parse ble_event", e);
+      }
+      history.replaceState(null, '', window.location.pathname + window.location.search);
+    }
+    else if (hash.includes('threat_event=')) {
+      try {
+        const payloadStr = hash.replace('#threat_event=', '');
+        threatEventCallbacks.forEach(cb => cb(payloadStr));
+      } catch (e) {
+        console.error("Failed to parse threat_event", e);
       }
       history.replaceState(null, '', window.location.pathname + window.location.search);
     }

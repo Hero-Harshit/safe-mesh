@@ -103,7 +103,14 @@ export const EmergencyContactsModal: React.FC<EmergencyContactsModalProps> = ({
   };
 
   return (
-    <div className="safetymesh-modal-backdrop" onClick={onClose}>
+    <div 
+      className="safetymesh-modal-backdrop" 
+      onClick={(e) => {
+        if (e.target === e.currentTarget) {
+          onClose();
+        }
+      }}
+    >
       <div className="safetymesh-modal-sheet" onClick={(e) => e.stopPropagation()}>
         <div className="modal-pill-indicator"></div>
 

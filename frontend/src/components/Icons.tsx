@@ -119,3 +119,25 @@ export const TimerIcon: React.FC<IconProps> = ({ size = 20, color = '#3B82F6', .
     <path d="M14 2H10" />
   </svg>
 );
+
+export const LockIcon: React.FC<IconProps> = ({ size = 20, color = '#F59E0B', ...props }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+    <rect x="3" y="11" width="18" height="11" rx="2" ry="2" fill={color} fillOpacity="0.15" />
+    <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+  </svg>
+);
+
+export const MicIcon: React.FC<IconProps> = ({ size = 20, color = '#10B981', ...props }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+    <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" fill={color} fillOpacity="0.15" />
+    <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+    <line x1="12" x2="12" y1="19" y2="22" />
+  </svg>
+);
+
+export const ActivityPulseIcon: React.FC<IconProps> = ({ size = 20, color = '#3B82F6', ...props }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+    <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+  </svg>
+);
+

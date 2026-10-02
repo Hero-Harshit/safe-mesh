@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { SettingsGearIcon, ShieldCheckIcon, UsersIcon } from './Icons';
+import { SettingsGearIcon, ShieldCheckIcon, UsersIcon, LockIcon } from './Icons';
 import { subscribePermissions, requestSmsPermission } from '../services/permissions';
 import type { SafetyMeshPermissionsState } from '../services/permissions';
 import ProfileEditModal from './ProfileEditModal';
+import PinSetupModal from './PinSetupModal';
 
 interface SettingsModalProps {
   onClose: () => void;
@@ -12,6 +13,7 @@ interface SettingsModalProps {
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose, onShowToast, onOpenContacts }) => {
   const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [isSettingPins, setIsSettingPins] = useState(false);
   const [profileData, setProfileData] = useState({
     fullName: 'Unknown User',
     phone: '',
@@ -64,22 +66,74 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose, onShowToa
   };
 
 
-  return (
-    <>
-    {isEditingProfile && (
-      <ProfileEditModal
-        initialData={profileData}
-        onClose={() => setIsEditingProfile(false)}
-        onSave={(newData) => {
-          setProfileData(newData);
-          localStorage.setItem('safetymesh_profile', JSON.stringify(newData));
+    const handleOpenPins = () => {
+      window.history.pushState({ safetymesh_modal: 'settings', submodal: 'pins' }, '');
+      setIsSettingPins(true);
+    };
+
+    const handleClosePins = () => {
+      if (window.history.state?.submodal === 'pins') {
+        window.history.back();
+      } else {
+        setIsSettingPins(false);
+      }
+    };
+
+    const handleOpenProfile = () => {
+      window.history.pushState({ safetymesh_modal: 'settings', submodal: 'profile' }, '');
+      setIsEditingProfile(true);
+    };
+
+    const handleCloseProfile = () => {
+      if (window.history.state?.submodal === 'profile') {
+        window.history.back();
+      } else {
+        setIsEditingProfile(false);
+      }
+    };
+
+    useEffect(() => {
+      const handleSubmodalPopState = (e: PopStateEvent) => {
+        if (!e.state || e.state.submodal !== 'pins') {
+          setIsSettingPins(false);
+        }
+        if (!e.state || e.state.submodal !== 'profile') {
           setIsEditingProfile(false);
-          onShowToast('Profile updated');
+        }
+      };
+      window.addEventListener('popstate', handleSubmodalPopState);
+      return () => window.removeEventListener('popstate', handleSubmodalPopState);
+    }, []);
+
+    return (
+      <>
+      {isEditingProfile && (
+        <ProfileEditModal
+          initialData={profileData}
+          onClose={handleCloseProfile}
+          onSave={(newData) => {
+            setProfileData(newData);
+            localStorage.setItem('safetymesh_profile', JSON.stringify(newData));
+            handleCloseProfile();
+            onShowToast('Profile updated');
+          }}
+        />
+      )}
+      {isSettingPins && (
+        <PinSetupModal
+          onShowToast={onShowToast}
+          onClose={handleClosePins}
+        />
+      )}
+      <div 
+        className="safetymesh-modal-backdrop" 
+        onClick={(e) => {
+          if (e.target === e.currentTarget) {
+            onClose();
+          }
         }}
-      />
-    )}
-    <div className="safetymesh-modal-backdrop" onClick={onClose}>
-      <div className="safetymesh-modal-sheet" onClick={(e) => e.stopPropagation()}>
+      >
+        <div className="safetymesh-modal-sheet" onClick={(e) => e.stopPropagation()}>
         <div className="modal-pill-indicator"></div>
 
         <div className="modal-sheet-header">
@@ -99,7 +153,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose, onShowToa
 
         <div className="modal-sheet-content">
           {/* User profile card */}
-          <div className="settings-profile-card" onClick={() => setIsEditingProfile(true)} style={{ cursor: 'pointer' }}>
+          <div className="settings-profile-card" onClick={handleOpenProfile} style={{ cursor: 'pointer' }}>
 
             <div className="profile-details">
               <div className="profile-name-row">
@@ -118,13 +172,26 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose, onShowToa
             <div 
               className="setting-toggle-row" 
               onClick={onOpenContacts} 
-              style={{ cursor: 'pointer', background: 'rgba(139, 92, 246, 0.1)', border: '1px solid rgba(139, 92, 246, 0.2)', padding: '12px 16px', borderRadius: '12px', marginBottom: '16px' }}
+              style={{ cursor: 'pointer', background: 'rgba(139, 92, 246, 0.1)', border: '1px solid rgba(139, 92, 246, 0.2)', padding: '12px 16px', borderRadius: '12px', marginBottom: '12px' }}
             >
               <div className="setting-text">
                 <span className="setting-label" style={{ color: '#8B5CF6', display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <UsersIcon size={18} color="#8B5CF6" /> Manage Emergency Contacts
                 </span>
                 <span className="setting-desc">Set your primary distress contacts</span>
+              </div>
+            </div>
+
+            <div 
+              className="setting-toggle-row" 
+              onClick={handleOpenPins} 
+              style={{ cursor: 'pointer', background: 'rgba(245, 158, 11, 0.1)', border: '1px solid rgba(245, 158, 11, 0.2)', padding: '12px 16px', borderRadius: '12px', marginBottom: '16px' }}
+            >
+              <div className="setting-text">
+                <span className="setting-label" style={{ color: '#F59E0B', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <LockIcon size={18} color="#F59E0B" /> Manage Security PINs
+                </span>
+                <span className="setting-desc">Set Actual & Duress PINs for Safe Timer</span>
               </div>
             </div>
 

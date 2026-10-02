@@ -72,11 +72,55 @@
 html,
 body {
   min-height: 100%;
+  font-size: 16px;
   background-color: var(--color-canvas);
   color: var(--text-primary);
   font-family: var(--font-family);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* Smart Scaling for Large/Tall Phones (iPhone 14/15/16 Pro Max, etc) */
+@media screen and (min-width: 400px) and (min-height: 800px) {
+  html, body {
+    font-size: 17.5px;
+  }
+}
+
+@media screen and (min-width: 428px) and (min-height: 900px) {
+  html, body {
+    font-size: 19px;
+  }
+}
+
+/* Smart Scaling Down for Small/Short Phones (iPhone SE, etc) */
+@media screen and (max-height: 700px) {
+  html, body {
+    font-size: 13.5px;
+  }
+  
+  .safetymesh-dashboard-shell {
+    padding: 2vh 12px 1vh;
+  }
+  
+  .shortcut-card.compact-card {
+    min-height: 14vh;
+    padding: 2vh 4px 1vh;
+  }
+  
+  .compact-card .shortcut-icon-circle {
+    width: 6vh;
+    height: 6vh;
+  }
+  
+  /* Make SOS button dynamic on small screens */
+  .sos-button-wrapper { width: 32vh; height: 32vh; }
+  .sos-glow-outer { width: 31vh; height: 31vh; }
+  .sos-ring.ring-level-3 { width: 32vh; height: 32vh; }
+  .sos-ring.ring-level-2 { width: 28vh; height: 28vh; }
+  .sos-ring.ring-level-1 { width: 25vh; height: 25vh; }
+  .hero-sos-button { width: 23vh; height: 23vh; }
+  .sos-button-gloss { width: 15vh; height: 7vh; }
 }
 
 /* Subtle, calm ambient background gradient */
@@ -111,12 +155,14 @@ body {
   width: 100%;
   max-width: var(--max-app-width);
   margin: 0 auto;
-  padding: 14px 12px 32px;
+  padding: 14px 12px 14px;
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  justify-content: space-between;
   box-sizing: border-box;
-  min-height: 100dvh;
+  height: 100dvh;
+  max-height: 100dvh;
+  overflow: hidden;
 }
 
 /* ============================================================
@@ -1021,6 +1067,9 @@ body {
   justify-content: center;
   z-index: 200;
   animation: backdrop-fade 0.2s ease-out;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 
 @keyframes backdrop-fade {
@@ -1041,6 +1090,7 @@ body {
   animation: sheet-slide-up 0.28s var(--ease-spring);
   display: flex;
   flex-direction: column;
+  cursor: default;
 }
 
 @keyframes sheet-slide-up {
