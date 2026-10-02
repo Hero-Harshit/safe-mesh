@@ -61,32 +61,56 @@ export const AmbientGuardCard: React.FC<AmbientGuardCardProps> = ({
     return () => window.removeEventListener('ambient_guard_changed', handleSettingsChange);
   }, [isEnabled]);
 
-  // Start Audio Monitoring (Exact proven Web Audio setup that powered the original live meter)
+  // Start Audio Monitoring (Robust Web Audio & Native Android Mic Integration)
   const startAudioMonitoring = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      micStreamRef.current = stream;
-      setHasMicPermission(true);
-
+      // 1. Ensure AudioContext is initialized & active
       const AudioContextClass = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-      const audioCtx = new AudioContextClass();
-      audioContextRef.current = audioCtx;
-
+      if (!audioContextRef.current || audioContextRef.current.state === 'closed') {
+        audioContextRef.current = new AudioContextClass();
+      }
+      const audioCtx = audioContextRef.current;
       if (audioCtx.state === 'suspended') {
-        audioCtx.resume().catch(() => {});
+        try { await audioCtx.resume(); } catch {}
       }
 
+      // 2. Request microphone stream
+      if (!navigator.mediaDevices?.getUserMedia) {
+        throw new Error('getUserMedia unsupported');
+      }
+
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: false,
+          noiseSuppression: false,
+          autoGainControl: true,
+        },
+      });
+
+      micStreamRef.current = stream;
+      setHasMicPermission(true);
+      
+
+      // 3. Connect analyser
       const analyser = audioCtx.createAnalyser();
       analyser.fftSize = 256;
-      analyser.smoothingTimeConstant = 0.6;
+      analyser.smoothingTimeConstant = 0.5;
       analyserRef.current = analyser;
 
       const source = audioCtx.createMediaStreamSource(stream);
       source.connect(analyser);
 
       startDecibelAnalysis();
-    } catch {
+    } catch (err: any) {
+      console.warn('Microphone access in AmbientGuardCard:', err);
       setHasMicPermission(false);
+      
+
+      // If in native Android app, prompt native emergency permissions which covers RECORD_AUDIO
+      const bridge = typeof window !== 'undefined' ? ((window as any).AndroidSafeMesh || (window as any).Android) : null;
+      if (bridge && typeof bridge.requestEmergencyPermissions === 'function') {
+        try { bridge.requestEmergencyPermissions(); } catch {}
+      }
     }
   };
 
@@ -119,9 +143,17 @@ export const AmbientGuardCard: React.FC<AmbientGuardCardProps> = ({
     const analyser = analyserRef.current;
     const bufferLength = analyser.frequencyBinCount;
     const dataArray = new Uint8Array(bufferLength);
+    let renderCycle = 0;
 
     const render = () => {
       animationFrameRef.current = requestAnimationFrame(render);
+
+      // Periodically check if AudioContext was suspended by OS/backgrounding
+      renderCycle++;
+      if (renderCycle % 60 === 0 && audioContextRef.current && audioContextRef.current.state === 'suspended') {
+        audioContextRef.current.resume().catch(() => {});
+      }
+
       analyser.getByteTimeDomainData(dataArray);
 
       // Compute RMS volume exactly like the working waveform
@@ -133,7 +165,6 @@ export const AmbientGuardCard: React.FC<AmbientGuardCardProps> = ({
       const rms = Math.sqrt(sum / bufferLength);
 
       // Convert to live, dynamic dB scale (35 dB baseline to 100 dB)
-      // Uses responsive multiplier so even normal speech and soft sounds immediately react
       let currentDb = 35;
       if (rms > 0.0005) {
         currentDb = Math.min(100, Math.max(35, Math.round(35 + rms * 280)));
