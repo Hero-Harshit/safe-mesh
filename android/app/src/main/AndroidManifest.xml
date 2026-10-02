@@ -39,11 +39,8 @@
     <uses-permission android:name="android.permission.BLUETOOTH_ADVERTISE" />
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
     
-    
+    <uses-feature android:name="android.hardware.camera.flash" android:required="false" />
 
-    
-
-    
 
     <application
         android:name="Application"
@@ -271,6 +268,16 @@
                 <data android:scheme="safehelp" android:host="ble_stop" />
                 <data android:scheme="safehelp" android:host="ble_scan_start" />
                 <data android:scheme="safehelp" android:host="ble_scan_stop" />
+            </intent-filter>
+        </activity>
+        
+        <activity android:name=".SirenActionActivity" android:exported="true" android:theme="@android:style/Theme.Translucent.NoTitleBar">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="safehelp" android:host="siren_start" />
+                <data android:scheme="safehelp" android:host="siren_stop" />
             </intent-filter>
         </activity>
         

@@ -341,3 +341,21 @@ export async function startEmergencyCall(phoneNumber: string = '112', delayMs: n
     setTimeout(resolve, 500);
   });
 }
+
+export function startSiren() {
+  if (!isAndroid()) return;
+  try {
+    window.location.href = "intent://siren_start#Intent;scheme=safehelp;package=com.safehelp.app;end";
+  } catch (e) {
+    console.warn("Failed to start siren natively");
+  }
+}
+
+export function stopSiren() {
+  if (!isAndroid()) return;
+  try {
+    window.location.href = "intent://siren_stop#Intent;scheme=safehelp;package=com.safehelp.app;end";
+  } catch (e) {
+    console.warn("Failed to stop siren natively");
+  }
+}
