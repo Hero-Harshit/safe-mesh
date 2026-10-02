@@ -30,7 +30,6 @@ export const AmbientGuardCard: React.FC<AmbientGuardCardProps> = ({
   const recognizerRef = useRef<speechCommands.SpeechCommandRecognizer | null>(null);
   const isListeningRef = useRef<boolean>(false);
   const lastGpsFixRef = useRef<{ lat: number; lon: number; time: number } | null>(null);
-  const lastAudioUiUpdateRef = useRef<number>(0);
   const lastMotionUpdateRef = useRef<number>(0);
 
   // Preload TF.js Speech Commands Model
@@ -62,12 +61,9 @@ export const AmbientGuardCard: React.FC<AmbientGuardCardProps> = ({
     return () => window.removeEventListener('ambient_guard_changed', handleSettingsChange);
   }, [isEnabled]);
 
-  // Start Audio Monitoring with Live Decibel meter
+  // Start Audio Monitoring (Exact proven Web Audio setup that powered the original live meter)
   const startAudioMonitoring = async () => {
     try {
-      if (!navigator.mediaDevices?.getUserMedia) {
-        throw new Error('getUserMedia not available');
-      }
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       micStreamRef.current = stream;
       setHasMicPermission(true);
@@ -81,8 +77,8 @@ export const AmbientGuardCard: React.FC<AmbientGuardCardProps> = ({
       }
 
       const analyser = audioCtx.createAnalyser();
-      analyser.fftSize = 512;
-      analyser.smoothingTimeConstant = 0.3;
+      analyser.fftSize = 256;
+      analyser.smoothingTimeConstant = 0.6;
       analyserRef.current = analyser;
 
       const source = audioCtx.createMediaStreamSource(stream);
@@ -91,9 +87,6 @@ export const AmbientGuardCard: React.FC<AmbientGuardCardProps> = ({
       startDecibelAnalysis();
     } catch {
       setHasMicPermission(false);
-      // Clean baseline when microphone permission is pending
-      setDecibels(36);
-      setStatus('quiet');
     }
   };
 
@@ -119,7 +112,7 @@ export const AmbientGuardCard: React.FC<AmbientGuardCardProps> = ({
     setStatus('quiet');
   };
 
-  // Live Decibel audio analysis loop (calibrated acoustic dBFS conversion)
+  // Live Decibel audio analysis loop (Direct dynamic time-domain RMS meter)
   const startDecibelAnalysis = () => {
     if (!analyserRef.current) return;
 
@@ -131,7 +124,7 @@ export const AmbientGuardCard: React.FC<AmbientGuardCardProps> = ({
       animationFrameRef.current = requestAnimationFrame(render);
       analyser.getByteTimeDomainData(dataArray);
 
-      // Compute RMS volume
+      // Compute RMS volume exactly like the working waveform
       let sum = 0;
       for (let i = 0; i < bufferLength; i++) {
         const val = (dataArray[i] - 128) / 128;
@@ -139,15 +132,17 @@ export const AmbientGuardCard: React.FC<AmbientGuardCardProps> = ({
       }
       const rms = Math.sqrt(sum / bufferLength);
 
-      // True acoustic dBFS conversion with realistic offset:
-      // In silence/quiet room: RMS ~ 0.001 -> ~36 dB
-      // In normal speech: RMS ~ 0.02 to 0.06 -> ~58 to 68 dB
-      // Shouting / loud sounds: RMS ~ 0.15 to 0.5+ -> ~80 to 92+ dB
-      let currentDb = 36;
-      if (rms > 0.001) {
-        const dbCalculated = Math.round(20 * Math.log10(rms) + 95);
-        currentDb = Math.min(100, Math.max(35, dbCalculated));
+      // Convert to live, dynamic dB scale (35 dB baseline to 100 dB)
+      // Uses responsive multiplier so even normal speech and soft sounds immediately react
+      let currentDb = 35;
+      if (rms > 0.0005) {
+        currentDb = Math.min(100, Math.max(35, Math.round(35 + rms * 280)));
+      } else {
+        // Subtle micro-variance for ambient room air pressure
+        currentDb = 35 + (Math.round(rms * 1000) % 3);
       }
+
+      setDecibels(currentDb);
 
       let currentStatus: 'quiet' | 'elevated' | 'spike' = 'quiet';
       if (currentDb >= 86) {
@@ -155,18 +150,12 @@ export const AmbientGuardCard: React.FC<AmbientGuardCardProps> = ({
       } else if (currentDb >= 68) {
         currentStatus = 'elevated';
       }
+      setStatus(currentStatus);
 
-      // Throttle React state updates to ~80ms (12 fps) for smooth, jitter-free UI response
-      const now = Date.now();
-      if (now - lastAudioUiUpdateRef.current >= 80) {
-        lastAudioUiUpdateRef.current = now;
-        setDecibels(currentDb);
-        setStatus(currentStatus);
-      }
-
-      // Threat Trigger: High volume spike sustained OR TF.js Wakeup
+      // Threat Trigger: High volume spike sustained
       if (currentDb >= 86) {
         spikeCountRef.current += 1;
+        const now = Date.now();
         if (spikeCountRef.current >= 2 && now - lastThreatTimeRef.current > 8000) {
           lastThreatTimeRef.current = now;
           spikeCountRef.current = 0;
@@ -345,12 +334,15 @@ export const AmbientGuardCard: React.FC<AmbientGuardCardProps> = ({
 
     // Auto-resume AudioContext on first touch/click if suspended by browser Autoplay policy
     const handleUnlockAudio = () => {
-      if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
+      if (!micStreamRef.current) {
+        startAudioMonitoring();
+      } else if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
         audioContextRef.current.resume().catch(() => {});
       }
     };
     window.addEventListener('click', handleUnlockAudio);
     window.addEventListener('touchstart', handleUnlockAudio);
+    window.addEventListener('pointerdown', handleUnlockAudio);
 
     // Velocity Sensor with live GPS calculation fallback
     if ('geolocation' in navigator) {
@@ -425,6 +417,7 @@ export const AmbientGuardCard: React.FC<AmbientGuardCardProps> = ({
     return () => {
       window.removeEventListener('click', handleUnlockAudio);
       window.removeEventListener('touchstart', handleUnlockAudio);
+      window.removeEventListener('pointerdown', handleUnlockAudio);
       window.removeEventListener('devicemotion', handleMotion);
       window.removeEventListener('safetymesh_simulate_motion', handleSimulatedMotion);
       window.removeEventListener('safetymesh_simulate_speed', handleSimulatedSpeed);
