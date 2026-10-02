@@ -55,8 +55,8 @@ android {
         applicationId "com.safehelp.app"
         minSdkVersion 21
         targetSdkVersion 34
-        versionCode 3
-        versionName "1.0.2"
+        versionCode 4
+        versionName "2.0.0"
 
         // The name for the application
         resValue "string", "appName", twaManifest.name

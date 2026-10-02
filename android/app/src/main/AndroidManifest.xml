@@ -69,6 +69,7 @@
     <application
         android:name=".Application"
         android:allowBackup="true"
+        android:hardwareAccelerated="true"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/appName"
         
@@ -119,6 +120,9 @@
             android:alwaysRetainTaskState="true"
             android:theme="@android:style/Theme.DeviceDefault.NoActionBar"
             android:label="@string/launcherName"
+            android:hardwareAccelerated="true"
+            android:configChanges="orientation|screenSize|keyboardHidden|screenLayout"
+            android:windowSoftInputMode="adjustResize"
             android:exported="true">
             <meta-data android:name="android.support.customtabs.trusted.DEFAULT_URL"
                 android:value="@string/launchUrl" />

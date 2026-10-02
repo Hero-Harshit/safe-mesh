@@ -46,7 +46,7 @@ jobs:
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v1.0.2
-          name: SafetyMesh Release v1.0.2
+          tag_name: v2.0
+          name: Version 2.0
           files: android/Safety-Mesh.apk
           make_latest: true
