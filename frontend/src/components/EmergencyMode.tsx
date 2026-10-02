@@ -139,7 +139,7 @@ export const EmergencyMode: React.FC<EmergencyModeProps> = ({
 
     setSmsStatus('Sending...');
     try {
-      const listenUrl = `https://safety-mesh.vercel.app/listen?room=${roomIdRef.current}`;
+      const listenUrl = `https://safety-mesh.vercel.app/?room=${roomIdRef.current}`;
       const result = await sendEmergencySms(
         contacts.map(c => ({ name: c.name, phone: c.phone })),
         location?.mapsUrl || null,
