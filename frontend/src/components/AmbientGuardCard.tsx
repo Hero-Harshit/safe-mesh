@@ -30,6 +30,8 @@ export const AmbientGuardCard: React.FC<AmbientGuardCardProps> = ({
   const recognizerRef = useRef<speechCommands.SpeechCommandRecognizer | null>(null);
   const isListeningRef = useRef<boolean>(false);
   const lastGpsFixRef = useRef<{ lat: number; lon: number; time: number } | null>(null);
+  const lastAudioUiUpdateRef = useRef<number>(0);
+  const lastMotionUpdateRef = useRef<number>(0);
 
   // Preload TF.js Speech Commands Model
   useEffect(() => {
@@ -79,8 +81,8 @@ export const AmbientGuardCard: React.FC<AmbientGuardCardProps> = ({
       }
 
       const analyser = audioCtx.createAnalyser();
-      analyser.fftSize = 256;
-      analyser.smoothingTimeConstant = 0.4;
+      analyser.fftSize = 512;
+      analyser.smoothingTimeConstant = 0.3;
       analyserRef.current = analyser;
 
       const source = audioCtx.createMediaStreamSource(stream);
@@ -89,18 +91,9 @@ export const AmbientGuardCard: React.FC<AmbientGuardCardProps> = ({
       startDecibelAnalysis();
     } catch {
       setHasMicPermission(false);
-      // In case mic hardware permission is pending or denied, fluctuate naturally (36-41 dB)
-      let lastTick = 0;
-      const renderAmbientFallback = () => {
-        animationFrameRef.current = requestAnimationFrame(renderAmbientFallback);
-        const now = Date.now();
-        if (now - lastTick > 300) {
-          lastTick = now;
-          const ambient = 36 + Math.floor(Math.sin(now * 0.003) * 3 + Math.random() * 4);
-          setDecibels(ambient);
-        }
-      };
-      renderAmbientFallback();
+      // Clean baseline when microphone permission is pending
+      setDecibels(36);
+      setStatus('quiet');
     }
   };
 
@@ -126,7 +119,7 @@ export const AmbientGuardCard: React.FC<AmbientGuardCardProps> = ({
     setStatus('quiet');
   };
 
-  // Live Decibel audio analysis loop (no canvas requirement)
+  // Live Decibel audio analysis loop (calibrated acoustic dBFS conversion)
   const startDecibelAnalysis = () => {
     if (!analyserRef.current) return;
 
@@ -145,9 +138,16 @@ export const AmbientGuardCard: React.FC<AmbientGuardCardProps> = ({
         sum += val * val;
       }
       const rms = Math.sqrt(sum / bufferLength);
-      // Convert to estimated dB (approx 35dB - 100dB scale)
-      const currentDb = Math.min(100, Math.max(35, Math.round(35 + rms * 140)));
-      setDecibels(currentDb);
+
+      // True acoustic dBFS conversion with realistic offset:
+      // In silence/quiet room: RMS ~ 0.001 -> ~36 dB
+      // In normal speech: RMS ~ 0.02 to 0.06 -> ~58 to 68 dB
+      // Shouting / loud sounds: RMS ~ 0.15 to 0.5+ -> ~80 to 92+ dB
+      let currentDb = 36;
+      if (rms > 0.001) {
+        const dbCalculated = Math.round(20 * Math.log10(rms) + 95);
+        currentDb = Math.min(100, Math.max(35, dbCalculated));
+      }
 
       let currentStatus: 'quiet' | 'elevated' | 'spike' = 'quiet';
       if (currentDb >= 86) {
@@ -155,12 +155,18 @@ export const AmbientGuardCard: React.FC<AmbientGuardCardProps> = ({
       } else if (currentDb >= 68) {
         currentStatus = 'elevated';
       }
-      setStatus(currentStatus);
+
+      // Throttle React state updates to ~80ms (12 fps) for smooth, jitter-free UI response
+      const now = Date.now();
+      if (now - lastAudioUiUpdateRef.current >= 80) {
+        lastAudioUiUpdateRef.current = now;
+        setDecibels(currentDb);
+        setStatus(currentStatus);
+      }
 
       // Threat Trigger: High volume spike sustained OR TF.js Wakeup
       if (currentDb >= 86) {
         spikeCountRef.current += 1;
-        const now = Date.now();
         if (spikeCountRef.current >= 2 && now - lastThreatTimeRef.current > 8000) {
           lastThreatTimeRef.current = now;
           spikeCountRef.current = 0;
@@ -188,9 +194,9 @@ export const AmbientGuardCard: React.FC<AmbientGuardCardProps> = ({
               }
               // If distress words detected with high confidence
               if (maxScore > 0.8 && (bestWord === 'stop' || bestWord === 'no' || bestWord === 'help')) {
-                const now = Date.now();
-                if (now - lastThreatTimeRef.current > 8000) {
-                  lastThreatTimeRef.current = now;
+                const threatTime = Date.now();
+                if (threatTime - lastThreatTimeRef.current > 8000) {
+                  lastThreatTimeRef.current = threatTime;
                   onThreatDetected(`AI Detected Distress Word: "${bestWord.toUpperCase()}"`);
                 }
               }
@@ -230,18 +236,35 @@ export const AmbientGuardCard: React.FC<AmbientGuardCardProps> = ({
     const speedHistory: { time: number; speed: number }[] = [];
 
     const handleMotion = (event: DeviceMotionEvent) => {
-      const acc = event.acceleration || event.accelerationIncludingGravity;
+      // Prioritize accelerationIncludingGravity to read true physical dynamic G-Force:
+      // At rest on table/hand: ~9.81 m/s² (~1.00 G)
+      // Tilting, walking, moving, waving: dynamically fluctuates (0.85 G to 1.35 G)
+      // Violent snatch / sudden jerk: spikes > 28 m/s² (> 2.85 G)
+      let acc = event.accelerationIncludingGravity;
+      const isValid = (a: DeviceMotionEventAcceleration | null | undefined) => 
+        a && (typeof a.x === 'number' || typeof a.y === 'number' || typeof a.z === 'number') &&
+        (a.x !== null || a.y !== null || a.z !== null);
+
+      if (!isValid(acc)) {
+        acc = event.acceleration;
+      }
+
       if (!acc) return;
 
-      const x = acc.x || 0;
-      const y = acc.y || 0;
-      const z = acc.z || 0;
+      const x = typeof acc.x === 'number' && !isNaN(acc.x) ? acc.x : 0;
+      const y = typeof acc.y === 'number' && !isNaN(acc.y) ? acc.y : 0;
+      const z = typeof acc.z === 'number' && !isNaN(acc.z) ? acc.z : 0;
 
-      // Calculate acceleration magnitude
+      // Calculate vector acceleration magnitude
       const totalAcc = Math.sqrt(x * x + y * y + z * z);
-      const currentG = totalAcc > 0 ? totalAcc / 9.80665 : 1.0;
-      setGForce(Math.round(currentG * 100) / 100);
       const now = Date.now();
+
+      // Dynamic G-force reading (fluctuates live with tilt, movement and acceleration)
+      if (totalAcc > 0.1 && now - lastMotionUpdateRef.current >= 80) {
+        lastMotionUpdateRef.current = now;
+        const currentG = totalAcc / 9.80665;
+        setGForce(Math.round(currentG * 100) / 100);
+      }
 
       // Sharp jerk / phone snatch threshold (> 28 m/s²)
       if (totalAcc > 28 && now - lastThreatTimeRef.current > 8000) {
@@ -418,6 +441,9 @@ export const AmbientGuardCard: React.FC<AmbientGuardCardProps> = ({
     <>
       <div
         onClick={() => {
+          if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
+            audioContextRef.current.resume().catch(() => {});
+          }
           if (!micStreamRef.current) {
             startAudioMonitoring();
           }
