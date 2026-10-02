@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { SettingsGearIcon, ShieldCheckIcon } from './Icons';
+import { SettingsGearIcon, ShieldCheckIcon, UsersIcon } from './Icons';
 import { subscribePermissions, requestSmsPermission } from '../services/permissions';
 import type { SafetyMeshPermissionsState } from '../services/permissions';
 import ProfileEditModal from './ProfileEditModal';
@@ -7,9 +7,10 @@ import ProfileEditModal from './ProfileEditModal';
 interface SettingsModalProps {
   onClose: () => void;
   onShowToast: (msg: string) => void;
+  onOpenContacts?: () => void;
 }
 
-export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose, onShowToast }) => {
+export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose, onShowToast, onOpenContacts }) => {
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [profileData, setProfileData] = useState({
     fullName: 'Unknown User',
@@ -113,6 +114,19 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose, onShowToa
           {/* Preferences list */}
           <div className="settings-section">
             <span className="settings-section-title">EMERGENCY PREFERENCES</span>
+
+            <div 
+              className="setting-toggle-row" 
+              onClick={onOpenContacts} 
+              style={{ cursor: 'pointer', background: 'rgba(139, 92, 246, 0.1)', border: '1px solid rgba(139, 92, 246, 0.2)', padding: '12px 16px', borderRadius: '12px', marginBottom: '16px' }}
+            >
+              <div className="setting-text">
+                <span className="setting-label" style={{ color: '#8B5CF6', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <UsersIcon size={18} color="#8B5CF6" /> Manage Emergency Contacts
+                </span>
+                <span className="setting-desc">Set your primary distress contacts</span>
+              </div>
+            </div>
 
             <div className="setting-toggle-row">
               <div className="setting-text">

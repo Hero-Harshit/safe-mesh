@@ -1,28 +1,28 @@
 import React from 'react';
 import {
   NavigationArrowIcon,
-  UsersIcon,
   GuardianMeshIcon,
   ChevronRightIcon,
-  ToolkitIcon
+  ToolkitIcon,
+  TimerIcon
 } from './Icons';
 
 interface SafetyShortcutsProps {
   onSafeRouteClick: () => void;
-  onContactsClick: () => void;
   onGuardianClick: () => void;
+  onTimerClick: () => void;
   onToolkitClick: () => void;
 }
 
 export const SafetyShortcuts: React.FC<SafetyShortcutsProps> = ({
   onSafeRouteClick,
-  onContactsClick,
   onGuardianClick,
+  onTimerClick,
   onToolkitClick,
 }) => {
   return (
     <section className="safety-shortcuts-container" aria-label="Safety Shortcuts">
-      {/* Primary Row: Safe Route + Emergency Contacts */}
+      {/* Primary Row: Safe Route + Nearby Guardian */}
       <div className="shortcuts-row-two-col">
         <button
           className="shortcut-card primary-card"
@@ -43,26 +43,6 @@ export const SafetyShortcuts: React.FC<SafetyShortcutsProps> = ({
 
         <button
           className="shortcut-card primary-card"
-          onClick={onContactsClick}
-          aria-label="Manage Emergency Contacts"
-        >
-          <div className="shortcut-icon-circle bg-purple-tint">
-            <UsersIcon size={20} color="#8B5CF6" />
-          </div>
-          <div className="shortcut-text-block">
-            <span className="shortcut-title">Emergency Contacts</span>
-            <span className="shortcut-subtitle">Reach your people</span>
-          </div>
-          <div className="shortcut-arrow">
-            <ChevronRightIcon size={16} color="#94A3B8" />
-          </div>
-        </button>
-      </div>
-
-      {/* Secondary Row: Nearby Guardian */}
-      <div className="shortcuts-row-two-col">
-        <button
-          className="shortcut-card primary-card"
           onClick={onGuardianClick}
           aria-label="Open Nearby Guardian mesh network"
         >
@@ -72,6 +52,26 @@ export const SafetyShortcuts: React.FC<SafetyShortcutsProps> = ({
           <div className="shortcut-text-block">
             <span className="shortcut-title">Nearby Guardian</span>
             <span className="shortcut-subtitle">People around you</span>
+          </div>
+          <div className="shortcut-arrow">
+            <ChevronRightIcon size={16} color="#94A3B8" />
+          </div>
+        </button>
+      </div>
+
+      {/* Secondary Row: Safety Timer + Toolkit */}
+      <div className="shortcuts-row-two-col">
+        <button
+          className="shortcut-card primary-card"
+          onClick={onTimerClick}
+          aria-label="Open Safety Timer"
+        >
+          <div className="shortcut-icon-circle bg-blue-tint">
+            <TimerIcon size={20} color="#3B82F6" />
+          </div>
+          <div className="shortcut-text-block">
+            <span className="shortcut-title">Safety Timer</span>
+            <span className="shortcut-subtitle">Dead man's switch</span>
           </div>
           <div className="shortcut-arrow">
             <ChevronRightIcon size={16} color="#94A3B8" />

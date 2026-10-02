@@ -109,3 +109,13 @@ export const ToolkitIcon: React.FC<IconProps> = ({ size = 20, color = '#3B82F6',
     <rect x="3" y="14" width="7" height="7" rx="1.5" fill={color} fillOpacity="0.15" />
   </svg>
 );
+
+export const TimerIcon: React.FC<IconProps> = ({ size = 20, color = '#3B82F6', ...props }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+    <circle cx="12" cy="13" r="8" fill={color} fillOpacity="0.15" />
+    <path d="M12 9v4l2 2" />
+    <path d="M5 3L2 6" />
+    <path d="M19 3l3 3" />
+    <path d="M14 2H10" />
+  </svg>
+);
