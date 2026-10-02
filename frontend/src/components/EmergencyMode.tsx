@@ -3,9 +3,11 @@ import { PhoneCallIcon, LocationPinIcon, UsersIcon, ShieldCheckIcon } from './Ic
 import type { EmergencyContact } from '../services/emergency';
 import { triggerHaptic } from '../services/emergency';
 import type { LocationData } from '../services/location';
-import { sendEmergencySms, startEmergencyBeacon, startEmergencyCall, cancelEmergencyCall, requestNativeEmergencyPermissions } from '../services/native';
+import { sendEmergencySms, startEmergencyBeacon, cancelEmergencyCall, requestNativeEmergencyPermissions } from '../services/native';
 import { getEscapeRoute } from '../services/safetyRoute';
 import type { EscapeRouteResponse } from '../services/safetyRoute';
+import { startLiveAudioBroadcast } from '../services/evidenceAudio';
+import type { AudioBroadcastSession } from '../services/evidenceAudio';
 
 interface EmergencyModeProps {
   location: LocationData | null;
@@ -20,6 +22,7 @@ export const EmergencyMode: React.FC<EmergencyModeProps> = ({
 }) => {
   const [secondsActive, setSecondsActive] = useState(0);
   const [smsStatus, setSmsStatus] = useState<string>('Sending...');
+  const [audioStreamStatus, setAudioStreamStatus] = useState<string>('Broadcasting live...');
   const [safeRouteState, setSafeRouteState] = useState<{
     loading: boolean;
     data: EscapeRouteResponse | null;
@@ -49,33 +52,43 @@ export const EmergencyMode: React.FC<EmergencyModeProps> = ({
   const smsTriggeredRef = React.useRef(false);
   const routeTriggeredRef = React.useRef(false);
   const beaconTriggeredRef = React.useRef(false);
-  const callTriggeredRef = React.useRef(false);
+
+  // Persistent room ID for the emergency broadcast session
+  const roomIdRef = React.useRef<string>(
+    'sos_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7)
+  );
+  const audioSessionRef = React.useRef<AudioBroadcastSession | null>(null);
 
   const primaryContact = contacts.find((c) => c.isPrimary) || contacts[0];
-  const emergencyTargetNumber = primaryContact?.phone || '';
-  const emergencyTargetName = primaryContact?.name ? `${primaryContact.name} (${primaryContact.phone})` : 'Primary Contact (Not Set)';
 
   useEffect(() => {
-    if (secondsActive === 0 && !callTriggeredRef.current && emergencyTargetNumber) {
-      // Fire immediately to prepare bridge, auto-dialing at 10 seconds (reduced from 20s)
-      startEmergencyCall(emergencyTargetNumber, 10000).catch(console.error);
-    }
+    // Start silent ambient audio broadcast and evidence recording immediately
+    startLiveAudioBroadcast(
+      roomIdRef.current,
+      location ? { lat: location.latitude, lng: location.longitude, accuracy: location.accuracy } : null,
+      (status) => setAudioStreamStatus(status)
+    )
+      .then((session) => {
+        audioSessionRef.current = session;
+      })
+      .catch((err) => {
+        console.warn('Live audio stream failed to start', err);
+      });
+
+    return () => {
+      cancelEmergencyCall();
+      if (audioSessionRef.current) {
+        audioSessionRef.current.stop().catch(console.error);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
     if (secondsActive === 5 && !level30Alert) {
       setLevel30Alert(true);
       triggerHaptic([50, 50, 50, 50, 50]);
     }
-    if (secondsActive === 10 && !callTriggeredRef.current) {
-      callTriggeredRef.current = true;
-
-      triggerHaptic([100, 100, 100, 100, 100]);
-    }
-  }, [secondsActive, level30Alert, emergencyTargetNumber]);
-
-  useEffect(() => {
-    return () => {
-      cancelEmergencyCall();
-    };
-  }, []);
+  }, [secondsActive, level30Alert]);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -95,6 +108,10 @@ export const EmergencyMode: React.FC<EmergencyModeProps> = ({
     if (!routeTriggeredRef.current && location) {
       routeTriggeredRef.current = true;
       triggerSafeRoute(location.latitude, location.longitude);
+    }
+
+    if (location && audioSessionRef.current) {
+      audioSessionRef.current.updateLocation(location.latitude, location.longitude, location.accuracy);
     }
 
     return () => clearInterval(timer);
@@ -122,9 +139,11 @@ export const EmergencyMode: React.FC<EmergencyModeProps> = ({
 
     setSmsStatus('Sending...');
     try {
+      const listenUrl = `https://safety-mesh.vercel.app/listen?room=${roomIdRef.current}`;
       const result = await sendEmergencySms(
         contacts.map(c => ({ name: c.name, phone: c.phone })),
-        location?.mapsUrl || null
+        location?.mapsUrl || null,
+        listenUrl
       );
       
       if (result.status === 'SUCCESS') {
@@ -133,7 +152,7 @@ export const EmergencyMode: React.FC<EmergencyModeProps> = ({
       } else if (result.status === 'PARTIAL_SUCCESS') {
         setSmsStatus('SMS PARTIALLY SENT');
       } else if (result.error === 'SMS_PERMISSION_DENIED') {
-        setSmsStatus('SMS PERMISSION DENIED');
+        setSmsStatus('SMS PERMISSION REQUIRED');
       } else {
         setSmsStatus('SMS FAILED');
       }
@@ -231,17 +250,17 @@ export const EmergencyMode: React.FC<EmergencyModeProps> = ({
 
         {/* Immediate Emergency Action Shortcuts */}
         <div className="emergency-action-stack">
-          {/* Level 3: Auto Emergency Call (T=10s) */}
-          <div className="emergency-hero-btn" style={{ cursor: 'default', backgroundColor: '#FFFFFF', border: '1px solid #E2E8F0', boxShadow: '0 4px 12px rgba(0,0,0,0.03)', color: '#1E293B' }}>
-            <div className="btn-icon-box" style={{ backgroundColor: '#F1F5F9' }}>
-              <PhoneCallIcon size={22} color="#475569" />
+          {/* Level 3: Silent Live Audio Streaming & Police Evidence Recording */}
+          <div className="emergency-hero-btn" style={{ cursor: 'default', backgroundColor: '#FFFFFF', border: '1px solid #FECACA', boxShadow: '0 4px 12px rgba(239,68,68,0.06)', color: '#1E293B' }}>
+            <div className="btn-icon-box" style={{ backgroundColor: '#FEF2F2' }}>
+              <span style={{ fontSize: '20px' }}>🎙️</span>
             </div>
             <div className="btn-copy">
-              <span className="btn-headline">{emergencyTargetNumber ? `Auto-Dial ${emergencyTargetName}` : 'Auto-Dial Unavailable'}</span>
+              <span className="btn-headline" style={{ color: '#DC2626' }}>LIVE AUDIO STREAM & EVIDENCE</span>
               <span className="btn-tagline">
-                {emergencyTargetNumber 
-                  ? (secondsActive < 10 ? `Will auto-dial in ${10 - secondsActive}s...` : 'Emergency call active in background.') 
-                  : 'Please add a primary contact to enable auto-dial.'}
+                {audioStreamStatus === 'STREAMING_ACTIVE' 
+                  ? 'Transmitting ambient audio to contact & logging police evidence.' 
+                  : 'Broadcasting live audio beacon to emergency room...'}
               </span>
             </div>
           </div>

@@ -287,7 +287,8 @@ export function requestNativeEmergencyPermissions(): void {
 
 export async function sendEmergencySms(
   contacts: { name: string; phone: string }[],
-  locationUrl: string | null
+  locationUrl: string | null,
+  listenUrl?: string | null
 ): Promise<SmsSendResult> {
   const bridge = getNativeBridge();
 
@@ -320,7 +321,7 @@ export async function sendEmergencySms(
         }
       } catch (e) {}
 
-      const message = `🚨 EMERGENCY ALERT - SAFEMESH 🚨\n${userName} is in danger and has activated their SOS alarm.\n\n📍 Live Location:\n${locationUrl || "Location tracking active - coordinates pending"}\n\nPlease take immediate emergency action.`;
+      const message = `🚨 EMERGENCY ALERT - SAFEMESH 🚨\n${userName} is in danger and triggered the SOS alarm.\n\n📍 Live Location:\n${locationUrl || "Location tracking active - coordinates pending"}${listenUrl ? `\n\n🎙️ Listen Live & Police Evidence:\n${listenUrl}` : ''}\n\nPlease take immediate emergency action.`;
 
       let allSuccess = true;
       let anySuccess = false;

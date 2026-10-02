@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import Home from './pages/Home';
 import StartupPermissionFlow from './components/StartupPermissionFlow';
+import EmergencyListener from './pages/EmergencyListener';
 import {
   subscribePermissions,
   getPermissionsState,
@@ -14,7 +15,13 @@ import { initNativeBridge, getNativeBridge, requestNativeEmergencyPermissions } 
 export default function App() {
   const [permissions, setPermissions] = useState<SafetyMeshPermissionsState>(getPermissionsState());
 
+  const urlParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : new URLSearchParams();
+  const roomParam = urlParams.get('room');
+  const isListenPage = typeof window !== 'undefined' && (window.location.pathname.startsWith('/listen') || !!roomParam);
+
   useEffect(() => {
+    if (isListenPage) return; // Don't run native bridge initialization on listener portal
+
     // INITIALIZE NATIVE BRIDGE FOR APP ACTIONS AND BLE TO WORK
     initNativeBridge();
 
@@ -37,7 +44,12 @@ export default function App() {
     return () => {
       unsubPerms();
     };
-  }, []);
+  }, [isListenPage]);
+
+  // If this is an emergency contact opening the live audio stream link
+  if (isListenPage) {
+    return <EmergencyListener room={roomParam || ''} />;
+  }
 
   return (
     <div className="app">
