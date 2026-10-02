@@ -17,7 +17,7 @@ export const AmbientGuardCard: React.FC<AmbientGuardCardProps> = ({
 
   const [decibels, setDecibels] = useState<number>(38);
   const [status, setStatus] = useState<'quiet' | 'elevated' | 'spike'>('quiet');
-  const [hasMicPermission, setHasMicPermission] = useState<boolean | null>(null);
+  const [, setHasMicPermission] = useState<boolean | null>(null);
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);

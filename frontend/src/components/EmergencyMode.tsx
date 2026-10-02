@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { PhoneCallIcon, LocationPinIcon, UsersIcon, ShieldCheckIcon } from './Icons';
 import type { EmergencyContact } from '../services/emergency';
 import { triggerHaptic } from '../services/emergency';
@@ -51,7 +51,6 @@ export const EmergencyMode: React.FC<EmergencyModeProps> = ({
   };
 
   const smsTriggeredRef = React.useRef(false);
-  const smsHasLocationRef = React.useRef(false);
   const routeTriggeredRef = React.useRef(false);
   const beaconTriggeredRef = React.useRef(false);
 
@@ -107,16 +106,6 @@ export const EmergencyMode: React.FC<EmergencyModeProps> = ({
       startEmergencyBeacon().catch(console.error);
     }
 
-    if (smsTriggeredRef.current && !smsHasLocationRef.current && location && location.latitude && location.longitude) {
-      smsHasLocationRef.current = true;
-      const followUpMapsUrl = location.mapsUrl || https://maps.google.com/?q=${Number(location.latitude).toFixed(6)},${Number(location.longitude).toFixed(6)};
-      const followUpListenUrl = https://safety-mesh.vercel.app/?room=${roomIdRef.current};
-      sendEmergencySms(
-        contacts.map(c => ({ name: c.name, phone: c.phone })),
-        followUpMapsUrl,
-        followUpListenUrl
-      ).catch(() => {});
-    }
     if (!routeTriggeredRef.current && location) {
       routeTriggeredRef.current = true;
       triggerSafeRoute(location.latitude, location.longitude);
@@ -181,7 +170,7 @@ export const EmergencyMode: React.FC<EmergencyModeProps> = ({
         } catch {}
       }
 
-      // 4. If still missing, actively query real device location with a solid 4.5s race timeout
+      // 4. If still missing, actively query real device location with a 4.5s race timeout
       if (!finalMapsUrl) {
         setSmsStatus('Acquiring GPS location...');
         try {
@@ -193,10 +182,6 @@ export const EmergencyMode: React.FC<EmergencyModeProps> = ({
             finalMapsUrl = freshLoc.mapsUrl || `https://maps.google.com/?q=${Number(freshLoc.latitude).toFixed(6)},${Number(freshLoc.longitude).toFixed(6)}`;
           }
         } catch {}
-      }
-
-      if (finalMapsUrl) {
-        smsHasLocationRef.current = true;
       }
 
       const listenUrl = `https://safety-mesh.vercel.app/?room=${roomIdRef.current}`;
@@ -231,8 +216,6 @@ export const EmergencyMode: React.FC<EmergencyModeProps> = ({
 
   const displayAddress = location?.addressName || 'Live GPS Coordinates Broadcasted';
   const displayCoords = location
-    ? `${location.latitude.toFixed(5)}Â° N, ${location.longitude.toFixed(5)}Â° E (Â±${Math.round(location.accuracy)}m)`
-    : 'Acquiring high-precision lock...';
     ? `${location.latitude.toFixed(5)}° N, ${location.longitude.toFixed(5)}° E (±${Math.round(location.accuracy)}m)`
     : 'Acquiring high-precision lock...';
 
