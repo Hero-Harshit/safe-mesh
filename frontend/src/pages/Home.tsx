@@ -190,16 +190,16 @@ export default function Home(_props: HomeProps = {}) {
   }, []);
 
   useEffect(() => {
-    if (permissions.location === 'GRANTED') {
-      loadLocation();
+    // Load location immediately (from native bridge or local cache)
+    loadLocation();
+
+    if (permissions.location === 'GRANTED' || permissions.location === 'UNKNOWN') {
       const watchId = startLiveLocationWatch((loc) => {
         setLocation(loc);
       });
       return () => {
         clearLocationWatch(watchId);
       };
-    } else {
-      setLocation(null);
     }
   }, [permissions.location, loadLocation]);
 
@@ -247,8 +247,14 @@ export default function Home(_props: HomeProps = {}) {
 
   // SOS activation logic
   const handleSosHoldComplete = () => {
-    // Check if location is missing
-    if (permissions.location !== 'GRANTED' || !location || location.status !== 'LIVE') {
+    // If user already granted permission in onboarding or location is available, activate immediately!
+    if (permissions.location === 'GRANTED' || (location && location.status === 'LIVE')) {
+      activateEmergencyWorkflow();
+      return;
+    }
+
+    // Only prompt warning if location was explicitly DENIED
+    if (permissions.location === 'DENIED') {
       handleOpenSosWarning();
     } else {
       activateEmergencyWorkflow();
@@ -474,10 +480,10 @@ export default function Home(_props: HomeProps = {}) {
             handleCloseSosWarning();
             const status = await requestLocationPermission();
             if (status === 'GRANTED') {
-              loadLocation();
+              await loadLocation();
               activateEmergencyWorkflow();
             } else {
-              showToast('Location permission not granted. Activating without location.');
+              showToast('Location permission not granted. Activating emergency SOS.');
               activateEmergencyWorkflow();
             }
           }}

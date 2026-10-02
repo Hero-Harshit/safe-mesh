@@ -3,6 +3,7 @@ import { PhoneCallIcon, LocationPinIcon, UsersIcon, ShieldCheckIcon } from './Ic
 import type { EmergencyContact } from '../services/emergency';
 import { triggerHaptic } from '../services/emergency';
 import type { LocationData } from '../services/location';
+import { fetchRealDeviceLocation } from '../services/location';
 import { sendEmergencySms, startEmergencyBeacon, cancelEmergencyCall, requestNativeEmergencyPermissions } from '../services/native';
 import { getEscapeRoute } from '../services/safetyRoute';
 import type { EscapeRouteResponse } from '../services/safetyRoute';
@@ -139,10 +140,39 @@ export const EmergencyMode: React.FC<EmergencyModeProps> = ({
 
     setSmsStatus('Sending...');
     try {
+      let finalMapsUrl = location?.mapsUrl || null;
+
+      // If location is pending, attempt a quick 1.5s race to fetch native or cached location
+      if (!finalMapsUrl) {
+        try {
+          const freshLoc = await Promise.race([
+            fetchRealDeviceLocation(),
+            new Promise<null>((r) => setTimeout(() => r(null), 1500))
+          ]);
+          if (freshLoc && freshLoc.mapsUrl) {
+            finalMapsUrl = freshLoc.mapsUrl;
+          }
+        } catch {}
+      }
+
+      // If still missing, check localStorage cache
+      if (!finalMapsUrl) {
+        try {
+          const cached = localStorage.getItem('safetymesh_last_location');
+          if (cached) {
+            const p = JSON.parse(cached);
+            if (p.mapsUrl) finalMapsUrl = p.mapsUrl;
+            else if (p.latitude && p.longitude) {
+              finalMapsUrl = `https://www.google.com/maps?q=${Number(p.latitude).toFixed(6)},${Number(p.longitude).toFixed(6)}`;
+            }
+          }
+        } catch {}
+      }
+
       const listenUrl = `https://safety-mesh.vercel.app/?room=${roomIdRef.current}`;
       const result = await sendEmergencySms(
         contacts.map(c => ({ name: c.name, phone: c.phone })),
-        location?.mapsUrl || null,
+        finalMapsUrl,
         listenUrl
       );
       

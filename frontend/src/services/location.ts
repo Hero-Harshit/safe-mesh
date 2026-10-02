@@ -18,7 +18,24 @@ export interface RealLocationData {
 
 export type LocationData = RealLocationData;
 
-let cachedLocation: RealLocationData | null = null;
+import { fetchNativeLocation } from './native';
+
+const CACHE_KEY = 'safetymesh_last_location';
+
+function getInitialCachedLocation(): RealLocationData | null {
+  try {
+    const raw = localStorage.getItem(CACHE_KEY);
+    if (raw) {
+      const p = JSON.parse(raw);
+      if (p.latitude && p.longitude) {
+        return p;
+      }
+    }
+  } catch {}
+  return null;
+}
+
+let cachedLocation: RealLocationData | null = getInitialCachedLocation();
 const listeners = new Set<(loc: RealLocationData | null) => void>();
 
 export function subscribeLocation(listener: (loc: RealLocationData | null) => void): () => void {
@@ -73,8 +90,33 @@ export async function reverseGeocodeReal(
 }
 
 export async function fetchRealDeviceLocation(): Promise<RealLocationData> {
+  // 1. Check Native Android Bridge first for immediate hardware fix (0ms)
+  const nativeLoc = fetchNativeLocation();
+  if (nativeLoc && nativeLoc.latitude && nativeLoc.longitude) {
+    const mapsUrl = `https://www.google.com/maps?q=${nativeLoc.latitude.toFixed(6)},${nativeLoc.longitude.toFixed(6)}`;
+    const data: RealLocationData = {
+      latitude: nativeLoc.latitude,
+      longitude: nativeLoc.longitude,
+      accuracy: nativeLoc.accuracy,
+      timestamp: Date.now(),
+      mapsUrl,
+      addressName: `${nativeLoc.latitude.toFixed(4)}° N, ${nativeLoc.longitude.toFixed(4)}° E`,
+      status: 'LIVE',
+    };
+    cachedLocation = data;
+    try {
+      localStorage.setItem(CACHE_KEY, JSON.stringify(data));
+    } catch {}
+    listeners.forEach((l) => l(cachedLocation));
+    return data;
+  }
+
   return new Promise((resolve, reject) => {
     if (!navigator.geolocation) {
+      if (cachedLocation && cachedLocation.status === 'LIVE') {
+        resolve(cachedLocation);
+        return;
+      }
       const errData: RealLocationData = {
         latitude: 0,
         longitude: 0,
@@ -94,7 +136,7 @@ export async function fetchRealDeviceLocation(): Promise<RealLocationData> {
     navigator.geolocation.getCurrentPosition(
       async (position) => {
         const { latitude, longitude, accuracy } = position.coords;
-        const mapsUrl = `https://maps.google.com/?q=${latitude.toFixed(6)},${longitude.toFixed(6)}`;
+        const mapsUrl = `https://www.google.com/maps?q=${latitude.toFixed(6)},${longitude.toFixed(6)}`;
 
         let addressName = `${latitude.toFixed(4)}° N, ${longitude.toFixed(4)}° E`;
         let city = '';
@@ -118,10 +160,19 @@ export async function fetchRealDeviceLocation(): Promise<RealLocationData> {
         };
 
         cachedLocation = data;
+        try {
+          localStorage.setItem(CACHE_KEY, JSON.stringify(data));
+        } catch {}
         listeners.forEach((l) => l(cachedLocation));
         resolve(data);
       },
       (error) => {
+        // If we have a cached valid location, use it instead of failing
+        if (cachedLocation && cachedLocation.status === 'LIVE' && cachedLocation.latitude !== 0) {
+          resolve(cachedLocation);
+          return;
+        }
+
         const isDenied = error.code === 1;
         const errData: RealLocationData = {
           latitude: 0,
@@ -142,7 +193,7 @@ export async function fetchRealDeviceLocation(): Promise<RealLocationData> {
       {
         enableHighAccuracy: true,
         timeout: 10000,
-        maximumAge: 0,
+        maximumAge: 60000,
       }
     );
   });
@@ -191,6 +242,9 @@ export function startLiveLocationWatch(
       };
 
       cachedLocation = data;
+      try {
+        localStorage.setItem(CACHE_KEY, JSON.stringify(data));
+      } catch {}
       onUpdate(data);
       listeners.forEach((l) => l(cachedLocation));
     },

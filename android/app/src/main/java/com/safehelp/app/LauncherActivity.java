@@ -36,6 +36,9 @@ import android.widget.FrameLayout;
 import android.widget.ProgressBar;
 import android.widget.Toast;
 import androidx.annotation.NonNull;
+import android.location.Location;
+import android.location.LocationManager;
+import org.json.JSONObject;
 import java.util.ArrayList;
 
 /**
@@ -158,7 +161,7 @@ public class LauncherActivity extends Activity {
                         return;
                     }
                 }
-                callback.invoke(origin, true, false);
+                callback.invoke(origin, true, true);
             }
 
             @Override
@@ -297,7 +300,7 @@ public class LauncherActivity extends Activity {
         if (requestCode == REQUEST_CODE_LOCATION) {
             boolean granted = grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED;
             if (mPendingGeoCallback != null) {
-                mPendingGeoCallback.invoke(mPendingGeoOrigin, granted, false);
+                mPendingGeoCallback.invoke(mPendingGeoOrigin, granted, true);
                 mPendingGeoCallback = null;
                 mPendingGeoOrigin = null;
             }
@@ -414,6 +417,43 @@ public class LauncherActivity extends Activity {
         @JavascriptInterface
         public void requestAllPermissions() {
             requestEmergencyPermissions();
+        }
+
+        @JavascriptInterface
+        public String getNativeLocation() {
+            try {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                    if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED &&
+                        checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                        return null;
+                    }
+                }
+                LocationManager lm = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
+                if (lm == null) return null;
+
+                Location bestLocation = null;
+                for (String provider : lm.getProviders(true)) {
+                    try {
+                        Location l = lm.getLastKnownLocation(provider);
+                        if (l == null) continue;
+                        if (bestLocation == null || l.getAccuracy() < bestLocation.getAccuracy()) {
+                            bestLocation = l;
+                        }
+                    } catch (SecurityException ignored) {}
+                }
+
+                if (bestLocation != null) {
+                    JSONObject obj = new JSONObject();
+                    obj.put("latitude", bestLocation.getLatitude());
+                    obj.put("longitude", bestLocation.getLongitude());
+                    obj.put("accuracy", bestLocation.getAccuracy());
+                    obj.put("timestamp", bestLocation.getTime());
+                    return obj.toString();
+                }
+            } catch (Throwable t) {
+                Log.w(TAG, "getNativeLocation error", t);
+            }
+            return null;
         }
 
         @JavascriptInterface

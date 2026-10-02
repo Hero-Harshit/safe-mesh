@@ -239,6 +239,7 @@ export interface NativeSafeMeshBridge {
   shareText: (title: string, msg: string) => void;
   isNativeApp: () => boolean;
   getAppVersion?: () => string;
+  getNativeLocation?: () => string | null;
 }
 
 declare global {
@@ -256,6 +257,28 @@ export function getNativeBridge(): NativeSafeMeshBridge | null {
 export function isNativeSafeMesh(): boolean {
   const bridge = getNativeBridge();
   return !!(bridge && typeof bridge.isNativeApp === 'function' && bridge.isNativeApp());
+}
+
+export function fetchNativeLocation(): { latitude: number; longitude: number; accuracy: number } | null {
+  const bridge = getNativeBridge();
+  if (bridge && typeof bridge.getNativeLocation === 'function') {
+    try {
+      const raw = bridge.getNativeLocation();
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed.latitude && parsed.longitude) {
+          return {
+            latitude: Number(parsed.latitude),
+            longitude: Number(parsed.longitude),
+            accuracy: Number(parsed.accuracy || 10),
+          };
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to parse native location', e);
+    }
+  }
+  return null;
 }
 
 export function hasNativeSmsPermission(): boolean {
@@ -321,7 +344,26 @@ export async function sendEmergencySms(
         }
       } catch (e) {}
 
-      const message = `🚨 EMERGENCY ALERT - SAFEMESH 🚨\n${userName} is in danger and triggered the SOS alarm.\n\n📍 Live Location:\n${locationUrl || "Location tracking active - coordinates pending"}${listenUrl ? `\n\n🎙️ Listen Live & Police Evidence:\n${listenUrl}` : ''}\n\nPlease take immediate emergency action.`;
+      let finalLocationUrl = locationUrl;
+      if (!finalLocationUrl) {
+        const nativeLoc = fetchNativeLocation();
+        if (nativeLoc) {
+          finalLocationUrl = `https://www.google.com/maps?q=${nativeLoc.latitude.toFixed(6)},${nativeLoc.longitude.toFixed(6)}`;
+        } else {
+          try {
+            const cached = localStorage.getItem('safetymesh_last_location');
+            if (cached) {
+              const p = JSON.parse(cached);
+              if (p.mapsUrl) finalLocationUrl = p.mapsUrl;
+              else if (p.latitude && p.longitude) {
+                finalLocationUrl = `https://www.google.com/maps?q=${Number(p.latitude).toFixed(6)},${Number(p.longitude).toFixed(6)}`;
+              }
+            }
+          } catch {}
+        }
+      }
+
+      const message = `🚨 EMERGENCY ALERT - SAFEMESH 🚨\n${userName} is in danger and triggered the SOS alarm.\n\n📍 Live Location:\n${finalLocationUrl || "Location tracking active - coordinates pending"}${listenUrl ? `\n\n🎙️ Listen Live & Police Evidence:\n${listenUrl}` : ''}\n\nPlease take immediate emergency action.`;
 
       let allSuccess = true;
       let anySuccess = false;
