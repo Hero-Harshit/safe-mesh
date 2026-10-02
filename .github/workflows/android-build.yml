@@ -46,7 +46,7 @@ jobs:
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v3.0
-          name: Version 3.0
+          tag_name: v3.0.1
+          name: Version 3.0.1 (Hotfix)
           files: android/Safety-Mesh.apk
           make_latest: true
