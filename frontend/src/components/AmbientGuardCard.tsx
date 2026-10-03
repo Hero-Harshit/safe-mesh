@@ -15,10 +15,11 @@ export const AmbientGuardCard: React.FC<AmbientGuardCardProps> = ({
     return val !== 'false';
   });
 
-  const [decibels, setDecibels] = useState<number>(38);
-  const [status, setStatus] = useState<'quiet' | 'elevated' | 'spike'>('quiet');
+  const [, setDecibels] = useState<number>(38);
+  const [, setStatus] = useState<'quiet' | 'elevated' | 'spike'>('quiet');
   const [velocity, setVelocity] = useState<number>(0);
   const [gForce, setGForce] = useState<number>(1.0);
+  const [gpsAccuracy, setGpsAccuracy] = useState<number>(3.5);
   const [, setHasMicPermission] = useState<boolean | null>(null);
 
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -391,6 +392,9 @@ export const AmbientGuardCard: React.FC<AmbientGuardCardProps> = ({
     if ('geolocation' in navigator) {
       watchId = navigator.geolocation.watchPosition(
         (position) => {
+          if (position.coords.accuracy) {
+            setGpsAccuracy(Math.round(position.coords.accuracy * 10) / 10);
+          }
           let speedKmh = 0;
           const speedMs = position.coords.speed;
           if (speedMs !== null && !isNaN(speedMs) && speedMs >= 0) {
@@ -538,7 +542,7 @@ export const AmbientGuardCard: React.FC<AmbientGuardCardProps> = ({
                   fontWeight: 600,
                 }}
               >
-                Kinematic & Acoustic AI
+                Kinematic & Telemetry AI
               </span>
             </div>
           </div>
@@ -618,7 +622,7 @@ export const AmbientGuardCard: React.FC<AmbientGuardCardProps> = ({
               </div>
             </div>
 
-            {/* Sound Level Pill */}
+            {/* GPS Precision / Mesh Lock Pill */}
             <div
               style={{
                 display: 'flex',
@@ -628,17 +632,17 @@ export const AmbientGuardCard: React.FC<AmbientGuardCardProps> = ({
                 padding: '8px 6px',
                 borderRadius: '12px',
                 background:
-                  status === 'spike'
+                  gpsAccuracy > 30
                     ? 'rgba(239, 68, 68, 0.12)'
-                    : status === 'elevated'
+                    : gpsAccuracy > 15
                     ? 'rgba(245, 158, 11, 0.12)'
-                    : 'rgba(241, 245, 249, 0.8)',
+                    : 'rgba(16, 185, 129, 0.1)',
                 border:
-                  status === 'spike'
+                  gpsAccuracy > 30
                     ? '1px solid rgba(239, 68, 68, 0.3)'
-                    : status === 'elevated'
+                    : gpsAccuracy > 15
                     ? '1px solid rgba(245, 158, 11, 0.3)'
-                    : '1px solid rgba(226, 232, 240, 0.9)',
+                    : '1px solid rgba(16, 185, 129, 0.35)',
                 transition: 'all 0.2s ease',
               }}
             >
@@ -652,7 +656,7 @@ export const AmbientGuardCard: React.FC<AmbientGuardCardProps> = ({
                   textTransform: 'uppercase',
                 }}
               >
-                Sound
+                GPS Lock
               </span>
               <div
                 style={{
@@ -662,11 +666,11 @@ export const AmbientGuardCard: React.FC<AmbientGuardCardProps> = ({
                   fontSize: '0.82rem',
                   fontWeight: 800,
                   color:
-                    status === 'spike'
+                    gpsAccuracy > 30
                       ? '#DC2626'
-                      : status === 'elevated'
+                      : gpsAccuracy > 15
                       ? '#D97706'
-                      : 'var(--text-primary, #0F172A)',
+                      : '#059669',
                 }}
               >
                 <span
@@ -674,11 +678,12 @@ export const AmbientGuardCard: React.FC<AmbientGuardCardProps> = ({
                     width: '5px',
                     height: '5px',
                     borderRadius: '50%',
-                    background: status === 'spike' ? '#DC2626' : status === 'elevated' ? '#D97706' : '#10B981',
+                    background: gpsAccuracy > 30 ? '#DC2626' : gpsAccuracy > 15 ? '#D97706' : '#10B981',
                     display: 'inline-block',
+                    boxShadow: gpsAccuracy <= 15 ? '0 0 6px rgba(16, 185, 129, 0.6)' : 'none',
                   }}
                 />
-                <span>{decibels} dB</span>
+                <span>±{gpsAccuracy}m</span>
               </div>
             </div>
 
