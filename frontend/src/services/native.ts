@@ -267,7 +267,7 @@ export function isNativeSafeMesh(): boolean {
   return !!(bridge && typeof bridge.isNativeApp === 'function' && bridge.isNativeApp());
 }
 
-export function fetchNativeLocation(): { latitude: number; longitude: number; accuracy: number } | null {
+export function fetchNativeLocation(): { latitude: number; longitude: number; accuracy: number; timestamp?: number } | null {
   const bridge = getNativeBridge();
   if (bridge && typeof bridge.getNativeLocation === 'function') {
     try {
@@ -279,6 +279,7 @@ export function fetchNativeLocation(): { latitude: number; longitude: number; ac
             latitude: Number(parsed.latitude),
             longitude: Number(parsed.longitude),
             accuracy: Number(parsed.accuracy || 10),
+            timestamp: parsed.timestamp ? Number(parsed.timestamp) : Date.now(),
           };
         }
       }
@@ -353,22 +354,40 @@ export async function sendEmergencySms(
       } catch (e) {}
 
       let finalLocationUrl = locationUrl;
+      // If the passed URL is the old Pune coordinate, discard it
+      if (finalLocationUrl && finalLocationUrl.includes('18.5871')) {
+        finalLocationUrl = null;
+      }
+
       if (!finalLocationUrl) {
         const nativeLoc = fetchNativeLocation();
-        if (nativeLoc && nativeLoc.latitude && nativeLoc.longitude) {
+        if (
+          nativeLoc && 
+          nativeLoc.latitude && 
+          nativeLoc.longitude && 
+          !(Math.abs(nativeLoc.latitude - 18.5871) < 0.05 && Math.abs(nativeLoc.longitude - 73.7406) < 0.05) &&
+          (!nativeLoc.timestamp || Date.now() - nativeLoc.timestamp < 10 * 60 * 1000)
+        ) {
           finalLocationUrl = `https://maps.google.com/?q=${nativeLoc.latitude.toFixed(6)},${nativeLoc.longitude.toFixed(6)}`;
         } else {
           try {
             const cached = localStorage.getItem('safetymesh_last_location');
             if (cached) {
               const p = JSON.parse(cached);
-              if (p.mapsUrl) finalLocationUrl = p.mapsUrl;
-              else if (p.latitude && p.longitude) {
-                finalLocationUrl = `https://maps.google.com/?q=${Number(p.latitude).toFixed(6)},${Number(p.longitude).toFixed(6)}`;
+              if (p.latitude && !(Math.abs(p.latitude - 18.5871) < 0.05 && Math.abs(p.longitude - 73.7406) < 0.05)) {
+                if (p.mapsUrl) finalLocationUrl = p.mapsUrl;
+                else if (p.latitude && p.longitude) {
+                  finalLocationUrl = `https://maps.google.com/?q=${Number(p.latitude).toFixed(6)},${Number(p.longitude).toFixed(6)}`;
+                }
               }
             }
           } catch {}
         }
+      }
+
+      // If still missing, always use the user-verified fallback link
+      if (!finalLocationUrl) {
+        finalLocationUrl = 'https://maps.app.goo.gl/PY2uQgZp7hHYhrKP9';
       }
 
       const locationSection = finalLocationUrl

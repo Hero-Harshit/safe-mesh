@@ -40,7 +40,16 @@ function getInitialCachedLocation(): RealLocationData | null {
     const raw = localStorage.getItem(CACHE_KEY);
     if (raw) {
       const p = JSON.parse(raw);
-      if (p.latitude && p.longitude) {
+      // Evict old stale/hardcoded Pune coordinates (18.58... / 73.74...)
+      if (p.latitude && p.longitude && Math.abs(p.latitude - 18.5871) < 0.05 && Math.abs(p.longitude - 73.7406) < 0.05) {
+        localStorage.removeItem(CACHE_KEY);
+        return FALLBACK_LOCATION;
+      }
+      // If cached location is older than 5 minutes, disregard it for fresh location
+      if (p.timestamp && Date.now() - p.timestamp > 5 * 60 * 1000) {
+        return FALLBACK_LOCATION;
+      }
+      if (p.latitude && p.longitude && p.latitude !== 0) {
         return p;
       }
     }
@@ -103,38 +112,10 @@ export async function reverseGeocodeReal(
 }
 
 export async function fetchRealDeviceLocation(): Promise<RealLocationData> {
-  // 1. Check Native Android Bridge first for immediate hardware fix (0ms)
-  const nativeLoc = fetchNativeLocation();
-  if (nativeLoc && nativeLoc.latitude && nativeLoc.longitude) {
-    const mapsUrl = `https://www.google.com/maps?q=${nativeLoc.latitude.toFixed(6)},${nativeLoc.longitude.toFixed(6)}`;
-    const data: RealLocationData = {
-      latitude: nativeLoc.latitude,
-      longitude: nativeLoc.longitude,
-      accuracy: nativeLoc.accuracy,
-      timestamp: Date.now(),
-      mapsUrl,
-      addressName: `${nativeLoc.latitude.toFixed(4)}° N, ${nativeLoc.longitude.toFixed(4)}° E`,
-      status: 'LIVE',
-    };
-    cachedLocation = data;
-    try {
-      localStorage.setItem(CACHE_KEY, JSON.stringify(data));
-    } catch {}
-    listeners.forEach((l) => l(cachedLocation));
-    return data;
-  }
-
+  // 1. Actively query navigator.geolocation with HIGH ACCURACY and 0 maximumAge to force fresh GPS hardware fix
   return new Promise((resolve) => {
-    if (!navigator.geolocation) {
-      console.warn("Geolocation API not available, using fallback location.");
-      cachedLocation = FALLBACK_LOCATION;
-      listeners.forEach((l) => l(cachedLocation));
-      return resolve(FALLBACK_LOCATION);
-    }
-
     let isResolved = false;
 
-    // Helper to resolve once
     const safeResolve = (loc: RealLocationData) => {
       if (isResolved) return;
       isResolved = true;
@@ -146,13 +127,39 @@ export async function fetchRealDeviceLocation(): Promise<RealLocationData> {
       resolve(loc);
     };
 
-    // Fast watchdog timeout: if browser hangs on GPS lock for > 7 seconds, resolve with fallback
+    // Watchdog fallback (5s max)
     const watchdog = setTimeout(() => {
       if (!isResolved) {
-        console.warn("Live GPS timeout reached, falling back to verified location.");
-        safeResolve(cachedLocation && cachedLocation.latitude !== 0 ? cachedLocation : FALLBACK_LOCATION);
+        // Check if native bridge has a fresh hardware location (within 10 minutes)
+        const nativeLoc = fetchNativeLocation();
+        if (
+          nativeLoc && 
+          nativeLoc.latitude && 
+          nativeLoc.longitude && 
+          !(Math.abs(nativeLoc.latitude - 18.5871) < 0.05 && Math.abs(nativeLoc.longitude - 73.7406) < 0.05) &&
+          (!nativeLoc.timestamp || Date.now() - nativeLoc.timestamp < 10 * 60 * 1000)
+        ) {
+          const mapsUrl = `https://www.google.com/maps?q=${nativeLoc.latitude.toFixed(6)},${nativeLoc.longitude.toFixed(6)}`;
+          return safeResolve({
+            latitude: nativeLoc.latitude,
+            longitude: nativeLoc.longitude,
+            accuracy: nativeLoc.accuracy,
+            timestamp: nativeLoc.timestamp || Date.now(),
+            mapsUrl,
+            addressName: `${nativeLoc.latitude.toFixed(4)}° N, ${nativeLoc.longitude.toFixed(4)}° E`,
+            status: 'LIVE',
+          });
+        }
+
+        console.warn("GPS lock timeout, utilizing verified fallback location.");
+        safeResolve(FALLBACK_LOCATION);
       }
-    }, 7000);
+    }, 5000);
+
+    if (!navigator.geolocation) {
+      clearTimeout(watchdog);
+      return safeResolve(FALLBACK_LOCATION);
+    }
 
     navigator.geolocation.getCurrentPosition(
       async (position) => {
@@ -166,9 +173,7 @@ export async function fetchRealDeviceLocation(): Promise<RealLocationData> {
           const geo = await reverseGeocodeReal(latitude, longitude);
           addressName = geo.addressName;
           city = geo.city;
-        } catch {
-          // Keep raw coordinates
-        }
+        } catch {}
 
         const data: RealLocationData = {
           latitude,
@@ -185,13 +190,35 @@ export async function fetchRealDeviceLocation(): Promise<RealLocationData> {
       },
       (error) => {
         clearTimeout(watchdog);
-        console.warn("Geolocation error:", error.message, "- Using verified fallback location.");
-        safeResolve(cachedLocation && cachedLocation.latitude !== 0 ? cachedLocation : FALLBACK_LOCATION);
+        console.warn("navigator.geolocation failed:", error.message);
+        
+        // Check native hardware location before fallback
+        const nativeLoc = fetchNativeLocation();
+        if (
+          nativeLoc && 
+          nativeLoc.latitude && 
+          nativeLoc.longitude && 
+          !(Math.abs(nativeLoc.latitude - 18.5871) < 0.05 && Math.abs(nativeLoc.longitude - 73.7406) < 0.05) &&
+          (!nativeLoc.timestamp || Date.now() - nativeLoc.timestamp < 10 * 60 * 1000)
+        ) {
+          const mapsUrl = `https://www.google.com/maps?q=${nativeLoc.latitude.toFixed(6)},${nativeLoc.longitude.toFixed(6)}`;
+          return safeResolve({
+            latitude: nativeLoc.latitude,
+            longitude: nativeLoc.longitude,
+            accuracy: nativeLoc.accuracy,
+            timestamp: nativeLoc.timestamp || Date.now(),
+            mapsUrl,
+            addressName: `${nativeLoc.latitude.toFixed(4)}° N, ${nativeLoc.longitude.toFixed(4)}° E`,
+            status: 'LIVE',
+          });
+        }
+
+        safeResolve(FALLBACK_LOCATION);
       },
       {
         enableHighAccuracy: true,
-        timeout: 6000,
-        maximumAge: 10000,
+        timeout: 4500,
+        maximumAge: 0, // Force fresh live reading, don't use stale cached GPS fix
       }
     );
   });

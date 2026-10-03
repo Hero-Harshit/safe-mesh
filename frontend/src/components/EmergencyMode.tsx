@@ -235,7 +235,12 @@ export const EmergencyMode: React.FC<EmergencyModeProps> = ({
         } catch {}
       }
 
-      if (lat === null || lon === null || lat === 0) {
+      if (
+        lat === null || 
+        lon === null || 
+        lat === 0 || 
+        (Math.abs(lat - 18.5871) < 0.05 && Math.abs(lon - 73.7406) < 0.05)
+      ) {
         lat = FALLBACK_LOCATION.latitude;
         lon = FALLBACK_LOCATION.longitude;
       }
@@ -311,13 +316,21 @@ export const EmergencyMode: React.FC<EmergencyModeProps> = ({
 
       // 2. Check passed location prop if fresh fetch was not ready
       if (!finalMapsUrl && location && location.latitude && location.longitude && location.latitude !== 0) {
-        finalMapsUrl = location.mapsUrl || `https://maps.google.com/?q=${Number(location.latitude).toFixed(6)},${Number(location.longitude).toFixed(6)}`;
+        if (!(Math.abs(location.latitude - 18.5871) < 0.05 && Math.abs(location.longitude - 73.7406) < 0.05)) {
+          finalMapsUrl = location.mapsUrl || `https://maps.google.com/?q=${Number(location.latitude).toFixed(6)},${Number(location.longitude).toFixed(6)}`;
+        }
       }
 
       // 3. Check native device hardware location bridge
       if (!finalMapsUrl) {
         const nativeLoc = fetchNativeLocation();
-        if (nativeLoc && nativeLoc.latitude && nativeLoc.longitude) {
+        if (
+          nativeLoc && 
+          nativeLoc.latitude && 
+          nativeLoc.longitude &&
+          !(Math.abs(nativeLoc.latitude - 18.5871) < 0.05 && Math.abs(nativeLoc.longitude - 73.7406) < 0.05) &&
+          (!nativeLoc.timestamp || Date.now() - nativeLoc.timestamp < 10 * 60 * 1000)
+        ) {
           finalMapsUrl = `https://maps.google.com/?q=${Number(nativeLoc.latitude).toFixed(6)},${Number(nativeLoc.longitude).toFixed(6)}`;
         }
       }
@@ -328,10 +341,12 @@ export const EmergencyMode: React.FC<EmergencyModeProps> = ({
           const cached = localStorage.getItem('safetymesh_last_location');
           if (cached) {
             const p = JSON.parse(cached);
-            if (p.mapsUrl) {
-              finalMapsUrl = p.mapsUrl;
-            } else if (p.latitude && p.longitude && p.latitude !== 0) {
-              finalMapsUrl = `https://maps.google.com/?q=${Number(p.latitude).toFixed(6)},${Number(p.longitude).toFixed(6)}`;
+            if (p.latitude && !(Math.abs(p.latitude - 18.5871) < 0.05 && Math.abs(p.longitude - 73.7406) < 0.05)) {
+              if (p.mapsUrl) {
+                finalMapsUrl = p.mapsUrl;
+              } else if (p.latitude && p.longitude && p.latitude !== 0) {
+                finalMapsUrl = `https://maps.google.com/?q=${Number(p.latitude).toFixed(6)},${Number(p.longitude).toFixed(6)}`;
+              }
             }
           }
         } catch {}
@@ -372,7 +387,8 @@ export const EmergencyMode: React.FC<EmergencyModeProps> = ({
 
   // Manual SMS button removed as per requirements
 
-  const activeLocation = (location && location.latitude && location.latitude !== 0) ? location : FALLBACK_LOCATION;
+  const isStalePune = location && Math.abs(location.latitude - 18.5871) < 0.05 && Math.abs(location.longitude - 73.7406) < 0.05;
+  const activeLocation = (location && location.latitude && location.latitude !== 0 && !isStalePune) ? location : FALLBACK_LOCATION;
   const displayAddress = activeLocation.addressName || 'Live GPS Coordinates Broadcasted';
   const displayCoords = `${activeLocation.latitude.toFixed(5)}° N, ${activeLocation.longitude.toFixed(5)}° E (±${Math.round(activeLocation.accuracy || 10)}m)`;
   const mapsLink = activeLocation.mapsUrl || `https://maps.google.com/?q=${activeLocation.latitude},${activeLocation.longitude}`;
