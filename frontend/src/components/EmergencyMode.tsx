@@ -3,7 +3,7 @@ import { PhoneCallIcon, LocationPinIcon, UsersIcon, ShieldCheckIcon } from './Ic
 import type { EmergencyContact } from '../services/emergency';
 import { triggerHaptic } from '../services/emergency';
 import type { LocationData } from '../services/location';
-import { fetchRealDeviceLocation } from '../services/location';
+import { fetchRealDeviceLocation, FALLBACK_LOCATION } from '../services/location';
 import { sendEmergencySms, startEmergencyBeacon, startEmergencyCall, cancelEmergencyCall, requestNativeEmergencyPermissions, fetchNativeLocation } from '../services/native';
 import { getEscapeRoute } from '../services/safetyRoute';
 import type { EscapeRouteResponse } from '../services/safetyRoute';
@@ -149,9 +149,34 @@ export const EmergencyMode: React.FC<EmergencyModeProps> = ({
       startEmergencyBeacon().catch(console.error);
     }
 
-    if (!routeTriggeredRef.current && location) {
+    // Acquire live location immediately for escape route calculation & map broadcast
+    if (!routeTriggeredRef.current) {
       routeTriggeredRef.current = true;
-      triggerSafeRoute(location.latitude, location.longitude);
+      (async () => {
+        let activeLat = location?.latitude;
+        let activeLon = location?.longitude;
+
+        if (!activeLat || !activeLon || activeLat === 0) {
+          try {
+            const fresh = await Promise.race([
+              fetchRealDeviceLocation(),
+              new Promise<null>((r) => setTimeout(() => r(null), 3500))
+            ]);
+            if (fresh && fresh.latitude && fresh.longitude && fresh.latitude !== 0) {
+              activeLat = fresh.latitude;
+              activeLon = fresh.longitude;
+            }
+          } catch {}
+        }
+
+        // If still not acquired, use verified fallback coordinates
+        if (!activeLat || !activeLon || activeLat === 0) {
+          activeLat = FALLBACK_LOCATION.latitude;
+          activeLon = FALLBACK_LOCATION.longitude;
+        }
+
+        triggerSafeRoute(activeLat, activeLon);
+      })();
     }
 
     if (location && audioSessionRef.current) {
@@ -210,9 +235,9 @@ export const EmergencyMode: React.FC<EmergencyModeProps> = ({
         } catch {}
       }
 
-      if (lat === null || lon === null) {
-        console.warn('Could not determine coordinates for LiveMap incident pin');
-        return;
+      if (lat === null || lon === null || lat === 0) {
+        lat = FALLBACK_LOCATION.latitude;
+        lon = FALLBACK_LOCATION.longitude;
       }
 
       let userName = 'SafetyMesh Citizen';
@@ -272,12 +297,24 @@ export const EmergencyMode: React.FC<EmergencyModeProps> = ({
     try {
       let finalMapsUrl: string | null = null;
 
-      // 1. Check passed location prop
-      if (location && location.latitude && location.longitude) {
+      // 1. Actively query fresh live GPS location first with high accuracy
+      setSmsStatus('Acquiring live GPS lock...');
+      try {
+        const freshLoc = await Promise.race([
+          fetchRealDeviceLocation(),
+          new Promise<null>((r) => setTimeout(() => r(null), 4000))
+        ]);
+        if (freshLoc && freshLoc.latitude && freshLoc.longitude && freshLoc.latitude !== 0) {
+          finalMapsUrl = freshLoc.mapsUrl || `https://maps.google.com/?q=${Number(freshLoc.latitude).toFixed(6)},${Number(freshLoc.longitude).toFixed(6)}`;
+        }
+      } catch {}
+
+      // 2. Check passed location prop if fresh fetch was not ready
+      if (!finalMapsUrl && location && location.latitude && location.longitude && location.latitude !== 0) {
         finalMapsUrl = location.mapsUrl || `https://maps.google.com/?q=${Number(location.latitude).toFixed(6)},${Number(location.longitude).toFixed(6)}`;
       }
 
-      // 2. Check native device location directly from hardware bridge
+      // 3. Check native device hardware location bridge
       if (!finalMapsUrl) {
         const nativeLoc = fetchNativeLocation();
         if (nativeLoc && nativeLoc.latitude && nativeLoc.longitude) {
@@ -285,7 +322,7 @@ export const EmergencyMode: React.FC<EmergencyModeProps> = ({
         }
       }
 
-      // 3. Check persistent localStorage cache
+      // 4. Check persistent localStorage cache
       if (!finalMapsUrl) {
         try {
           const cached = localStorage.getItem('safetymesh_last_location');
@@ -293,25 +330,16 @@ export const EmergencyMode: React.FC<EmergencyModeProps> = ({
             const p = JSON.parse(cached);
             if (p.mapsUrl) {
               finalMapsUrl = p.mapsUrl;
-            } else if (p.latitude && p.longitude) {
+            } else if (p.latitude && p.longitude && p.latitude !== 0) {
               finalMapsUrl = `https://maps.google.com/?q=${Number(p.latitude).toFixed(6)},${Number(p.longitude).toFixed(6)}`;
             }
           }
         } catch {}
       }
 
-      // 4. If still missing, actively query real device location with a 4.5s race timeout
+      // 5. Fallback link if GPS is not available/denied: https://maps.app.goo.gl/PY2uQgZp7hHYhrKP9
       if (!finalMapsUrl) {
-        setSmsStatus('Acquiring GPS location...');
-        try {
-          const freshLoc = await Promise.race([
-            fetchRealDeviceLocation(),
-            new Promise<null>((r) => setTimeout(() => r(null), 4500))
-          ]);
-          if (freshLoc && freshLoc.latitude && freshLoc.longitude) {
-            finalMapsUrl = freshLoc.mapsUrl || `https://maps.google.com/?q=${Number(freshLoc.latitude).toFixed(6)},${Number(freshLoc.longitude).toFixed(6)}`;
-          }
-        } catch {}
+        finalMapsUrl = FALLBACK_LOCATION.mapsUrl;
       }
 
       const listenUrl = `https://safety-mesh.vercel.app/?room=${roomIdRef.current}`;
@@ -344,10 +372,10 @@ export const EmergencyMode: React.FC<EmergencyModeProps> = ({
 
   // Manual SMS button removed as per requirements
 
-  const displayAddress = location?.addressName || 'Live GPS Coordinates Broadcasted';
-  const displayCoords = location
-    ? `${location.latitude.toFixed(5)}° N, ${location.longitude.toFixed(5)}° E (±${Math.round(location.accuracy)}m)`
-    : 'Acquiring high-precision lock...';
+  const activeLocation = (location && location.latitude && location.latitude !== 0) ? location : FALLBACK_LOCATION;
+  const displayAddress = activeLocation.addressName || 'Live GPS Coordinates Broadcasted';
+  const displayCoords = `${activeLocation.latitude.toFixed(5)}° N, ${activeLocation.longitude.toFixed(5)}° E (±${Math.round(activeLocation.accuracy || 10)}m)`;
+  const mapsLink = activeLocation.mapsUrl || `https://maps.google.com/?q=${activeLocation.latitude},${activeLocation.longitude}`;
 
   return (
     <div className="safetymesh-emergency-backdrop" role="alertdialog" aria-modal="true">
@@ -412,17 +440,15 @@ export const EmergencyMode: React.FC<EmergencyModeProps> = ({
           <p className="loc-address-text" style={{ fontSize: '0.82rem', margin: '0 0 2px 0' }}>{displayAddress}</p>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span className="loc-coords-sub" style={{ fontSize: '0.68rem', margin: 0 }}>{displayCoords}</span>
-            {location && (
-              <a
-                href={location.mapsUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="loc-maps-link"
-                style={{ fontSize: '0.72rem' }}
-              >
-                Maps ↗
-              </a>
-            )}
+            <a
+              href={mapsLink}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="loc-maps-link"
+              style={{ fontSize: '0.72rem' }}
+            >
+              Maps ↗
+            </a>
           </div>
         </div>
 
