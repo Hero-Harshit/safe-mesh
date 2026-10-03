@@ -4,7 +4,7 @@ import type { EmergencyContact } from '../services/emergency';
 import { triggerHaptic } from '../services/emergency';
 import type { LocationData } from '../services/location';
 import { fetchRealDeviceLocation } from '../services/location';
-import { sendEmergencySms, startEmergencyBeacon, cancelEmergencyCall, requestNativeEmergencyPermissions, fetchNativeLocation } from '../services/native';
+import { sendEmergencySms, startEmergencyBeacon, startEmergencyCall, cancelEmergencyCall, requestNativeEmergencyPermissions, fetchNativeLocation } from '../services/native';
 import { getEscapeRoute } from '../services/safetyRoute';
 import type { EscapeRouteResponse } from '../services/safetyRoute';
 import { startLiveAudioBroadcast } from '../services/evidenceAudio';
@@ -33,6 +33,11 @@ export const EmergencyMode: React.FC<EmergencyModeProps> = ({
     data: null,
     error: null
   });
+
+  // 10-Second Emergency Call Countdown State
+  const [callCountdown, setCallCountdown] = useState<number>(10);
+  const [callState, setCallState] = useState<'COUNTING_DOWN' | 'CALLING' | 'CANCELLED'>('COUNTING_DOWN');
+  const callInitiatedRef = React.useRef(false);
   
   const [level30Alert, setLevel30Alert] = useState(false);
   const [isStealthMode, setIsStealthMode] = useState<boolean>(() => {
@@ -63,6 +68,20 @@ export const EmergencyMode: React.FC<EmergencyModeProps> = ({
   const audioSessionRef = React.useRef<AudioBroadcastSession | null>(null);
 
   const primaryContact = contacts.find((c) => c.isPrimary) || contacts[0];
+  const targetPhoneNumber = primaryContact?.phone || '112';
+
+  // Trigger immediate call manually or when timer expires
+  const triggerGuardianCallNow = () => {
+    setCallState('CALLING');
+    triggerHaptic([150, 100, 150]);
+    startEmergencyCall(targetPhoneNumber, 0);
+  };
+
+  const cancelGuardianCall = () => {
+    setCallState('CANCELLED');
+    cancelEmergencyCall();
+    triggerHaptic([40, 40]);
+  };
 
   useEffect(() => {
     // Start silent ambient audio broadcast and evidence recording immediately
@@ -85,6 +104,21 @@ export const EmergencyMode: React.FC<EmergencyModeProps> = ({
       }
     };
   }, []);
+
+  // 10-Second Auto-Call Countdown Effect
+  useEffect(() => {
+    if (callState !== 'COUNTING_DOWN') return;
+
+    if (callCountdown > 0) {
+      const callTimer = setTimeout(() => {
+        setCallCountdown((prev) => prev - 1);
+      }, 1000);
+      return () => clearTimeout(callTimer);
+    } else if (callCountdown === 0 && !callInitiatedRef.current) {
+      callInitiatedRef.current = true;
+      triggerGuardianCallNow();
+    }
+  }, [callCountdown, callState]);
 
   useEffect(() => {
     if (secondsActive === 5 && !level30Alert) {
@@ -300,6 +334,174 @@ export const EmergencyMode: React.FC<EmergencyModeProps> = ({
 
         {/* Immediate Emergency Action Shortcuts */}
         <div className="emergency-action-stack" style={{ gap: '8px' }}>
+          {/* Automatic 10-Second Guardian Emergency Call Card */}
+          <div 
+            className="emergency-hero-btn" 
+            style={{ 
+              cursor: 'default', 
+              backgroundColor: callState === 'CANCELLED' ? '#F8FAFC' : '#FEF2F2', 
+              border: `1.5px solid ${callState === 'CANCELLED' ? '#E2E8F0' : '#EF4444'}`, 
+              boxShadow: callState === 'CANCELLED' ? 'none' : '0 4px 14px rgba(239, 68, 68, 0.15)', 
+              color: '#1E293B', 
+              padding: '10px 14px', 
+              gap: '12px',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'stretch',
+              borderRadius: '12px',
+              transition: 'all 0.3s ease'
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div 
+                  className="btn-icon-box" 
+                  style={{ 
+                    width: '36px', 
+                    height: '36px', 
+                    backgroundColor: callState === 'CANCELLED' ? '#E2E8F0' : '#EF4444', 
+                    color: '#FFFFFF',
+                    borderRadius: '8px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    animation: callState === 'COUNTING_DOWN' ? 'pulse 1.5s infinite' : 'none'
+                  }}
+                >
+                  <PhoneCallIcon size={20} color="#FFFFFF" />
+                </div>
+                <div className="btn-copy">
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span className="btn-headline" style={{ fontSize: '0.86rem', color: callState === 'CANCELLED' ? '#64748B' : '#DC2626', fontWeight: 700 }}>
+                      {callState === 'CANCELLED' 
+                        ? 'AUTO-CALL CANCELLED' 
+                        : callState === 'CALLING' 
+                        ? 'CONNECTING EMERGENCY CALL...' 
+                        : `CALLING GUARDIAN IN ${callCountdown}s`}
+                    </span>
+                    {callState === 'COUNTING_DOWN' && (
+                      <span style={{
+                        backgroundColor: '#DC2626',
+                        color: '#FFFFFF',
+                        borderRadius: '12px',
+                        padding: '1px 7px',
+                        fontSize: '0.72rem',
+                        fontWeight: 800,
+                        letterSpacing: '0.5px'
+                      }}>
+                        {callCountdown}s
+                      </span>
+                    )}
+                  </div>
+                  <span className="btn-tagline" style={{ fontSize: '0.72rem', color: '#475569', lineHeight: '1.3', marginTop: '2px' }}>
+                    {primaryContact?.name 
+                      ? `Primary: ${primaryContact.name} (${primaryContact.phone})`
+                      : 'Connecting to National Emergency 112'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div style={{ display: 'flex', gap: '6px' }}>
+                {callState === 'COUNTING_DOWN' && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={cancelGuardianCall}
+                      style={{
+                        backgroundColor: '#FFFFFF',
+                        color: '#64748B',
+                        border: '1px solid #CBD5E1',
+                        borderRadius: '6px',
+                        padding: '6px 12px',
+                        fontSize: '0.74rem',
+                        fontWeight: 700,
+                        cursor: 'pointer'
+                      }}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={triggerGuardianCallNow}
+                      style={{
+                        backgroundColor: '#DC2626',
+                        color: '#FFFFFF',
+                        border: 'none',
+                        borderRadius: '6px',
+                        padding: '6px 12px',
+                        fontSize: '0.74rem',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        boxShadow: '0 2px 6px rgba(220, 38, 38, 0.3)'
+                      }}
+                    >
+                      Call Now
+                    </button>
+                  </>
+                )}
+                {callState === 'CANCELLED' && (
+                  <button
+                    type="button"
+                    onClick={triggerGuardianCallNow}
+                    style={{
+                      backgroundColor: '#EF4444',
+                      color: '#FFFFFF',
+                      border: 'none',
+                      borderRadius: '6px',
+                      padding: '5px 10px',
+                      fontSize: '0.72rem',
+                      fontWeight: 600,
+                      cursor: 'pointer'
+                    }}
+                  >
+                    Call Manually
+                  </button>
+                )}
+                {callState === 'CALLING' && (
+                  <a
+                    href={`tel:${targetPhoneNumber.replace(/[^0-9+]/g, '')}`}
+                    style={{
+                      backgroundColor: '#16A34A',
+                      color: '#FFFFFF',
+                      borderRadius: '6px',
+                      padding: '5px 12px',
+                      fontSize: '0.74rem',
+                      fontWeight: 700,
+                      textDecoration: 'none',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px'
+                    }}
+                  >
+                    <PhoneCallIcon size={12} color="#FFFFFF" />
+                    Dialing...
+                  </a>
+                )}
+              </div>
+            </div>
+
+            {/* Countdown Progress Bar */}
+            {callState === 'COUNTING_DOWN' && (
+              <div style={{
+                width: '100%',
+                height: '4px',
+                backgroundColor: 'rgba(239, 68, 68, 0.15)',
+                borderRadius: '2px',
+                overflow: 'hidden',
+                marginTop: '4px'
+              }}>
+                <div style={{
+                  height: '100%',
+                  width: `${(callCountdown / 10) * 100}%`,
+                  backgroundColor: '#DC2626',
+                  transition: 'width 1s linear',
+                  borderRadius: '2px'
+                }} />
+              </div>
+            )}
+          </div>
+
           {/* Level 3: Silent Live Audio Streaming & Police Evidence Recording */}
           <div className="emergency-hero-btn" style={{ cursor: 'default', backgroundColor: '#FFFFFF', border: '1px solid #FECACA', boxShadow: '0 2px 8px rgba(239,68,68,0.06)', color: '#1E293B', padding: '8px 12px', gap: '10px' }}>
             <div className="btn-icon-box" style={{ width: '32px', height: '32px', backgroundColor: '#FEF2F2' }}>
