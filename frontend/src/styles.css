@@ -3142,3 +3142,17 @@ textarea.profile-input {
 .btn-pick-contact:active {
   transform: scale(0.96);
 }
+
+/* Accessibility: Inverted Colors & High Contrast Mode for Low Vision & Weak Eyesight */
+html.inverted-colors-mode {
+  filter: invert(100%) hue-rotate(180deg) contrast(115%);
+  background-color: #0F172A;
+  transition: filter 0.3s ease, background-color 0.3s ease;
+}
+
+html.inverted-colors-mode img,
+html.inverted-colors-mode video,
+html.inverted-colors-mode .leaflet-container {
+  filter: invert(100%) hue-rotate(180deg);
+}
+

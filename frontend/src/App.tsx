@@ -12,6 +12,7 @@ import type { SafetyMeshPermissionsState } from './services/permissions';
 // IMPORT NATIVE BRIDGE & ACCESSIBILITY SENSORY ENGINE
 import { initNativeBridge, getNativeBridge, requestNativeEmergencyPermissions } from './services/native';
 import { initTactileMorse } from './services/tactileMorse';
+import { initInvertedColors } from './services/invertedColors';
 
 export default function App() {
   const [permissions, setPermissions] = useState<SafetyMeshPermissionsState>(getPermissionsState());
@@ -27,6 +28,8 @@ export default function App() {
     initNativeBridge();
     // INITIALIZE TACTILE MORSE CODE FOR BLIND & ACCESSIBILITY SENSORY NAVIGATION
     initTactileMorse();
+    // INITIALIZE INVERTED COLORS FOR LOW VISION & WEAK EYESIGHT
+    initInvertedColors();
 
     const unsubPerms = subscribePermissions((newPerms) => {
       setPermissions(newPerms);

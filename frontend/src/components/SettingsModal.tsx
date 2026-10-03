@@ -8,6 +8,7 @@ import AnomalySimulationModal from './AnomalySimulationModal';
 import EmergencyContactsModal from './EmergencyContactsModal';
 import type { EmergencyContact } from '../services/emergency';
 import { isTactileMorseEnabled, setTactileMorseEnabled, triggerTactileMorse } from '../services/tactileMorse';
+import { isInvertedColorsEnabled, setInvertedColorsEnabled } from '../services/invertedColors';
 
 interface SettingsModalProps {
   onClose: () => void;
@@ -51,6 +52,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   });
   const [tactileMorse, setTactileMorse] = useState(() => {
     return isTactileMorseEnabled();
+  });
+  const [invertedColors, setInvertedColors] = useState(() => {
+    return isInvertedColorsEnabled();
   });
 
   const [permissions, setPermissions] = useState<SafetyMeshPermissionsState>({
@@ -101,6 +105,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       } else {
         triggerTactileMorse('toggle_off', true);
       }
+    } else if (label === 'Inverted Colors') {
+      setInvertedColorsEnabled(nextState);
     }
     onShowToast(`${label} ${nextState ? 'Enabled' : 'Disabled'}`);
   };
@@ -292,6 +298,21 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     type="checkbox"
                     checked={tactileMorse}
                     onChange={() => toggleSetting(setTactileMorse, tactileMorse, 'Tactile Morse Code')}
+                  />
+                  <span className="slider round"></span>
+                </label>
+              </div>
+
+              <div className="setting-toggle-row">
+                <div className="setting-text">
+                  <span className="setting-label">Inverted Colors</span>
+                  <span className="setting-desc">High-contrast visual inversion for weak eyesight & low vision</span>
+                </div>
+                <label className="switch">
+                  <input
+                    type="checkbox"
+                    checked={invertedColors}
+                    onChange={() => toggleSetting(setInvertedColors, invertedColors, 'Inverted Colors')}
                   />
                   <span className="slider round"></span>
                 </label>
