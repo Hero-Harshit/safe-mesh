@@ -9,8 +9,9 @@ import {
 } from './services/permissions';
 import type { SafetyMeshPermissionsState } from './services/permissions';
 
-// IMPORT NATIVE BRIDGE
+// IMPORT NATIVE BRIDGE & ACCESSIBILITY SENSORY ENGINE
 import { initNativeBridge, getNativeBridge, requestNativeEmergencyPermissions } from './services/native';
+import { initTactileMorse } from './services/tactileMorse';
 
 export default function App() {
   const [permissions, setPermissions] = useState<SafetyMeshPermissionsState>(getPermissionsState());
@@ -24,6 +25,8 @@ export default function App() {
 
     // INITIALIZE NATIVE BRIDGE FOR APP ACTIONS AND BLE TO WORK
     initNativeBridge();
+    // INITIALIZE TACTILE MORSE CODE FOR BLIND & ACCESSIBILITY SENSORY NAVIGATION
+    initTactileMorse();
 
     const unsubPerms = subscribePermissions((newPerms) => {
       setPermissions(newPerms);

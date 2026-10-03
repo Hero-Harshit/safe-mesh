@@ -7,6 +7,7 @@ import PinSetupModal from './PinSetupModal';
 import AnomalySimulationModal from './AnomalySimulationModal';
 import EmergencyContactsModal from './EmergencyContactsModal';
 import type { EmergencyContact } from '../services/emergency';
+import { isTactileMorseEnabled, setTactileMorseEnabled, triggerTactileMorse } from '../services/tactileMorse';
 
 interface SettingsModalProps {
   onClose: () => void;
@@ -47,6 +48,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [meshRelay, setMeshRelay] = useState(true);
   const [aiAnomalyEnabled, setAiAnomalyEnabled] = useState(() => {
     return localStorage.getItem('safetymesh_ambient_guard') !== 'false';
+  });
+  const [tactileMorse, setTactileMorse] = useState(() => {
+    return isTactileMorseEnabled();
   });
 
   const [permissions, setPermissions] = useState<SafetyMeshPermissionsState>({
@@ -90,6 +94,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       window.dispatchEvent(new Event('ambient_guard_changed'));
     } else if (label === 'Stealth Black Screen') {
       localStorage.setItem('safetymesh_stealth_mode', nextState ? 'true' : 'false');
+    } else if (label === 'Tactile Morse Code') {
+      setTactileMorseEnabled(nextState);
+      if (nextState) {
+        triggerTactileMorse('toggle_on', true);
+      } else {
+        triggerTactileMorse('toggle_off', true);
+      }
     }
     onShowToast(`${label} ${nextState ? 'Enabled' : 'Disabled'}`);
   };
@@ -266,6 +277,21 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     type="checkbox"
                     checked={hapticEnabled}
                     onChange={() => toggleSetting(setHapticEnabled, hapticEnabled, 'Haptic feedback')}
+                  />
+                  <span className="slider round"></span>
+                </label>
+              </div>
+
+              <div className="setting-toggle-row">
+                <div className="setting-text">
+                  <span className="setting-label">Tactile Morse Code</span>
+                  <span className="setting-desc">Haptic vibration & audio tone feedback for blind & visually impaired navigation</span>
+                </div>
+                <label className="switch">
+                  <input
+                    type="checkbox"
+                    checked={tactileMorse}
+                    onChange={() => toggleSetting(setTactileMorse, tactileMorse, 'Tactile Morse Code')}
                   />
                   <span className="slider round"></span>
                 </label>

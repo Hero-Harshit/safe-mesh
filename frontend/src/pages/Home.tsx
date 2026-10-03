@@ -22,6 +22,7 @@ import {
   deleteEmergencyContact,
   triggerHaptic,
 } from '../services/emergency';
+import { triggerTactileMorse } from '../services/tactileMorse';
 import {
   syncEmergencyContactsToNative,
   onNativeThreatEvent,
@@ -116,6 +117,7 @@ export default function Home(_props: HomeProps = {}) {
   }, [handleThreatDetected]);
 
   const openModal = useCallback((modal: 'safe_route' | 'contacts' | 'call_112' | 'settings' | 'nearby_guardian' | 'toolkit' | 'timer' | 'pin_validation') => {
+    triggerTactileMorse('module');
     if (window.history.state?.safetymesh_modal !== modal) {
       window.history.pushState({ safetymesh_modal: modal }, '');
     }
