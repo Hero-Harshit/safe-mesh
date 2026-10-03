@@ -9,6 +9,7 @@ import EmergencyContactsModal from './EmergencyContactsModal';
 import type { EmergencyContact } from '../services/emergency';
 import { isTactileMorseEnabled, setTactileMorseEnabled, triggerTactileMorse } from '../services/tactileMorse';
 import { isInvertedColorsEnabled, setInvertedColorsEnabled } from '../services/invertedColors';
+import { isOpticalFeedbackEnabled, setOpticalFeedbackEnabled } from '../services/opticalFeedback';
 
 interface SettingsModalProps {
   onClose: () => void;
@@ -55,6 +56,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   });
   const [invertedColors, setInvertedColors] = useState(() => {
     return isInvertedColorsEnabled();
+  });
+  const [opticalFeedback, setOpticalFeedback] = useState(() => {
+    return isOpticalFeedbackEnabled();
   });
 
   const [permissions, setPermissions] = useState<SafetyMeshPermissionsState>({
@@ -107,6 +111,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       }
     } else if (label === 'Inverted Colors') {
       setInvertedColorsEnabled(nextState);
+    } else if (label === 'Optical Flash Feedback') {
+      setOpticalFeedbackEnabled(nextState);
     }
     onShowToast(`${label} ${nextState ? 'Enabled' : 'Disabled'}`);
   };
@@ -313,6 +319,21 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     type="checkbox"
                     checked={invertedColors}
                     onChange={() => toggleSetting(setInvertedColors, invertedColors, 'Inverted Colors')}
+                  />
+                  <span className="slider round"></span>
+                </label>
+              </div>
+
+              <div className="setting-toggle-row">
+                <div className="setting-text">
+                  <span className="setting-label">Optical Flash Feedback</span>
+                  <span className="setting-desc">Visual screen flash on interaction for deaf & hard-of-hearing users</span>
+                </div>
+                <label className="switch">
+                  <input
+                    type="checkbox"
+                    checked={opticalFeedback}
+                    onChange={() => toggleSetting(setOpticalFeedback, opticalFeedback, 'Optical Flash Feedback')}
                   />
                   <span className="slider round"></span>
                 </label>

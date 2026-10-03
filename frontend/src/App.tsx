@@ -13,6 +13,7 @@ import type { SafetyMeshPermissionsState } from './services/permissions';
 import { initNativeBridge, getNativeBridge, requestNativeEmergencyPermissions } from './services/native';
 import { initTactileMorse } from './services/tactileMorse';
 import { initInvertedColors } from './services/invertedColors';
+import { initOpticalFeedback } from './services/opticalFeedback';
 
 export default function App() {
   const [permissions, setPermissions] = useState<SafetyMeshPermissionsState>(getPermissionsState());
@@ -30,6 +31,8 @@ export default function App() {
     initTactileMorse();
     // INITIALIZE INVERTED COLORS FOR LOW VISION & WEAK EYESIGHT
     initInvertedColors();
+    // INITIALIZE OPTICAL FLASH FEEDBACK FOR DEAF & VISUAL CONFIRMATION
+    initOpticalFeedback();
 
     const unsubPerms = subscribePermissions((newPerms) => {
       setPermissions(newPerms);
