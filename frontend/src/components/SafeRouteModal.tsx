@@ -21,7 +21,7 @@ export const SafeRouteModal: React.FC<SafeRouteModalProps> = ({
   onShowToast,
 }) => {
   const [destination, setDestination] = useState('');
-  const [_isNavigating, setIsNavigating] = useState(false);
+  const [isNavigating, setIsNavigating] = useState(false);
 
   // Use live location if available, otherwise seamless verified fallback
   const activeLocation = (location && location.latitude && location.latitude !== 0) ? location : FALLBACK_LOCATION;

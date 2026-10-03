@@ -1,0 +1,26 @@
+10:13:45.294 Running build in Washington, D.C., USA (East) – iad1
+10:13:45.295 Build machine configuration: 2 cores, 8 GB
+10:13:45.479 Cloning github.com/Hero-Harshit/safety-mesh (Branch: main, Commit: 0777c6c)
+10:13:46.350 Cloning completed: 871.000ms
+10:13:46.507 Restored build cache from previous deployment (JDz97ECb5mFLZUi2ZVXteKhFE8Ve)
+10:13:47.053 Running "vercel build"
+10:13:47.065 Vercel CLI 62.1.0
+10:13:47.809 Warning: Detected "engines": { "node": ">=22.12.0" } in your `package.json` that will automatically upgrade when a new major Node.js Version is released. Learn More: https://vercel.link/node-version
+10:13:47.814 Installing dependencies...
+10:13:48.723 
+10:13:48.725 up to date in 682ms
+10:13:48.725 
+10:13:48.725 19 packages are looking for funding
+10:13:48.725   run `npm fund` for details
+10:13:48.725 npm warn install-scripts 1 package has install scripts not yet covered by allowScripts:
+10:13:48.726 npm warn install-scripts   core-js@3.29.1 (postinstall: node -e "try{require('./postinstall')}catch(e){}")
+10:13:48.726 npm warn install-scripts
+10:13:48.726 npm warn install-scripts Run `npm install-scripts ls` to review, or `npm install-scripts approve <pkg>` to allow.
+10:13:48.769 Running "npm run build"
+10:13:48.888 
+10:13:48.888 > safetymesh-frontend@4.0.0 build
+10:13:48.888 > tsc -b && vite build
+10:13:48.888 
+10:13:53.352 src/components/SafeRouteModal.tsx(174,27): error TS2552: Cannot find name 'isNavigating'. Did you mean '_isNavigating'?
+10:13:53.356 src/components/SafeRouteModal.tsx(177,24): error TS2552: Cannot find name 'isNavigating'. Did you mean '_isNavigating'?
+10:13:54.003 Error: Command "npm run build" exited with 2
