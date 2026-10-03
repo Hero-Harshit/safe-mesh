@@ -277,6 +277,8 @@ export default function Home(_props: HomeProps = {}) {
 
   const activateEmergencyWorkflow = useCallback(() => {
     handleCloseSosWarning();
+    setActiveModal(null);
+    setThreatReason(null);
     setSosActive(true);
     triggerHaptic([300, 100, 300, 100, 500]);
     showToast('🚨 SafetyMesh Emergency SOS Broadcast Active');

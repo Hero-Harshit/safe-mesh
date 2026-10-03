@@ -35,6 +35,22 @@ export const EmergencyMode: React.FC<EmergencyModeProps> = ({
   });
   
   const [level30Alert, setLevel30Alert] = useState(false);
+  const [isStealthMode, setIsStealthMode] = useState<boolean>(() => {
+    return localStorage.getItem('safetymesh_stealth_mode') === 'true';
+  });
+  const lastTapRef = React.useRef<number>(0);
+
+  const handleDoubleTapWake = (e?: React.SyntheticEvent) => {
+    if (e) e.stopPropagation();
+    const now = Date.now();
+    if (now - lastTapRef.current < 450) {
+      setIsStealthMode(false);
+      triggerHaptic([60, 60]);
+      lastTapRef.current = 0;
+    } else {
+      lastTapRef.current = now;
+    }
+  };
 
   const smsTriggeredRef = React.useRef(false);
   const routeTriggeredRef = React.useRef(false);
@@ -207,6 +223,42 @@ export const EmergencyMode: React.FC<EmergencyModeProps> = ({
 
   return (
     <div className="safetymesh-emergency-backdrop" role="alertdialog" aria-modal="true">
+      {/* STEALTH BLACK SCREEN OVERLAY (Activated only if user enabled toggle in Settings) */}
+      {isStealthMode && (
+        <div
+          onClick={handleDoubleTapWake}
+          onTouchEnd={handleDoubleTapWake}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 9999999,
+            backgroundColor: '#000000',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'center',
+            alignItems: 'center',
+            userSelect: 'none',
+            WebkitUserSelect: 'none',
+            touchAction: 'manipulation',
+            cursor: 'default'
+          }}
+        >
+          {/* Near-invisible hint for the victim; unnoticeable to an attacker */}
+          <div
+            style={{
+              color: 'rgba(255, 255, 255, 0.08)',
+              fontSize: '0.75rem',
+              textAlign: 'center',
+              userSelect: 'none',
+              letterSpacing: '1px',
+              fontFamily: 'system-ui, -apple-system, sans-serif'
+            }}
+          >
+            Double-tap screen to wake
+          </div>
+        </div>
+      )}
+
       <div className="emergency-fullscreen-sheet">
         {/* Urgent yet Composed Status Banner */}
         <div className="emergency-alert-header">

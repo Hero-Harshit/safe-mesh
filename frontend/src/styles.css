@@ -1892,7 +1892,7 @@ input:checked + .slider::before {
   justify-content: center;
   padding: 8px;
   box-sizing: border-box;
-  z-index: 300;
+  z-index: 99999;
   animation: strobe-frame 2s infinite alternate;
   overflow: hidden;
 }

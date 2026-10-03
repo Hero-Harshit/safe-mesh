@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { SettingsGearIcon, ShieldCheckIcon, UsersIcon, LockIcon } from './Icons';
 import { subscribePermissions, requestSmsPermission } from '../services/permissions';
 import type { SafetyMeshPermissionsState } from '../services/permissions';
@@ -41,7 +41,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
   const [hapticEnabled, setHapticEnabled] = useState(true);
   const [autoSms, setAutoSms] = useState(true);
-  const [stealthMode, setStealthMode] = useState(false);
+  const [stealthMode, setStealthMode] = useState(() => {
+    return localStorage.getItem('safetymesh_stealth_mode') === 'true';
+  });
   const [meshRelay, setMeshRelay] = useState(true);
   const [aiAnomalyEnabled, setAiAnomalyEnabled] = useState(() => {
     return localStorage.getItem('safetymesh_ambient_guard') !== 'false';
@@ -83,9 +85,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const toggleSetting = (setter: React.Dispatch<React.SetStateAction<boolean>>, current: boolean, label: string) => {
     const nextState = !current;
     setter(nextState);
-    if (label === 'AI Threat Detector' || label === 'AI Threat Detector') {
+    if (label === 'AI Threat Detector') {
       localStorage.setItem('safetymesh_ambient_guard', nextState ? 'true' : 'false');
       window.dispatchEvent(new Event('ambient_guard_changed'));
+    } else if (label === 'Stealth Black Screen') {
+      localStorage.setItem('safetymesh_stealth_mode', nextState ? 'true' : 'false');
     }
     onShowToast(`${label} ${nextState ? 'Enabled' : 'Disabled'}`);
   };
@@ -284,14 +288,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
               <div className="setting-toggle-row">
                 <div className="setting-text">
-                  <span className="setting-label">Stealth Emergency Mode</span>
-                  <span className="setting-desc">Dims brightness to avoid drawing aggressor attention</span>
+                  <span className="setting-label">Stealth Black Screen</span>
+                  <span className="setting-desc">Blacks out screen during SOS to disguise active alert from attackers (double-tap to view)</span>
                 </div>
                 <label className="switch">
                   <input
                     type="checkbox"
                     checked={stealthMode}
-                    onChange={() => toggleSetting(setStealthMode, stealthMode, 'Stealth Mode')}
+                    onChange={() => toggleSetting(setStealthMode, stealthMode, 'Stealth Black Screen')}
                   />
                   <span className="slider round"></span>
                 </label>
