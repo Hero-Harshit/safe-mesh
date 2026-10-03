@@ -16,12 +16,12 @@ interface SafeRouteModalProps {
 export const SafeRouteModal: React.FC<SafeRouteModalProps> = ({
   location,
   locationPermission: _locationPermission,
-  onRequestLocationPermission: _onRequestLocationPermission,
+  onRequestLocationPermission,
   onClose,
   onShowToast,
 }) => {
   const [destination, setDestination] = useState('');
-  const [isNavigating, setIsNavigating] = useState(false);
+  const [_isNavigating, setIsNavigating] = useState(false);
 
   // Use live location if available, otherwise seamless verified fallback
   const activeLocation = (location && location.latitude && location.latitude !== 0) ? location : FALLBACK_LOCATION;
@@ -138,7 +138,7 @@ export const SafeRouteModal: React.FC<SafeRouteModalProps> = ({
 
                 <div className="route-score-badge">
                   <ShieldCheckIcon size={14} color="#10B981" />
-                  <span>Real GPS Lock: ±{Math.round(location.accuracy)}m Accuracy</span>
+                  <span>Real GPS Lock: ±{Math.round(activeLocation.accuracy || 15)}m Accuracy</span>
                 </div>
               </div>
 
@@ -148,7 +148,7 @@ export const SafeRouteModal: React.FC<SafeRouteModalProps> = ({
                   <div className="endpoint-icon start-point"></div>
                   <div className="endpoint-meta">
                     <span className="endpoint-tag">CURRENT GPS LOCATION</span>
-                    <span className="endpoint-text">{location.addressName}</span>
+                    <span className="endpoint-text">{activeLocation.addressName}</span>
                   </div>
                 </div>
                 <div className="endpoint-connector"></div>
