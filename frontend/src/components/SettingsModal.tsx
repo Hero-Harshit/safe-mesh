@@ -10,6 +10,7 @@ import type { EmergencyContact } from '../services/emergency';
 import { isTactileMorseEnabled, setTactileMorseEnabled, triggerTactileMorse } from '../services/tactileMorse';
 import { isInvertedColorsEnabled, setInvertedColorsEnabled } from '../services/invertedColors';
 import { isOpticalFeedbackEnabled, setOpticalFeedbackEnabled } from '../services/opticalFeedback';
+import { useTranslation } from '../services/i18n';
 
 interface SettingsModalProps {
   onClose: () => void;
@@ -28,6 +29,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   onDeleteContact, 
   currentMapsUrl 
 }) => {
+  const { lang, setLanguage, t, languages } = useTranslation();
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [isSettingPins, setIsSettingPins] = useState(false);
   const [isManagingContacts, setIsManagingContacts] = useState(false);
@@ -226,7 +228,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 <SettingsGearIcon size={22} color="#64748B" />
               </div>
               <div>
-                <h2 className="modal-sheet-title">Settings</h2>
+                <h2 className="modal-sheet-title">{t('settings', 'Settings')}</h2>
                 <span className="modal-sheet-subtitle">Platform & Safety Preferences</span>
               </div>
             </div>
@@ -249,9 +251,39 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               </div>
             </div>
 
+            {/* Language Selection Section */}
+            <div className="settings-section">
+              <span className="settings-section-title">{t('language_select', 'LANGUAGE / भाषा')}</span>
+              <div 
+                className="setting-toggle-row" 
+                style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '10px' }}
+              >
+                <div className="setting-text" style={{ width: '100%' }}>
+                  <span className="setting-label">{t('language_select', 'App Language')}</span>
+                  <span className="setting-desc">{t('language_desc', 'Select preferred app language')}</span>
+                </div>
+
+                <div className="lang-pills-row">
+                  {languages.map((l) => (
+                    <button
+                      key={l.id}
+                      type="button"
+                      className={`lang-pill-btn ${lang === l.id ? 'active' : ''}`}
+                      onClick={() => {
+                        setLanguage(l.id);
+                        onShowToast(`Language: ${l.nativeName}`);
+                      }}
+                    >
+                      {l.nativeName}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
             {/* Preferences list */}
             <div className="settings-section">
-              <span className="settings-section-title">EMERGENCY PREFERENCES</span>
+              <span className="settings-section-title">{t('emergency_preferences', 'EMERGENCY PREFERENCES')}</span>
 
               <div
                 className="setting-toggle-row"
@@ -260,9 +292,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               >
                 <div className="setting-text">
                   <span className="setting-label" style={{ color: '#8B5CF6', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <UsersIcon size={18} color="#8B5CF6" /> Manage Emergency Contacts
+                    <UsersIcon size={18} color="#8B5CF6" /> {t('manage_contacts', 'Manage Emergency Contacts')}
                   </span>
-                  <span className="setting-desc">Set your primary distress contacts</span>
+                  <span className="setting-desc">{t('manage_contacts_desc', 'Set your primary distress contacts')}</span>
                 </div>
               </div>
 
@@ -273,16 +305,16 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               >
                 <div className="setting-text">
                   <span className="setting-label" style={{ color: '#F59E0B', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <LockIcon size={18} color="#F59E0B" /> Manage Security PINs
+                    <LockIcon size={18} color="#F59E0B" /> {t('manage_pins', 'Manage Security PINs')}
                   </span>
-                  <span className="setting-desc">Set Actual & Duress PINs for Safe Timer</span>
+                  <span className="setting-desc">{t('manage_pins_desc', 'Set Actual & Duress PINs for Safe Timer')}</span>
                 </div>
               </div>
 
               <div className="setting-toggle-row">
                 <div className="setting-text">
-                  <span className="setting-label">Haptic Vibration</span>
-                  <span className="setting-desc">Tactile vibration during SOS hold & alerts</span>
+                  <span className="setting-label">{t('haptic_vibration', 'Haptic Vibration')}</span>
+                  <span className="setting-desc">{t('haptic_vibration_desc', 'Tactile vibration during SOS hold & alerts')}</span>
                 </div>
                 <label className="switch">
                   <input
@@ -296,8 +328,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
               <div className="setting-toggle-row">
                 <div className="setting-text">
-                  <span className="setting-label">Tactile Morse Code</span>
-                  <span className="setting-desc">Haptic vibration & audio tone feedback for blind & visually impaired navigation</span>
+                  <span className="setting-label">{t('tactile_morse', 'Tactile Morse Code')}</span>
+                  <span className="setting-desc">{t('tactile_morse_desc', 'Haptic vibration & audio tone feedback for blind navigation')}</span>
                 </div>
                 <label className="switch">
                   <input
@@ -311,8 +343,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
               <div className="setting-toggle-row">
                 <div className="setting-text">
-                  <span className="setting-label">Inverted Colors</span>
-                  <span className="setting-desc">High-contrast visual inversion for weak eyesight & low vision</span>
+                  <span className="setting-label">{t('inverted_colors', 'Inverted Colors')}</span>
+                  <span className="setting-desc">{t('inverted_colors_desc', 'High-contrast visual inversion for weak eyesight & low vision')}</span>
                 </div>
                 <label className="switch">
                   <input
@@ -326,8 +358,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
               <div className="setting-toggle-row">
                 <div className="setting-text">
-                  <span className="setting-label">Optical Flash Feedback</span>
-                  <span className="setting-desc">Visual screen flash on interaction for deaf & hard-of-hearing users</span>
+                  <span className="setting-label">{t('optical_flash', 'Optical Flash Feedback')}</span>
+                  <span className="setting-desc">{t('optical_flash_desc', 'Visual screen flash on interaction for deaf & hard-of-hearing')}</span>
                 </div>
                 <label className="switch">
                   <input
@@ -341,8 +373,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
               <div className="setting-toggle-row">
                 <div className="setting-text">
-                  <span className="setting-label">Automatic SMS Dispatch</span>
-                  <span className="setting-desc">Prepares SMS with GPS coordinates upon SOS</span>
+                  <span className="setting-label">{t('auto_sms', 'Automatic SMS Dispatch')}</span>
+                  <span className="setting-desc">{t('auto_sms_desc', 'Prepares SMS with GPS coordinates upon SOS')}</span>
                 </div>
                 <label className="switch">
                   <input
@@ -356,8 +388,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
               <div className="setting-toggle-row">
                 <div className="setting-text">
-                  <span className="setting-label">Stealth Black Screen</span>
-                  <span className="setting-desc">Blacks out screen during SOS to disguise active alert from attackers (double-tap to view)</span>
+                  <span className="setting-label">{t('stealth_screen', 'Stealth Black Screen')}</span>
+                  <span className="setting-desc">{t('stealth_screen_desc', 'Blacks out screen during SOS to disguise active alert from attackers')}</span>
                 </div>
                 <label className="switch">
                   <input
@@ -371,8 +403,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
               <div className="setting-toggle-row">
                 <div className="setting-text">
-                  <span className="setting-label">Offline Mesh Relay</span>
-                  <span className="setting-desc">Silently bridge distress beacons for nearby students</span>
+                  <span className="setting-label">{t('offline_relay', 'Offline Mesh Relay')}</span>
+                  <span className="setting-desc">{t('offline_relay_desc', 'Silently bridge distress beacons for nearby students')}</span>
                 </div>
                 <label className="switch">
                   <input
@@ -386,8 +418,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
               <div className="setting-toggle-row">
                 <div className="setting-text">
-                  <span className="setting-label">AI Threat Detector</span>
-                  <span className="setting-desc">Continuous background analysis of acoustics and voice spikes</span>
+                  <span className="setting-label">{t('ai_threat_detector', 'AI Threat Detector')}</span>
+                  <span className="setting-desc">{t('ai_threat_detector_desc', 'Continuous background analysis of acoustics and voice spikes')}</span>
                 </div>
                 <label className="switch">
                   <input
@@ -403,12 +435,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
             {/* System Permissions list */}
             <div className="settings-section">
-              <span className="settings-section-title">SYSTEM PERMISSIONS</span>
+              <span className="settings-section-title">{t('system_permissions', 'SYSTEM PERMISSIONS')}</span>
 
               <div className="setting-toggle-row">
                 <div className="setting-text">
-                  <span className="setting-label">SMS Access</span>
-                  <span className="setting-desc">Required to notify emergency contacts during SOS</span>
+                  <span className="setting-label">{t('sms_access', 'SMS Access')}</span>
+                  <span className="setting-desc">{t('sms_access_desc', 'Required to notify emergency contacts during SOS')}</span>
                 </div>
                 <div>
                   {permissions.sms === 'GRANTED' ? (

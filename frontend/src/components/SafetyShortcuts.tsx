@@ -6,6 +6,7 @@ import {
   ToolkitIcon,
   TimerIcon
 } from './Icons';
+import { useTranslation } from '../services/i18n';
 
 interface SafetyShortcutsProps {
   onSafeRouteClick: () => void;
@@ -20,6 +21,8 @@ export const SafetyShortcuts: React.FC<SafetyShortcutsProps> = ({
   onTimerClick,
   onToolkitClick,
 }) => {
+  const { t } = useTranslation();
+
   return (
     <section className="safety-shortcuts-container" aria-label="Safety Shortcuts">
       {/* Primary Row: Safe Route + Nearby Guardian */}
@@ -33,8 +36,8 @@ export const SafetyShortcuts: React.FC<SafetyShortcutsProps> = ({
             <NavigationArrowIcon size={20} color="#3B82F6" />
           </div>
           <div className="shortcut-text-block">
-            <span className="shortcut-title">Safe Route</span>
-            <span className="shortcut-subtitle">Find a safer way</span>
+            <span className="shortcut-title">{t('safe_route', 'Safe Route')}</span>
+            <span className="shortcut-subtitle">{t('find_safer_way', 'Find a safer way')}</span>
           </div>
           <div className="shortcut-arrow">
             <ChevronRightIcon size={16} color="#94A3B8" />
@@ -50,8 +53,8 @@ export const SafetyShortcuts: React.FC<SafetyShortcutsProps> = ({
             <GuardianMeshIcon size={20} color="#3B82F6" />
           </div>
           <div className="shortcut-text-block">
-            <span className="shortcut-title">Nearby Guardian</span>
-            <span className="shortcut-subtitle">People around you</span>
+            <span className="shortcut-title">{t('nearby_guardian', 'Nearby Guardian')}</span>
+            <span className="shortcut-subtitle">{t('people_around_you', 'People around you')}</span>
           </div>
           <div className="shortcut-arrow">
             <ChevronRightIcon size={16} color="#94A3B8" />
@@ -70,8 +73,8 @@ export const SafetyShortcuts: React.FC<SafetyShortcutsProps> = ({
             <TimerIcon size={20} color="#3B82F6" />
           </div>
           <div className="shortcut-text-block">
-            <span className="shortcut-title">Safe Timer</span>
-            <span className="shortcut-subtitle">Dead man's switch</span>
+            <span className="shortcut-title">{t('safe_timer', 'Safe Timer')}</span>
+            <span className="shortcut-subtitle">{t('checkin_countdown', "Dead man's switch")}</span>
           </div>
           <div className="shortcut-arrow">
             <ChevronRightIcon size={16} color="#94A3B8" />
@@ -87,8 +90,8 @@ export const SafetyShortcuts: React.FC<SafetyShortcutsProps> = ({
             <ToolkitIcon size={20} color="#3B82F6" />
           </div>
           <div className="shortcut-text-block">
-            <span className="shortcut-title">Safety Toolkit</span>
-            <span className="shortcut-subtitle">More features</span>
+            <span className="shortcut-title">{t('safety_toolkit', 'Safety Toolkit')}</span>
+            <span className="shortcut-subtitle">{t('emergency_tools', 'More features')}</span>
           </div>
           <div className="shortcut-arrow">
             <ChevronRightIcon size={16} color="#94A3B8" />

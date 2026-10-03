@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { triggerHaptic } from '../services/emergency';
 import { SosBroadcastIcon } from './Icons';
+import { useTranslation } from '../services/i18n';
 
 interface EmergencySOSButtonProps {
   onActivate: () => void;
@@ -9,6 +10,7 @@ interface EmergencySOSButtonProps {
 const HOLD_DURATION_MS = 1800; // 1.8 seconds hold to activate
 
 export const EmergencySOSButton: React.FC<EmergencySOSButtonProps> = ({ onActivate }) => {
+  const { t } = useTranslation();
   const [isHolding, setIsHolding] = useState(false);
   const [progress, setProgress] = useState(0); // 0 to 100
   const [showHint, setShowHint] = useState(false);
@@ -181,13 +183,13 @@ export const EmergencySOSButton: React.FC<EmergencySOSButtonProps> = ({ onActiva
                 <SosBroadcastIcon size={34} color="#FFFFFF" />
               </div>
             )}
-            <span className="sos-hero-title">{isActivated ? "You're safe" : 'SOS'}</span>
+            <span className="sos-hero-title">{isActivated ? t('safe_status', "You're safe") : 'SOS'}</span>
             <span className="sos-hero-subtitle">
               {isActivated 
-                ? 'Help arriving' 
+                ? t('safe_status', 'Help arriving') 
                 : isHolding 
-                  ? `${Math.ceil((HOLD_DURATION_MS * (1 - progress / 100)) / 1000)}s to activate` 
-                  : 'Hold to activate'}
+                  ? `${Math.ceil((HOLD_DURATION_MS * (1 - progress / 100)) / 1000)}s` 
+                  : t('hold_for_sos', 'Hold to activate')}
             </span>
           </div>
         </button>

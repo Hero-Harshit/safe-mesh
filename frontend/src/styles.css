@@ -3179,5 +3179,40 @@ html.inverted-colors-mode .leaflet-container {
   transition: none;
 }
 
+/* Language Pill Selector in Settings */
+.lang-pills-row {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+  padding: 4px 0 2px 0;
+}
+
+.lang-pill-btn {
+  flex: 1;
+  padding: 10px 12px;
+  border-radius: 12px;
+  font-size: 0.88rem;
+  font-weight: 700;
+  border: 1px solid var(--border-card);
+  background: var(--color-surface-subtle);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: center;
+}
+
+.lang-pill-btn:hover {
+  border-color: #3B82F6;
+  color: #3B82F6;
+}
+
+.lang-pill-btn.active {
+  background: #3B82F6;
+  color: #FFFFFF;
+  border-color: #3B82F6;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+
 
 
