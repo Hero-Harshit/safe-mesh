@@ -87,9 +87,22 @@ export const AmbientGuardCard: React.FC<AmbientGuardCardProps> = ({
         },
       });
 
+      // Crucial for Android WebView: resume AudioContext immediately after stream is granted
+      if (audioCtx.state === 'suspended') {
+        try { await audioCtx.resume(); } catch {}
+      }
+
       micStreamRef.current = stream;
       setHasMicPermission(true);
-      
+
+      // Attach touch/click listeners to resume AudioContext if Android WebView enforces user gesture
+      const resumeAudio = () => {
+        if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
+          audioContextRef.current.resume().catch(() => {});
+        }
+      };
+      window.addEventListener('touchstart', resumeAudio, { passive: true, once: false });
+      window.addEventListener('click', resumeAudio, { passive: true, once: false });
 
       // 3. Connect analyser
       const analyser = audioCtx.createAnalyser();
@@ -104,7 +117,6 @@ export const AmbientGuardCard: React.FC<AmbientGuardCardProps> = ({
     } catch (err: any) {
       console.warn('Microphone access in AmbientGuardCard:', err);
       setHasMicPermission(false);
-      
 
       // If in native Android app, prompt native emergency permissions which covers RECORD_AUDIO
       const bridge = typeof window !== 'undefined' ? ((window as any).AndroidSafeMesh || (window as any).Android) : null;
