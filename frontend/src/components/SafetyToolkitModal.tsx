@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { ToolkitIcon, SatelliteIcon } from './Icons';
+import { ToolkitIcon, SatelliteIcon, CabConnectIcon } from './Icons';
 import { startSiren, stopSiren, isSirenRunning } from '../services/native';
 import { requestSatelliteUplink } from '../services/satelliteService';
+import { requestCabConnect } from '../services/cabConnectService';
 import AnomalySimulationModal from './AnomalySimulationModal';
 
 interface SafetyToolkitModalProps {
@@ -17,6 +18,24 @@ export const SafetyToolkitModal: React.FC<SafetyToolkitModalProps> = ({
   const [showThreatDiagnostics, setShowThreatDiagnostics] = useState(false);
   const [isSatelliteConnecting, setIsSatelliteConnecting] = useState(false);
   const [satelliteModalMessage, setSatelliteModalMessage] = useState<string | null>(null);
+
+  // Cab Connect State
+  const [isCabConnecting, setIsCabConnecting] = useState(false);
+  const [cabModalMessage, setCabModalMessage] = useState<string | null>(null);
+
+  const handleBeginCabConnect = async () => {
+    setIsCabConnecting(true);
+    try {
+      const res = await requestCabConnect();
+      setCabModalMessage(res.message);
+    } catch {
+      setCabModalMessage(
+        'Connecting to commercial cab booking networks (Uber, Ola, Rapido) requires an active commercial fleet dispatch license, approved partner OAuth2 credentials, and enterprise mobility agreements.'
+      );
+    } finally {
+      setIsCabConnecting(false);
+    }
+  };
 
   const handleBeginSatellite = async () => {
     setIsSatelliteConnecting(true);
@@ -106,7 +125,7 @@ export const SafetyToolkitModal: React.FC<SafetyToolkitModalProps> = ({
                 </button>
               </div>
 
-              {/* 2. Threat Diagnostics List Item (Placed just above Satellite Connect) */}
+              {/* 2. Threat Diagnostics List Item */}
               <div 
                 style={{
                   display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -141,7 +160,100 @@ export const SafetyToolkitModal: React.FC<SafetyToolkitModalProps> = ({
                 </button>
               </div>
 
-              {/* 3. Satellite Connect List Item */}
+              {/* 3. Cab Connect List Item (Uber / Ola / Rapido Commercial Dispatch Integration) */}
+              <div 
+                style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  padding: '16px 20px', background: 'var(--surface-color)',
+                  borderRadius: '16px', border: '1px solid var(--border-card)',
+                  boxShadow: '0 2px 10px rgba(0,0,0,0.03)'
+                }}
+              >
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1, paddingRight: '16px' }}>
+                  <h3 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-primary)', margin: 0, lineHeight: 1.2 }}>
+                    Cab Connect
+                  </h3>
+                  <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                    Automated emergency evacuation ride dispatch
+                  </span>
+                </div>
+                
+                <button 
+                  onClick={handleBeginCabConnect}
+                  disabled={isCabConnecting}
+                  style={{
+                    padding: '8px 24px', borderRadius: '100px',
+                    background: isCabConnecting ? '#E2E8F0' : '#F1F5F9',
+                    color: '#3B82F6', 
+                    fontWeight: '700', fontSize: '0.85rem',
+                    border: '1px solid rgba(59, 130, 246, 0.2)', 
+                    cursor: isCabConnecting ? 'wait' : 'pointer',
+                    transition: 'all 0.2s ease',
+                    minWidth: '80px'
+                  }}
+                >
+                  {isCabConnecting ? 'Connecting...' : 'Connect'}
+                </button>
+              </div>
+
+              {/* Notice / Status Card if user clicked Cab Connect */}
+              {cabModalMessage && (
+                <div 
+                  style={{
+                    marginTop: '2px',
+                    padding: '14px 16px',
+                    borderRadius: '14px',
+                    background: 'rgba(239, 68, 68, 0.08)',
+                    border: '1.5px solid rgba(239, 68, 68, 0.25)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '10px',
+                    animation: 'fadeIn 0.2s ease-out'
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <div 
+                      style={{ 
+                        width: '28px', height: '28px', borderRadius: '50%', 
+                        background: 'rgba(239, 68, 68, 0.15)', display: 'flex', 
+                        alignItems: 'center', justifyContent: 'center', flexShrink: 0 
+                      }}
+                    >
+                      <CabConnectIcon size={16} color="#EF4444" />
+                    </div>
+                    <strong style={{ fontSize: '0.92rem', color: '#EF4444' }}>
+                      Commercial License Requirement
+                    </strong>
+                  </div>
+
+                  <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-secondary)', lineHeight: 1.45 }}>
+                    {cabModalMessage}
+                  </p>
+
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '2px', paddingTop: '6px', borderTop: '1px solid rgba(239, 68, 68, 0.15)' }}>
+                    <span style={{ fontSize: '0.74rem', color: '#94A3B8', fontFamily: 'monospace' }}>
+                      Status: COMMERCIAL_LICENSE_MANDATORY
+                    </span>
+                    <button
+                      onClick={() => setCabModalMessage(null)}
+                      style={{
+                        padding: '4px 14px',
+                        borderRadius: '8px',
+                        background: 'transparent',
+                        border: '1px solid rgba(239, 68, 68, 0.3)',
+                        color: '#EF4444',
+                        fontSize: '0.78rem',
+                        fontWeight: 600,
+                        cursor: 'pointer'
+                      }}
+                    >
+                      Dismiss
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* 4. Satellite Connect List Item */}
               <div 
                 style={{
                   display: 'flex', alignItems: 'center', justifyContent: 'space-between',
