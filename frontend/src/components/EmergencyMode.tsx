@@ -9,6 +9,7 @@ import { getEscapeRoute } from '../services/safetyRoute';
 import type { EscapeRouteResponse } from '../services/safetyRoute';
 import { startLiveAudioBroadcast } from '../services/evidenceAudio';
 import type { AudioBroadcastSession } from '../services/evidenceAudio';
+import { supabase } from '../services/supabase';
 
 interface EmergencyModeProps {
   location: LocationData | null;
@@ -60,6 +61,7 @@ export const EmergencyMode: React.FC<EmergencyModeProps> = ({
   const smsTriggeredRef = React.useRef(false);
   const routeTriggeredRef = React.useRef(false);
   const beaconTriggeredRef = React.useRef(false);
+  const incidentTriggeredRef = React.useRef(false);
 
   // Persistent room ID for the emergency broadcast session
   const roomIdRef = React.useRef<string>(
@@ -137,6 +139,11 @@ export const EmergencyMode: React.FC<EmergencyModeProps> = ({
       triggerAutomaticSms();
     }
 
+    if (!incidentTriggeredRef.current) {
+      incidentTriggeredRef.current = true;
+      triggerIncidentBroadcast();
+    }
+
     if (!beaconTriggeredRef.current) {
       beaconTriggeredRef.current = true;
       startEmergencyBeacon().catch(console.error);
@@ -153,6 +160,93 @@ export const EmergencyMode: React.FC<EmergencyModeProps> = ({
 
     return () => clearInterval(timer);
   }, [location]);
+
+  // Broadcast real-time incident with high-precision coordinates to Supabase for the live map
+  const triggerIncidentBroadcast = async () => {
+    try {
+      let lat: number | null = null;
+      let lon: number | null = null;
+
+      // 1. Check passed location prop
+      if (location && location.latitude && location.longitude) {
+        lat = Number(location.latitude);
+        lon = Number(location.longitude);
+      }
+
+      // 2. Check native hardware location bridge
+      if (lat === null || lon === null) {
+        const nativeLoc = fetchNativeLocation();
+        if (nativeLoc && nativeLoc.latitude && nativeLoc.longitude) {
+          lat = Number(nativeLoc.latitude);
+          lon = Number(nativeLoc.longitude);
+        }
+      }
+
+      // 3. Check persistent localStorage cache
+      if (lat === null || lon === null) {
+        try {
+          const cached = localStorage.getItem('safetymesh_last_location');
+          if (cached) {
+            const p = JSON.parse(cached);
+            if (p.latitude && p.longitude) {
+              lat = Number(p.latitude);
+              lon = Number(p.longitude);
+            }
+          }
+        } catch {}
+      }
+
+      // 4. Actively fetch real fresh device position if still missing
+      if (lat === null || lon === null) {
+        try {
+          const fresh = await Promise.race([
+            fetchRealDeviceLocation(),
+            new Promise<null>((r) => setTimeout(() => r(null), 3000))
+          ]);
+          if (fresh && fresh.latitude && fresh.longitude) {
+            lat = Number(fresh.latitude);
+            lon = Number(fresh.longitude);
+          }
+        } catch {}
+      }
+
+      if (lat === null || lon === null) {
+        console.warn('Could not determine coordinates for LiveMap incident pin');
+        return;
+      }
+
+      let userName = 'SafetyMesh Citizen';
+      try {
+        const rawProfile = localStorage.getItem('safetymesh_profile');
+        if (rawProfile) {
+          const parsed = JSON.parse(rawProfile);
+          if (parsed.fullName) userName = parsed.fullName;
+        }
+      } catch {}
+
+      const incidentId = 'inc_' + Date.now();
+      const { error } = await supabase.from('incidents').insert({
+        incident_id: incidentId,
+        emergency_id: roomIdRef.current,
+        status: 'ACTIVE',
+        trigger_source: 'EMERGENCY_SOS_BUTTON',
+        sender_safehelp_id: userName,
+        sender_location: {
+          type: 'Point',
+          coordinates: [lon, lat] // GeoJSON format: [longitude, latitude]
+        },
+        created_at: new Date().toISOString()
+      });
+
+      if (error) {
+        console.warn('Error inserting incident to Supabase:', error);
+      } else {
+        console.log('Incident successfully broadcasted to live map:', incidentId, [lon, lat]);
+      }
+    } catch (err) {
+      console.warn('Failed to publish incident to Supabase:', err);
+    }
+  };
 
   const triggerSafeRoute = async (lat: number, lon: number) => {
     setSafeRouteState({ loading: true, data: null, error: null });
